@@ -1,0 +1,22 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/fulup/Workspace/Sandbox/spawn-binding/build/conf.d/project/etc/CMakeFiles/spawn-config"
+		},
+		{
+			"file" : "/home/fulup/Workspace/Sandbox/spawn-binding/build/conf.d/project/etc/CMakeFiles/spawn-config.rule"
+		},
+		{
+			"file" : "/home/fulup/Workspace/Sandbox/spawn-binding/build/conf.d/project/etc/spawn-config.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"BINDING-CONFIG"
+		],
+		"name" : "spawn-config"
+	}
+}

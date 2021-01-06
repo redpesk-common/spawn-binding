@@ -1,0 +1,6 @@
+# Target labels
+ BINDING-CONFIG
+# Source files and their labels
+/home/fulup/Workspace/Sandbox/spawn-binding/build/conf.d/project/etc/CMakeFiles/spawn-config
+/home/fulup/Workspace/Sandbox/spawn-binding/build/conf.d/project/etc/CMakeFiles/spawn-config.rule
+/home/fulup/Workspace/Sandbox/spawn-binding/build/conf.d/project/etc/spawn-config.rule

@@ -1,0 +1,16 @@
+type: books
+books:
+-
+    id: shell_binding
+    title: shell
+    description: shell binding documentation
+    keywords:
+    chapters:
+    - url: 1-architecture_presentation.md
+      name: Architecture presentation
+    - url: 2-installation_guide.md
+      name: Installation Guide
+    - url: 3-configuration.md
+      name: Configuration
+    - url: 4-running_and_testing.md
+      name: Running and Testing

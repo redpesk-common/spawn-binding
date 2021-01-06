@@ -1,0 +1,9 @@
+# Target labels
+ LIBRARY
+# Source files and their labels
+/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-binding.c
+/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-encoders.c
+/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-enums.c
+/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-sandbox.c
+/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-subtask.c
+/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-utils.c
