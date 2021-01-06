@@ -1,0 +1,146 @@
+{
+  "metadata": {
+    "uid": "spawn-svc",
+    "version": "1.0",
+    "api": "shell",
+    "info": "Generic shell binding API demo default Test Config"
+  },
+  "plugins": [
+    {
+      "uid": "encoder-demo",
+      "info": "Plugin to handle user custom output formatting",
+      "spath": "package/lib/:./lib/plugins:./var",
+      "libs": [
+         "spawn-encoder-demo.ctlso"
+      ]
+    }
+  ],
+  "sandboxes": [
+    {
+      "uid": "sandbox-admin",
+      "info": "Shell admin commands",
+      "prefix": "admin",
+      "privilege": "global privilege",
+
+      "envs" : [
+          {"key": "HOME", "value": "/home"},
+          {"key": "HOSTNAME", "value":"sandbox"},
+          {"key": "SESSION_MANAGER", "mode":"unset"},
+          {"key": "PATH", "value":"/usr/bin"},
+          {"key": "LD_LIBRAY_PATH", "value":"/usr/lib64"}
+        ],
+
+      "acls": {
+          "umask": "027",
+          "user": "daemon",
+          "group":"dialout",
+          "chdir": "/var/tmp"
+        },
+
+      "caps": [
+          {"cap": "NET_BROADCAST", "mode": "unset"},
+          {"cap": "KILL", "mode":"set"}
+        ],
+
+      "cgroups": {
+        "mem": {"max": "512M", "hight": "256M", "min": "128K"},
+          "cpu": {"weight":"100","max": "100000"},
+          // "io":  "8:16 rbps=2097152 wiops=120"
+      },
+
+      // reference https://blog.yadutaf.fr/2014/05/29/introduction-to-seccomp-bpf-linux-syscall-filter/
+      "seccomp": {
+          // "rulespath": "/my_rules",
+          "default": "SCMP_ACT_ALLOW",
+          "locked": false,
+          "rules": [
+            {"syscall": "kexec_file_load", "action": "SCMP_ACT_KILL"},
+            {"syscall": "breakpoint", "action": "SCMP_ACT_KILL"}
+          ]
+        },
+
+      "namespace" : {
+          "shares": {
+            "all": false,
+            "user":false,
+            "cgroup": false,
+            "net": false,
+            "ipc": false
+          },
+          "mounts": [
+            {"target": "/home", "source": "/var/spawn-test", "mode": "rw"},
+            {"target": "/usr", "mode": "ro"},
+            {"target": "/etc/resolv.conf", "mode": "symlink"},
+            {"target": "/tmp", "mode": "anonymous"},
+            {"target": "/dev", "mode":"devfs"}
+          ]
+      },
+
+      "commands": [
+        {
+          "uid": "home",
+          "info" : "expand $home on server side",
+          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-ld", "$HOME"]}
+        },
+        {
+          "uid": "afbroot",
+          "info" : "expand afb_binder root directory",
+          "exec": {"cmdpath": "/usr/bin/echo", "args": ["$AFB_ROOTDIR"]}
+        },
+        {
+          "uid": "mycap",
+          "info" : "return sandbox capabilities",
+          "privilege": "special privilege",
+          "exec": {"cmdpath": "/usr/sbin/capsh", "args": ["--print"]}
+        },
+        {
+          "uid": "sleep",
+          "info" : "sleep timeout second",
+          "usage": {"timeout": "xx"},
+          "exec": {"cmdpath": "/usr/bin/sleep", "args": ["%timeout%"]},
+          "sample": [
+            {"action":"start", "args": {"timeout": "180"}},
+            {"action":"stop", "args": {"pid": 1234, "signal":"sigterm"}},
+            {"action":"stop", "args": {"signal":"sigterm"}}
+          ]
+        },
+        {
+          "uid": "timeout",
+          "info" : "sleep should fail because of 3s timeout",
+          "timeout": 3,
+          "exec": {"cmdpath": "/usr/bin/sleep", "args": 80}
+        },
+        {
+          "uid": "list",
+          "info" : "list files from a directory",
+          "usage": {"dirname": "xxxxx"},
+          // "format":{"plugin": "format-demo", "output": "filter", "opts":{"patern": "###"}},
+          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-lh", "%dirname%"]},
+          "sample": [
+            {"args": {"dirname": "/etc/udev"}},
+            {"args": {"dirname": "/var/cache/"}},
+          ]
+        },
+        {
+          "uid": "myid",
+          "info" : "return current namespace id",
+          "exec": {"cmdpath": "/usr/bin/id"},
+        },
+        {
+          "uid": "env",
+          "info" : "return current namespace env",
+          "exec": {"cmdpath": "/usr/bin/env"},
+        },
+        {
+          "uid": "display",
+          "info": "display file contend",
+          "usage": {"filename":"xxxx"},
+          "exec": {"cmdpath": "/usr/bin/cat", "args":["%filename%"]},
+          "sample": [
+            {"args": {"filename": "/etc/passwd"}},
+          ]
+        }
+      ]
+    }
+  ]
+}
