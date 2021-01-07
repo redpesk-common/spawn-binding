@@ -46,7 +46,7 @@ ssize_t utilsFileLoad (const char *filepath, char **buffer);
 int utilsFileAddControl (afb_api_t api, const char *uid, int dirFd, const char *ctrlname, const char *ctrlval);
 const char* utilsExecCmd (afb_api_t api, const char* source, const char* command);
 int utilsExecFdCmd (afb_api_t api, const char* source, const char* command);
-int utilsGetPathInod (const char* path);
+long unsigned int utilsGetPathInod (const char* path);
 
 const char* utilsExpandString (spawnDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer);
 const char* utilsExpandKey (const char* inputString);

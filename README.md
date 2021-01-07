@@ -43,16 +43,11 @@ seccomp
 
 
 
-
-
-
-* Pour path de fichier tester le 1er char et si alphanum ajouter httproot
-
-* sortir l'init encodeur de la callback generic
-* Mettre une table de callback utilities for les encodeurs
 * coder l'encodeur json
 * coder l'encodeur ligne
 * coder un encodeur 10l/10l comme demo
+
+* faire le clear des sources dans pushfinal
 
 1) voir pour le verb info
 2) Ajouter bwrap

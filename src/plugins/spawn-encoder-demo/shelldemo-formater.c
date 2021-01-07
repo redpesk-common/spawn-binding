@@ -12,6 +12,8 @@
 #include "spawn-binding.h"
 #include <ctl-plugin.h>
 
+// demo encoder send one vent every XXX line of output on stdout, stderr is send at child termination event
+
 CTLP_CAPI_REGISTER("king_pigeon");
 
 typedef struct {

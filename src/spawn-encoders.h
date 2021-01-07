@@ -22,8 +22,8 @@
 */
 
 
-#ifndef _SPAWN_ENCODERS_INCLUDE_
-#define _SPAWN_ENCODERS_INCLUDE_
+#ifndef _SPAWN_ENCODER_S_INCLUDE_
+#define _SPAWN_ENCODER_S_INCLUDE_
 
 // usefull classical include
 #include <stdio.h>
@@ -34,27 +34,28 @@
 #include  "spawn-binding.h"
 #include <afb-timer.h>
 
+
+
 typedef enum {
-    SH_FMT_OPTS_PARSE,
-    SH_FMT_STDOUT_BUFFER,
-    SH_FMT_STDERR_BUFFER,
-    SH_FMT_TASK_START,
-    FMT_TASK_STOP,
-    FMT_TASK_KILL,
-} shellFmtActionE;
+    ENCODER_STDOUT_DATA,
+    ENCODER_STDERR_DATA,
+    ENCODER_TASK_START,
+    ENCODER_TASK_STOP,
+    ENCODER_TASK_KILL,
+} encoderActionE;
 
 typedef struct  {
   const char *uid;
   const char *info;
-  int bufferSize;
-  int (*encoderCB)(shellCmdT *cmd, shellFmtActionE action, void* handle);
-  void *opts;
+  int (*initCB)(shellCmdT *cmd, json_object *optsJ, void* fmtctx);
+  int (*actionsCB)(taskIdT *taskId, encoderActionE action, void* fmtctx);
+  void *fmtctx;
 } taskFormatCbT;
 
 // spawn-encoder.c
 void encoderInit(void);
-void encoderRegister (char *uid, taskFormatCbT *encoderCB);
+void encoderRegister (char *uid, taskFormatCbT *actionsCB);
 int  encoderFind (shellCmdT *cmd, json_object *formatJ);
-typedef void (*registerCbT) (const char *uid, taskFormatCbT *encoderCB);
+typedef void (*registerCbT) (const char *uid, taskFormatCbT *actionsCB);
 
-#endif /* _SPAWN_ENCODERS_INCLUDE_ */
+#endif /* _SPAWN_ENCODER_S_INCLUDE_ */

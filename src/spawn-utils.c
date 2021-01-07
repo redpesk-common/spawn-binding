@@ -193,7 +193,7 @@ int utilsTaskPrivileged(void) {
 }
 
 // return file inode (use to check if two path are pointing on the same file)
-int utilsGetPathInod (const char* path) {
+long unsigned int utilsGetPathInod (const char* path) {
     struct stat fstat;
     int status;
     status = stat (path, &fstat);
@@ -384,7 +384,6 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
 
             // close label string and remove trailling '%' from destination
             label[labelIdx]='\0';
-            destIdx --;
 
             // search for expansion label within keysJ
             labelJ= json_object_object_get (keysJ, label);
@@ -396,6 +395,7 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
                 dst[destIdx++] = labelVal[labelIdx];
             }
         }
+        fprintf (stderr, "src[%d]= '%c'\n", srcIdx, src[srcIdx]);
     }
     dst[destIdx++] = '\0';
 

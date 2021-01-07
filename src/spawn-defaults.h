@@ -25,8 +25,12 @@
 #ifndef _SPAWN_DEFAULTS_INCLUDE_
 #define _SPAWN_DEFAULTS_INCLUDE_
 
-#ifndef MAX_DOC_BUF_SIZE_KB
-#define MAX_DOC_BUF_SIZE_KB 256
+#ifndef MAX_DOC_LINE_SIZE
+#define MAX_DOC_LINE_SIZE 256
+#endif
+
+#ifndef MAX_DOC_LINE_COUNT
+#define MAX_DOC_LINE_COUNT 128
 #endif
 
 #ifndef CGROUPS_MOUNT_POINT
@@ -58,7 +62,7 @@
 #define MAGIC_SPAWN_SANDBOX 456789
 #define MAGIC_SPAWN_COMMAND 789123
 #define MAGIC_SPAWN_TASKID  147258
-#define MAGIC_SPAWN_ENCODER 147258
+#define MAGIC_SPAWN_ENCODER_ 147258
 
 typedef char*(*spawnGetDefaultCbT)(const char *label, void *ctx);
 typedef struct {

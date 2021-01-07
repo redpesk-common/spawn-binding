@@ -28,216 +28,268 @@
 #include "spawn-encoders.h"
 #include "spawn-subtask.h"
 
-taskFormatCbT encoderBuiltin[];
-
-// text stdout/err lines with a document
-#ifndef SH_TEXT_MAX_BUF_LINE
-  #define SH_TEXT_MAX_BUF_LINE 1024
-#endif
-
-#ifndef SH_TEXT_MAX_BUF_SIZE
-  #define SH_TEXT_MAX_BUF_SIZE 512
-#endif
-
-typedef struct shellRegistryS {
+typedef struct encoderRegistryS {
    char *uid;
-   struct shellRegistryS *next;
+   struct encoderRegistryS *next;
    taskFormatCbT *formats;
-} shellRegistryT;
-
-typedef struct {
-    json_object *arrayJ;
-    long lines;
-    long index;
-    char *buffer;
-} shDocStreamT;
-
-typedef struct {
-   shDocStreamT stdout;
-   shDocStreamT stderr;
-} shDocContextT;
-
-typedef struct {
-    long linemax;
-    long linesz;
-} shDocOptsT;
-
+} encoderRegistryT;
 
 // registry holds a linked list of core+pugins encoders
-static shellRegistryT *registryHead = NULL;
+taskFormatCbT encoderBuiltin[];
+static encoderRegistryT *registryHead = NULL;
 
-// search for newline delimiters and add it to json response array
-static int shDocAddLinesToArray (afb_api_t api,  taskIdT *taskId, shDocOptsT *opts, shDocStreamT *docStream, ssize_t count) {
-    long idx;
-    long lineIdx=0;
 
-    // do not create response array until we need it
+typedef struct {
+    char *data;
+    long index;
+    long size;
+} fmtDocBufT;
+
+// builtin document encoder
+typedef struct {
+    fmtDocBufT *buffer;
+    long lncount;
+    json_object *arrayJ;
+    json_object *errorJ;
+} fmtDocStreamT;
+
+typedef struct {
+   fmtDocStreamT *outStream;
+   fmtDocStreamT *errStream;
+} fmtDocContextT;
+
+typedef struct {
+   ssize_t lineCount;
+   ssize_t lineSize;
+} fmtDocOptsT;
+
+// generic encoder callback type
+typedef int(*encoderAddLinesCbT)(taskIdT *taskId, fmtDocBufT *buffer, ssize_t start, void *context, json_object *errorJ);
+
+// return a new empty document stream
+fmtDocBufT *fmtResetDocBuffer(fmtDocBufT *buffer, ssize_t size) {
+    // if no buffer provided let create one
+    if (!buffer) {
+        buffer = calloc(1, sizeof(fmtDocBufT));
+        buffer->data= malloc(size+3); // +3 needed for oversized lines trailer '\\'
+        buffer->size=size;
+    }
+    buffer->index=0;
+    return buffer;
+}
+
+// document encoder callback add one line into document json array
+static int fmtAddLinesToCB (taskIdT *taskId, fmtDocBufT *docId, ssize_t start, void *context, json_object *errorJ) {
+    fmtDocStreamT *docStream = (fmtDocStreamT*) context;
+
+    // create output array only when needed
     if (!docStream->arrayJ) docStream->arrayJ= json_object_new_array();
 
-    // we already passed authorized max line capacity
-    if (docStream->index == opts->linemax) {
-        AFB_API_NOTICE(api, "shDocAddLinesToArray: [too many lines in stdout/err] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
-        taskId->errorJ = json_object_new_string ("too many lines");
+    // update error message from buffer
+    if (errorJ) docStream->errorJ=errorJ;
+
+    // docId index point C line start
+    json_object_array_add (docStream->arrayJ, json_object_new_string(&docId->data[start]));
+
+    // make sure we do not not overload response array
+    if (!docStream->lncount--) {
+        docStream->errorJ= json_object_new_string("[too many lines] inscrease document 'linemax' option");
         goto OnErrorExit;
     }
-
-    // if line longer than buffer truncate line to buffer size
-    if (opts->linesz - docStream->index == 0) {
-        AFB_API_NOTICE(api, "shDocAddLinesToArray: [line too long] sandbox=%s cmd=%s", taskId->cmd->sandbox->uid, taskId->cmd->uid);
-        docStream->buffer[docStream->index++] = '\\';
-        docStream->buffer[docStream->index++] = '\0';
-        taskId->errorJ = json_object_new_string ("line too long truncated with '\\'");
-        json_object_array_add (docStream->arrayJ, json_object_new_string(docStream->buffer));
-        docStream->index++;
-        docStream->index = 0;
-        return 0;
-    }
-
-    // search within buffer for newlines and optionally push them into jsonarray
-    for (idx=docStream->index; idx<=(docStream->index + count); idx++) {
-
-        // for every newline close 'C' string and push it to the stdoutJ array
-        if (docStream->buffer[idx] == '\n') {
-            docStream->buffer[idx] = '\0';
-            docStream->lines ++;
-
-            //AFB_API_ERROR(api, "shDocAddLinesToArray: line=%s", &docStream->buffer[lineIdx]);
-            json_object_array_add (docStream->arrayJ, json_object_new_string(&docStream->buffer[lineIdx]));
-            lineIdx = idx+1;
-            if (lineIdx > opts->linemax) {
-                AFB_API_NOTICE(api, "shDocAddLinesToArray: [too many lines in stdout/err] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
-                taskId->errorJ = json_object_new_string ("too many lines");
-                goto OnErrorExit;
-            }
-        }
-    }
-
-    // no newline found simplely update buffer index
-    if (!lineIdx) {
-        docStream->index = docStream->index + count;
-
-    } else {
-        // move remaining characters to buffer start
-        if (lineIdx != idx +1) {
-            long remaining = docStream->index+count-lineIdx;
-            if (remaining > 0) {
-                memmove (docStream->buffer, &docStream->buffer[lineIdx], remaining);
-                docStream->index= remaining;
-            }
-        } else {
-            docStream->index = 0; // reset buffer
-        }
-    }
-
     return 0;
 
 OnErrorExit:
     return 1;
 }
 
+// search for newline delimiters and add it to json response array
+static int fmtLineParser (taskIdT *taskId, fmtDocBufT *docId, ssize_t len, encoderAddLinesCbT callback, void* context) {
+    int err;
+    ssize_t idx, lineIdx=0;
+
+    // docId is full add '\\' and send docId anyhow
+    if (len == 0) {
+        AFB_API_NOTICE(taskId->cmd->api, "fmtAddLinesToArray: [line too long] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
+        docId->data[docId->index++] = '\\';
+        docId->data[docId->index++] = '\0';
+        err= callback(taskId, docId, 0, context, json_object_new_string ("line too long truncated with '\\'"));
+        if (err) goto OnErrorExit;
+        // reset docId index and add continuation prefix
+        docId->index=0;
+        docId->data[docId->index++]='-';
+        docId->data[docId->index++]='-';
+
+    } else {
+
+        // search within docId for newlines and optionally push them into jsonarray
+        for (idx=docId->index; idx<=(docId->index + len); idx++) {
+
+            // for every newline close 'C' string and push it to the stdoutJ array
+            if (docId->data[idx] == '\n') {
+                docId->data[idx] = '\0';
+                err= callback (taskId, docId, lineIdx, context, NULL);
+                if (err) goto OnErrorExit;
+
+                lineIdx= idx+1; // next line start
+            }
+        }
+
+        // no newline found simplely update docId index
+        if (!lineIdx) {
+            docId->index = docId->index + len;
+        } else {
+            // move remaining characters to docId start
+            if (lineIdx != idx +1) {
+                long remaining = docId->index+len-lineIdx;
+                if (remaining > 0) {
+                    memmove (&docId->data[0], &docId->data[lineIdx], remaining);
+                    docId->index= remaining;
+                }
+            } else {
+                docId->index = 0; // reset docId
+            }
+        }
+    }
+    return 0;
+
+OnErrorExit:
+    return 1;
+}
+
+// fmtParsing take config cmd option and parse them into something usefull for taskId start
+static int fmtDocInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
+    int err;
+
+    fmtDocOptsT *opts = malloc(sizeof (fmtDocOptsT));
+    opts->lineSize =  MAX_DOC_LINE_SIZE;
+    opts->lineCount = MAX_DOC_LINE_COUNT;
+    cmd->format->fmtctx = (void*)opts;
+    if (optsJ) {
+        err = wrap_json_unpack(optsJ, "{s?i s?i !}" ,"count", &opts->lineCount, "size", &opts->lineSize);
+        if (err) {
+            AFB_API_ERROR(cmd->api, "fmtDocArrayParse: [invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
+            goto OnErrorExit;
+        }
+    }
+    return 0;
+
+ OnErrorExit:
+    return 1;
+}
+
 // Every encoder should have a formating callback supporting switch options.
-static int shDocFormatCB (shellCmdT *cmd, shellFmtActionE action, void* context) {
-    afb_api_t api = cmd->api;
+static int fmtDocActionsCB (taskIdT *taskId, encoderActionE action, void* fmtctx) {
+    assert (taskId->magic == MAGIC_SPAWN_TASKID);
+    shellCmdT *cmd= taskId->cmd;
+    fmtDocOptsT *opts=cmd->format->fmtctx;
+    fmtDocContextT *taskctx= taskId->context;
     int err;
 
     switch (action) {
 
-        case SH_FMT_OPTS_PARSE: {
-            // parse config command line format option
-            json_object *optsJ= (json_object *) context;
+        case ENCODER_TASK_START:  {
 
-            shDocOptsT *opts = malloc(sizeof (shDocOptsT));
-            opts->linemax =  SH_TEXT_MAX_BUF_LINE;
-            opts->linesz = SH_TEXT_MAX_BUF_SIZE;
-            cmd->format->opts = (void*)opts;
-            if (optsJ) {
-                err = wrap_json_unpack(optsJ, "{s?i s?i !}" ,"count", &opts->linemax, "size", &opts->linesz);
-                if (err) {
-                    AFB_API_ERROR(api, "shDocOptsCB: [invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
-                    goto OnErrorExit;
-                }
-            }
-            break;
-        }
+            // prepare handles to store stdout/err stream
+            fmtDocContextT *docStream = calloc (1, sizeof(fmtDocContextT));
+            docStream->outStream= (fmtDocStreamT*)calloc (1, sizeof(fmtDocStreamT));
+            docStream->errStream= (fmtDocStreamT*)calloc (1, sizeof(fmtDocStreamT));
+            docStream->outStream->buffer= fmtResetDocBuffer(NULL, opts->lineSize);
+            docStream->errStream->buffer= fmtResetDocBuffer(NULL, opts->lineSize);
+            docStream->outStream->lncount = opts->lineCount;
+            docStream->errStream->lncount = opts->lineCount;
 
-        case SH_FMT_TASK_START:  {
-            // prepare json object to store stdout/err
-            taskIdT *taskId = (taskIdT*) context;
-            shDocOptsT *opts = (shDocOptsT*) cmd->format->opts;
-            shDocContextT *docStream = calloc (1, sizeof(shDocContextT));
+            // attach handle to taskId
             taskId->context= (void*)docStream;
+                fprintf (stderr, "**** ENCODER_TENCODER_TASK_STARTASK_STOP taskId=0x%p pid=%d taskId->context=0x%p outStream=0x%p errStream=0x%p\n", taskId, taskId->pid, taskId->context, docStream->outStream, docStream->errStream);
 
-            // add two characters to buffer to cut oversized line
-            docStream->stdout.buffer  = malloc(opts->linesz) +2;
-            docStream->stderr.buffer  = malloc(opts->linesz) +2;
             break;
         }
 
-        case FMT_TASK_STOP: {
-            // build json response and clear task tempry buffer
-            taskIdT *taskId = (taskIdT*) context;
-            shDocContextT *docStream = (shDocContextT*) taskId->context;
+        case ENCODER_TASK_STOP: {
+            fmtDocStreamT *outStream= taskctx->outStream;
+            fmtDocStreamT *errStream= taskctx->errStream;
+            json_object *errorJ=NULL;
 
-            wrap_json_pack (&taskId->responseJ, "{ss si so* so* so*}"
+    fprintf (stderr, "**** ENCODER_TASK_STOP taskId=0x%p pid=%d taskId->context=0x%p outStream=0x%p errStream=0x%p\n", taskId, taskId->pid, taskId->context, outStream, errStream);
+
+
+            if (outStream->errorJ || errStream->errorJ) {
+                wrap_json_pack (&errorJ, "{so* so*}"
+                    , "stdout", outStream->errorJ
+                    , "stderr", errStream->errorJ
+                );
+            }
+
+            wrap_json_pack (&taskId->responseJ, "{ss si so* so* so* so*}"
                 , "cmd", taskId->cmd->uid
                 , "pid", taskId->pid
                 , "status", taskId->statusJ
-                , "stdout", docStream->stdout.arrayJ
-                , "stderr", docStream->stderr.arrayJ
+                , "warning", errorJ
+                , "stdout", outStream->arrayJ
+                , "stderr", errStream->arrayJ
                 );
 
-            // free private task buffer
-            free (taskId->context);
+            // free private task encoder memory structure
+            free (taskctx);
+            free (outStream->buffer);
+            free (errStream->buffer);
+            free (outStream);
+            free (errStream);
             break;
         }
 
-        case FMT_TASK_KILL: {
-            // update error message FMT_TASK_STOP will be c
-            taskIdT *taskId = (taskIdT*) context;
+        case ENCODER_TASK_KILL: {
+            // update error message before FMT_TASK_STOP take it
             taskId->errorJ= json_object_new_string("[timeout] forced sigkill");
             break;
         }
 
-        case SH_FMT_STDOUT_BUFFER: {
-            shDocOptsT *opts = (shDocOptsT*) cmd->format->opts;
-            taskIdT *taskId = (taskIdT*) context;
-            shDocContextT *docStream = (shDocContextT*) taskId->context;
+        case ENCODER_STDOUT_DATA: {
+            fmtDocStreamT *data= taskctx->outStream;
             ssize_t count, len;
+    fprintf (stderr, "**** ENCODER_STDOUT_DATA taskId=0x%p pid=%d taskId->context=0x%p data=0x%p\n", taskId, taskId->pid, taskId->context, data);
 
-            do { // read anything avaliable
-                count= opts->linesz - docStream->stdout.index;
-                len = read (taskId->stdout, &docStream->stdout.buffer[docStream->stdout.index], count);
+            do {
+                count= opts->lineSize - data->buffer->index;
+                len = read (taskId->outFD, &data->buffer->data[data->buffer->index], count);
 
+                // we have some new data or data buffer is full
                 if (len > 0 || count==0) {
-                    err= shDocAddLinesToArray (api, taskId, opts, &docStream->stdout, len);
-                    if (err) goto OnErrorExit;
+                    err= fmtLineParser (taskId, data->buffer, len, fmtAddLinesToCB, (void*)data);
+                    if (err) {
+                        AFB_API_ERROR(cmd->api, "fmtDocArrayCB: [format CB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                        goto OnErrorExit;
+                    }
                 }
+             fprintf (stderr, "**** ENCODER_STDOUT_DATA taskId=0x%p len=%ld count=%ld\n", taskId, len, count);
             } while (len > 0);
 
             break;
         }
 
-        case SH_FMT_STDERR_BUFFER: {
-            shDocOptsT *opts = (shDocOptsT*) cmd->format->opts;
-            taskIdT *taskId = (taskIdT*) context;
-            shDocContextT *docStream = (shDocContextT*) taskId->context;
+        case ENCODER_STDERR_DATA: {
+            fmtDocStreamT *data= taskctx->errStream;
             ssize_t count, len;
+    fprintf (stderr, "**** ENCODER_STDERR_DATA taskId=0x%p pid=%d taskId->context=0x%p data=0x%p\n", taskId, taskId->pid, taskId->context, data);
 
-            do { // read anything avaliable
-                count= opts->linesz - docStream->stderr.index;
-                len = read (taskId->stderr, &docStream->stderr.buffer[docStream->stderr.index], count);
+            do {
+                count= opts->lineSize - data->buffer->index;
+                len = read (taskId->errFD, &data->buffer->data[data->buffer->index], count);
 
+                // we have some new data or data buffer is full
                 if (len > 0 || count==0) {
-                    err= shDocAddLinesToArray (api, taskId, opts, &docStream->stderr, count);
-                    if (err) goto OnErrorExit;
+                    err= fmtLineParser (taskId, data->buffer, len, fmtAddLinesToCB, (void*)data);
+                    if (err) {
+                        AFB_API_ERROR(cmd->api, "fmtDocArrayCB: [format CB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                        goto OnErrorExit;
+                    }
                 }
-            } while(len > 0);
-
+            } while (len > 0);
             break;
         }
 
         default:
-           AFB_API_ERROR(api, "shDocFormatCB: [invalid action] sandbox=%s cmd=%s action=%d", cmd->sandbox->uid, cmd->uid, action);
+           AFB_API_ERROR(cmd->api, "fmtDocArrayCB: [invalid action] sandbox=%s cmd=%s action=%d", cmd->sandbox->uid, cmd->uid, action);
            goto OnErrorExit;
     }
 
@@ -249,13 +301,13 @@ OnErrorExit:
 
 
 // add a new plugin encoder to the registry
-void encoderRegister (char *uid, taskFormatCbT *encoderCB) {
-    shellRegistryT *registryIdx, *registryEntry;
+void encoderRegister (char *uid, taskFormatCbT *actionsCB) {
+    encoderRegistryT *registryIdx, *registryEntry;
 
     // create holding hat for encoder/decoder CB
-    registryEntry= (shellRegistryT*) calloc (1, sizeof(shellRegistryT));
+    registryEntry= (encoderRegistryT*) calloc (1, sizeof(encoderRegistryT));
     registryEntry->uid = uid;
-    registryEntry->formats = encoderCB;
+    registryEntry->formats = actionsCB;
 
 
     // if not 1st encoder insert at the end of the chain
@@ -272,13 +324,13 @@ int encoderFind (shellCmdT *cmd, json_object *formatJ) {
     char *pluginuid = NULL, *formatuid = NULL;
     afb_api_t api = cmd->api;
     json_object *optsJ=NULL;
-    shellRegistryT *registryIdx;
+    encoderRegistryT *registryIdx;
     int index, err;
 
     // if no format defined default is 1st builtin formater
     if (!formatJ) {
         cmd->format = &encoderBuiltin[0];
-        err= cmd->format->encoderCB (cmd, SH_FMT_OPTS_PARSE, NULL);
+        err= cmd->format->initCB (cmd, NULL, cmd->format->fmtctx);
         if (err) goto OnErrorExit;
         goto OnFormatExit;
     }
@@ -323,14 +375,15 @@ int encoderFind (shellCmdT *cmd, json_object *formatJ) {
     }
 
     // every encoder should define its formating callback
-    if (!formats[index].encoderCB) {
+    if (!formats[index].actionsCB) {
         AFB_API_ERROR(api, "encoderFind: [encoder invalid] sandbox=%s cmd=%s format=%s (no encoder callback defined !!!)", cmd->sandbox->uid, cmd->uid, formats[index].uid);
         goto OnErrorExit;
     }
 
-    // update command with coresponding format and all encoderCB to parse format option
+    // update command with coresponding format and all actionsCB to parse format option
     cmd->format= &formats[index];
-    err= formats[index].encoderCB (cmd, SH_FMT_OPTS_PARSE, (void*)optsJ);
+    err= cmd->format->initCB (cmd, optsJ, cmd->format->fmtctx);
+
     if (err) goto OnErrorExit;
 
 OnFormatExit:
@@ -342,8 +395,8 @@ OnErrorExit:
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
 taskFormatCbT encoderBuiltin[] = {
-  {.uid="DOCUMENT"  , .info="text output [default formater]", .encoderCB=shDocFormatCB},
-  {.uid="TEXT"      , .info="per line event",  .encoderCB=shDocFormatCB}, // Fulup need to write per line events
+  {.uid="DOCUMENT"  , .info="text output [default formater]", .initCB=fmtDocInitCB, .actionsCB=fmtDocActionsCB},
+  {.uid="TEXT"      , .info="per line event",  .initCB=fmtDocInitCB, .actionsCB=fmtDocActionsCB},
 
   {.uid= NULL} // must be null terminated
 };
