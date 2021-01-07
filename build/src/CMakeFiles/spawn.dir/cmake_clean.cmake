@@ -1,5 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/spawn.dir/spawn-binding.c.o"
+  "CMakeFiles/spawn.dir/spawn-defaults.c.o"
   "CMakeFiles/spawn.dir/spawn-encoders.c.o"
   "CMakeFiles/spawn.dir/spawn-enums.c.o"
   "CMakeFiles/spawn.dir/spawn-sandbox.c.o"

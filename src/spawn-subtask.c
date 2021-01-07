@@ -192,53 +192,17 @@ static char* const* taskBuildArgv (shellCmdT *cmd, json_object * argsJ) {
     if (!argsJ) {
         params= cmd->argv;
     } else {
-        char dst[SH_EXEC_MAX_ARG_LEN], label[SH_EXEC_MAX_ARG_LABEL];
-        json_object *labelJ;
-
-        // create a tmp argument array to store expanded variable.
         params= calloc (cmd->argc, sizeof (char*));
         params[0]= cmd->uid;
 
         // if needed expand arguments replacing all $UPERCASE by json field
         for (int idx=1; cmd->argv[idx]; idx++) {
-            int srcIdx, destIdx=0, labelIdx=0;
-            int expanded= false;
-            const char *src= cmd->argv[idx];
 
-            for (srcIdx=0; src[srcIdx]; srcIdx++) {
-                if (src[srcIdx] != '$') {
-                    dst[destIdx++]= src[srcIdx];
-                } else {
-                    expanded=true;
-                    // extract expansion label for source argument
-                    for (srcIdx=srcIdx+1; src[srcIdx] >= 'A' && src[srcIdx] <= 'z'; srcIdx++) {
-                        label[labelIdx++]= src[srcIdx];
-                        if (labelIdx == SH_EXEC_MAX_ARG_LABEL) {
-                            fprintf (stderr, "[label oversize] sandbox=%s cmd='%s' argument='%s' too long\n", cmd->sandbox->uid, cmd->uid, src);
-                            exit (1);
-                        }
-                    }
-                    label[labelIdx++]='\0';
-
-                    // search for expansion label within argsJ
-                    labelJ= json_object_object_get (argsJ, label);
-                    if (!labelJ) {
-                            fprintf (stderr, "[label not found] not found sandbox='%s' cmd='%s' label='%s' args=%s\n", cmd->sandbox->uid, cmd->uid, label, json_object_get_string(argsJ));
-                            exit(1);
-                    }
-
-                    // add label value to destination argument
-                    const char *labelVal= json_object_get_string(labelJ);
-                    for (labelIdx=0; labelVal[labelIdx]; labelIdx++) {
-                        dst[destIdx++] = labelVal[labelIdx];
-                    }
-                }
+            params[idx]= utilsExpandJson (cmd->argv[idx], argsJ);
+            if (!params[idx]) {
+                fprintf (stderr, "[fail expanding] sandbox=%s cmd='%s' args='%s' expects=%s\n", cmd->sandbox->uid, cmd->uid, cmd->argv[idx], json_object_get_string(argsJ));
+                exit (1);
             }
-            dst[destIdx++] = '\0';
-
-            // when expanded make a copy of dst into params
-            if (expanded) params[idx]= strdup(dst);
-            else params[idx]=src;
         }
     }
     return (char* const*)params;
@@ -585,19 +549,20 @@ int spawnParse (shellCmdT *cmd, json_object *execJ) {
 
     err= wrap_json_unpack(execJ, "{ss s?o !}", "cmdpath", &cmd->cli, "args", &argsJ);
     if (err) {
-        AFB_API_ERROR(cmd->api, "spawnParse: fail parse command uid=%s exec=%s", cmd->uid, json_object_get_string(argsJ));
+        AFB_API_ERROR(cmd->api, "spawnParse: fail parse cmdpath sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
         goto OnErrorExit;
     }
 
     // check if cmdpath exists and is executable
     err= stat(cmd->cli, &statbuf);
     if (err) {
-       AFB_API_ERROR(cmd->api, "spawnParse: command not found uid=%s cmdpath=%s error=%s", cmd->uid, cmd->cli, strerror(errno));
+       AFB_API_ERROR(cmd->api, "spawnParse: file not found sandbox=%s cmd=%s cmdpath=%s error=%s", cmd->sandbox->uid, cmd->uid, cmd->cli, strerror(errno));
        goto OnErrorExit;
     }
 
+    cmd->cli= utilsExpandKey(cmd->cli);  // expand env $keys
     if (! (statbuf.st_mode&S_IXUSR)) {
-       AFB_API_ERROR(cmd->api, "spawnParse: command not executable uid=%s cmdpath=%s", cmd->uid, cmd->cli);
+       AFB_API_ERROR(cmd->api, "spawnParse: file not executable sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(execJ));
        goto OnErrorExit;
     }
 
@@ -605,23 +570,38 @@ int spawnParse (shellCmdT *cmd, json_object *execJ) {
     if (!argsJ) {
         cmd->argc=2;
         cmd->argv=calloc (cmd->argc, sizeof (char*));
-        cmd->argv[0]= cmd->uid;
+        cmd->argv[0]=  utilsExpandKey(cmd->cli);
+        if (!cmd->argv[0]) {
+            AFB_API_ERROR(cmd->api, "spawnParse: [unknow $ENV key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
+            goto OnErrorExit;
+        }
     } else {
         switch (json_object_get_type(argsJ)) {
+            const char*param;
             case json_type_array:
                 cmd->argc= (int)json_object_array_length(argsJ)+2;
                 cmd->argv=calloc (cmd->argc, sizeof (char*));
                 cmd->argv[0]= cmd->uid;
-                for (int idx=1; idx < cmd->argc; idx ++) {
-                    cmd->argv[idx] = json_object_get_string (json_object_array_get_idx(argsJ, idx-1));
+                for (int idx=1; idx < cmd->argc-1; idx ++) {
+                    param= json_object_get_string (json_object_array_get_idx(argsJ, idx-1));
+                    cmd->argv[idx] = utilsExpandKey(param);
+                    if (!cmd->argv[idx]) {
+                        AFB_API_ERROR(cmd->api, "spawnParse: [unknow $ENV key] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, param);
+                        goto OnErrorExit;
+                    }
                 }
                 break;
 
             default:
+                param=json_object_get_string (argsJ);
                 cmd->argc=3;
                 cmd->argv=calloc (cmd->argc, sizeof (char*));
                 cmd->argv[0]= cmd->uid;
-                cmd->argv[1] = json_object_get_string (argsJ);
+                cmd->argv[1] = utilsExpandKey(param);
+                if (!cmd->argv[1]) {
+                    AFB_API_ERROR(cmd->api, "spawnParse: [unknow $ENV key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->cli, param);
+                    goto OnErrorExit;
+                }
                break;
         }
     }
@@ -713,14 +693,14 @@ int spawnChildMonitor (afb_api_t api, sd_event_io_handler_t callback, spawnBindi
     sigaddset (&sigMask, SIGCHLD);
 
     // create global hashtable semaphore
-    if (! pthread_rwlock_init (&binding->sem, NULL)) {
-        AFB_API_NOTICE(api, "[seminit fail] error=%s (spawnChildMonitor)", strerror(errno));
+    if (pthread_rwlock_init (&binding->sem, NULL)) {
+        AFB_API_NOTICE(api, "[semaphore init fail] error=%s (spawnChildMonitor)", strerror(errno));
         goto OnErrorExit;
     }
 
     sigFd = signalfd (-1, &sigMask, SFD_CLOEXEC | SFD_NONBLOCK);
     if (sigFd < 0) {
-        AFB_API_NOTICE(api, "[signalfd fail] error=%s (spawnChildMonitor)", strerror(errno));
+        AFB_API_NOTICE(api, "[signalfd SIGCHLD fail] error=%s (spawnChildMonitor)", strerror(errno));
         goto OnErrorExit;
     }
     (void)sd_event_add_io(afb_api_get_event_loop(api), NULL, sigFd, EPOLLIN, callback, (void*)binding);

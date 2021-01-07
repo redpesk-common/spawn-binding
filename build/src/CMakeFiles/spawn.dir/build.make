@@ -87,9 +87,22 @@ src/CMakeFiles/spawn.dir/spawn-binding.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/spawn.dir/spawn-binding.c.s"
 	cd /home/fulup/Workspace/Sandbox/spawn-binding/build/src && /usr/bin/gcc-7 $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-binding.c -o CMakeFiles/spawn.dir/spawn-binding.c.s
 
+src/CMakeFiles/spawn.dir/spawn-defaults.c.o: src/CMakeFiles/spawn.dir/flags.make
+src/CMakeFiles/spawn.dir/spawn-defaults.c.o: ../src/spawn-defaults.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object src/CMakeFiles/spawn.dir/spawn-defaults.c.o"
+	cd /home/fulup/Workspace/Sandbox/spawn-binding/build/src && /usr/bin/gcc-7 $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/spawn.dir/spawn-defaults.c.o   -c /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-defaults.c
+
+src/CMakeFiles/spawn.dir/spawn-defaults.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/spawn.dir/spawn-defaults.c.i"
+	cd /home/fulup/Workspace/Sandbox/spawn-binding/build/src && /usr/bin/gcc-7 $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-defaults.c > CMakeFiles/spawn.dir/spawn-defaults.c.i
+
+src/CMakeFiles/spawn.dir/spawn-defaults.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/spawn.dir/spawn-defaults.c.s"
+	cd /home/fulup/Workspace/Sandbox/spawn-binding/build/src && /usr/bin/gcc-7 $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-defaults.c -o CMakeFiles/spawn.dir/spawn-defaults.c.s
+
 src/CMakeFiles/spawn.dir/spawn-encoders.c.o: src/CMakeFiles/spawn.dir/flags.make
 src/CMakeFiles/spawn.dir/spawn-encoders.c.o: ../src/spawn-encoders.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object src/CMakeFiles/spawn.dir/spawn-encoders.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object src/CMakeFiles/spawn.dir/spawn-encoders.c.o"
 	cd /home/fulup/Workspace/Sandbox/spawn-binding/build/src && /usr/bin/gcc-7 $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/spawn.dir/spawn-encoders.c.o   -c /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-encoders.c
 
 src/CMakeFiles/spawn.dir/spawn-encoders.c.i: cmake_force
@@ -102,7 +115,7 @@ src/CMakeFiles/spawn.dir/spawn-encoders.c.s: cmake_force
 
 src/CMakeFiles/spawn.dir/spawn-enums.c.o: src/CMakeFiles/spawn.dir/flags.make
 src/CMakeFiles/spawn.dir/spawn-enums.c.o: ../src/spawn-enums.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object src/CMakeFiles/spawn.dir/spawn-enums.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building C object src/CMakeFiles/spawn.dir/spawn-enums.c.o"
 	cd /home/fulup/Workspace/Sandbox/spawn-binding/build/src && /usr/bin/gcc-7 $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/spawn.dir/spawn-enums.c.o   -c /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-enums.c
 
 src/CMakeFiles/spawn.dir/spawn-enums.c.i: cmake_force
@@ -115,7 +128,7 @@ src/CMakeFiles/spawn.dir/spawn-enums.c.s: cmake_force
 
 src/CMakeFiles/spawn.dir/spawn-sandbox.c.o: src/CMakeFiles/spawn.dir/flags.make
 src/CMakeFiles/spawn.dir/spawn-sandbox.c.o: ../src/spawn-sandbox.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building C object src/CMakeFiles/spawn.dir/spawn-sandbox.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building C object src/CMakeFiles/spawn.dir/spawn-sandbox.c.o"
 	cd /home/fulup/Workspace/Sandbox/spawn-binding/build/src && /usr/bin/gcc-7 $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/spawn.dir/spawn-sandbox.c.o   -c /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-sandbox.c
 
 src/CMakeFiles/spawn.dir/spawn-sandbox.c.i: cmake_force
@@ -128,7 +141,7 @@ src/CMakeFiles/spawn.dir/spawn-sandbox.c.s: cmake_force
 
 src/CMakeFiles/spawn.dir/spawn-subtask.c.o: src/CMakeFiles/spawn.dir/flags.make
 src/CMakeFiles/spawn.dir/spawn-subtask.c.o: ../src/spawn-subtask.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building C object src/CMakeFiles/spawn.dir/spawn-subtask.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object src/CMakeFiles/spawn.dir/spawn-subtask.c.o"
 	cd /home/fulup/Workspace/Sandbox/spawn-binding/build/src && /usr/bin/gcc-7 $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/spawn.dir/spawn-subtask.c.o   -c /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-subtask.c
 
 src/CMakeFiles/spawn.dir/spawn-subtask.c.i: cmake_force
@@ -141,7 +154,7 @@ src/CMakeFiles/spawn.dir/spawn-subtask.c.s: cmake_force
 
 src/CMakeFiles/spawn.dir/spawn-utils.c.o: src/CMakeFiles/spawn.dir/flags.make
 src/CMakeFiles/spawn.dir/spawn-utils.c.o: ../src/spawn-utils.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object src/CMakeFiles/spawn.dir/spawn-utils.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building C object src/CMakeFiles/spawn.dir/spawn-utils.c.o"
 	cd /home/fulup/Workspace/Sandbox/spawn-binding/build/src && /usr/bin/gcc-7 $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/spawn.dir/spawn-utils.c.o   -c /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-utils.c
 
 src/CMakeFiles/spawn.dir/spawn-utils.c.i: cmake_force
@@ -155,6 +168,7 @@ src/CMakeFiles/spawn.dir/spawn-utils.c.s: cmake_force
 # Object files for target spawn
 spawn_OBJECTS = \
 "CMakeFiles/spawn.dir/spawn-binding.c.o" \
+"CMakeFiles/spawn.dir/spawn-defaults.c.o" \
 "CMakeFiles/spawn.dir/spawn-encoders.c.o" \
 "CMakeFiles/spawn.dir/spawn-enums.c.o" \
 "CMakeFiles/spawn.dir/spawn-sandbox.c.o" \
@@ -165,6 +179,7 @@ spawn_OBJECTS = \
 spawn_EXTERNAL_OBJECTS =
 
 src/afb-spawn.so: src/CMakeFiles/spawn.dir/spawn-binding.c.o
+src/afb-spawn.so: src/CMakeFiles/spawn.dir/spawn-defaults.c.o
 src/afb-spawn.so: src/CMakeFiles/spawn.dir/spawn-encoders.c.o
 src/afb-spawn.so: src/CMakeFiles/spawn.dir/spawn-enums.c.o
 src/afb-spawn.so: src/CMakeFiles/spawn.dir/spawn-sandbox.c.o
@@ -172,7 +187,7 @@ src/afb-spawn.so: src/CMakeFiles/spawn.dir/spawn-subtask.c.o
 src/afb-spawn.so: src/CMakeFiles/spawn.dir/spawn-utils.c.o
 src/afb-spawn.so: src/CMakeFiles/spawn.dir/build.make
 src/afb-spawn.so: src/CMakeFiles/spawn.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking C shared module afb-spawn.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking C shared module afb-spawn.so"
 	cd /home/fulup/Workspace/Sandbox/spawn-binding/build/src && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/spawn.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

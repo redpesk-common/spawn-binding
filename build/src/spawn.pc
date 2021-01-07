@@ -1,11 +1,11 @@
-prefix=/usr/local
+prefix=/home/fulup/opt
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib64
 includedir=${prefix}/include
 
 Name: spawn-binding
 Description: Provide an AGL Helloworld Binding
-Version: 1.0-9b68e7b-dirty
+Version: 1.0-0893891-dirty
 
 Requires:
 Libs: -L${libdir} -lafb-spawn

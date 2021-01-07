@@ -215,6 +215,33 @@ spawn-binding.c.s:
 	cd /home/fulup/Workspace/Sandbox/spawn-binding/build && $(MAKE) -f src/CMakeFiles/spawn.dir/build.make src/CMakeFiles/spawn.dir/spawn-binding.c.s
 .PHONY : spawn-binding.c.s
 
+spawn-defaults.o: spawn-defaults.c.o
+
+.PHONY : spawn-defaults.o
+
+# target to build an object file
+spawn-defaults.c.o:
+	cd /home/fulup/Workspace/Sandbox/spawn-binding/build && $(MAKE) -f src/CMakeFiles/spawn.dir/build.make src/CMakeFiles/spawn.dir/spawn-defaults.c.o
+.PHONY : spawn-defaults.c.o
+
+spawn-defaults.i: spawn-defaults.c.i
+
+.PHONY : spawn-defaults.i
+
+# target to preprocess a source file
+spawn-defaults.c.i:
+	cd /home/fulup/Workspace/Sandbox/spawn-binding/build && $(MAKE) -f src/CMakeFiles/spawn.dir/build.make src/CMakeFiles/spawn.dir/spawn-defaults.c.i
+.PHONY : spawn-defaults.c.i
+
+spawn-defaults.s: spawn-defaults.c.s
+
+.PHONY : spawn-defaults.s
+
+# target to generate assembly for a file
+spawn-defaults.c.s:
+	cd /home/fulup/Workspace/Sandbox/spawn-binding/build && $(MAKE) -f src/CMakeFiles/spawn.dir/build.make src/CMakeFiles/spawn.dir/spawn-defaults.c.s
+.PHONY : spawn-defaults.c.s
+
 spawn-encoders.o: spawn-encoders.c.o
 
 .PHONY : spawn-encoders.o
@@ -366,6 +393,9 @@ help:
 	@echo "... spawn-binding.o"
 	@echo "... spawn-binding.i"
 	@echo "... spawn-binding.s"
+	@echo "... spawn-defaults.o"
+	@echo "... spawn-defaults.i"
+	@echo "... spawn-defaults.s"
 	@echo "... spawn-encoders.o"
 	@echo "... spawn-encoders.i"
 	@echo "... spawn-encoders.s"

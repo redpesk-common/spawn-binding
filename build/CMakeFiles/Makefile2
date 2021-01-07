@@ -189,7 +189,7 @@ CMakeFiles/spawn-binding_build_done.dir/all: src/CMakeFiles/spawn.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/spawn-binding_build_done.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 22
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 23
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/spawn-binding_build_done.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 0
 .PHONY : CMakeFiles/spawn-binding_build_done.dir/rule
@@ -240,12 +240,12 @@ CMakeFiles/widget.dir/all: conf.d/project/etc/CMakeFiles/spawn-config.dir/all
 CMakeFiles/widget.dir/all: src/CMakeFiles/spawn.dir/all
 	$(MAKE) -f CMakeFiles/widget.dir/build.make CMakeFiles/widget.dir/depend
 	$(MAKE) -f CMakeFiles/widget.dir/build.make CMakeFiles/widget.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=32 "Built target widget"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=33 "Built target widget"
 .PHONY : CMakeFiles/widget.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/widget.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 26
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 27
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/widget.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 0
 .PHONY : CMakeFiles/widget.dir/rule
@@ -267,7 +267,7 @@ CMakeFiles/widget.dir/clean:
 CMakeFiles/test-tree.dir/all:
 	$(MAKE) -f CMakeFiles/test-tree.dir/build.make CMakeFiles/test-tree.dir/depend
 	$(MAKE) -f CMakeFiles/test-tree.dir/build.make CMakeFiles/test-tree.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=25 "Built target test-tree"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=26 "Built target test-tree"
 .PHONY : CMakeFiles/test-tree.dir/all
 
 # Build rule for subdir invocation for target.
@@ -383,7 +383,7 @@ CMakeFiles/populate.dir/all: CMakeFiles/project_populate_spawn.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/populate.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 22
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 23
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/populate.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 0
 .PHONY : CMakeFiles/populate.dir/rule
@@ -410,7 +410,7 @@ CMakeFiles/project_populate_spawn.dir/all: src/CMakeFiles/spawn.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/project_populate_spawn.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 8
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 9
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/project_populate_spawn.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 0
 .PHONY : CMakeFiles/project_populate_spawn.dir/rule
@@ -461,12 +461,12 @@ CMakeFiles/widget_files.dir/all: conf.d/project/etc/CMakeFiles/spawn-config.dir/
 CMakeFiles/widget_files.dir/all: src/CMakeFiles/spawn.dir/all
 	$(MAKE) -f CMakeFiles/widget_files.dir/build.make CMakeFiles/widget_files.dir/depend
 	$(MAKE) -f CMakeFiles/widget_files.dir/build.make CMakeFiles/widget_files.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=34,35,36 "Built target widget_files"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=35,36,37 "Built target widget_files"
 .PHONY : CMakeFiles/widget_files.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/widget_files.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 25
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 26
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/widget_files.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 0
 .PHONY : CMakeFiles/widget_files.dir/rule
@@ -490,12 +490,12 @@ CMakeFiles/test_widget_files.dir/all: conf.d/project/etc/CMakeFiles/spawn-config
 CMakeFiles/test_widget_files.dir/all: src/CMakeFiles/spawn.dir/all
 	$(MAKE) -f CMakeFiles/test_widget_files.dir/build.make CMakeFiles/test_widget_files.dir/depend
 	$(MAKE) -f CMakeFiles/test_widget_files.dir/build.make CMakeFiles/test_widget_files.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=27,28,29,30,31 "Built target test_widget_files"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=28,29,30,31,32 "Built target test_widget_files"
 .PHONY : CMakeFiles/test_widget_files.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/test_widget_files.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 27
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 28
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/test_widget_files.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 0
 .PHONY : CMakeFiles/test_widget_files.dir/rule
@@ -519,12 +519,12 @@ CMakeFiles/test_widget.dir/all: conf.d/project/etc/CMakeFiles/spawn-config.dir/a
 CMakeFiles/test_widget.dir/all: src/CMakeFiles/spawn.dir/all
 	$(MAKE) -f CMakeFiles/test_widget.dir/build.make CMakeFiles/test_widget.dir/depend
 	$(MAKE) -f CMakeFiles/test_widget.dir/build.make CMakeFiles/test_widget.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=26 "Built target test_widget"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=27 "Built target test_widget"
 .PHONY : CMakeFiles/test_widget.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/test_widget.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 28
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 29
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/test_widget.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 0
 .PHONY : CMakeFiles/test_widget.dir/rule
@@ -546,7 +546,7 @@ CMakeFiles/test_widget.dir/clean:
 CMakeFiles/widget-target-install.dir/all:
 	$(MAKE) -f CMakeFiles/widget-target-install.dir/build.make CMakeFiles/widget-target-install.dir/depend
 	$(MAKE) -f CMakeFiles/widget-target-install.dir/build.make CMakeFiles/widget-target-install.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=33 "Built target widget-target-install"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=34 "Built target widget-target-install"
 .PHONY : CMakeFiles/widget-target-install.dir/all
 
 # Build rule for subdir invocation for target.
@@ -573,7 +573,7 @@ CMakeFiles/widget-target-install.dir/clean:
 conf.d/project/etc/CMakeFiles/spawn-config.dir/all:
 	$(MAKE) -f conf.d/project/etc/CMakeFiles/spawn-config.dir/build.make conf.d/project/etc/CMakeFiles/spawn-config.dir/depend
 	$(MAKE) -f conf.d/project/etc/CMakeFiles/spawn-config.dir/build.make conf.d/project/etc/CMakeFiles/spawn-config.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=24 "Built target spawn-config"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=25 "Built target spawn-config"
 .PHONY : conf.d/project/etc/CMakeFiles/spawn-config.dir/all
 
 # Build rule for subdir invocation for target.
@@ -600,12 +600,12 @@ conf.d/project/etc/CMakeFiles/spawn-config.dir/clean:
 src/CMakeFiles/spawn.dir/all:
 	$(MAKE) -f src/CMakeFiles/spawn.dir/build.make src/CMakeFiles/spawn.dir/depend
 	$(MAKE) -f src/CMakeFiles/spawn.dir/build.make src/CMakeFiles/spawn.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=17,18,19,20,21,22,23 "Built target spawn"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles --progress-num=17,18,19,20,21,22,23,24 "Built target spawn"
 .PHONY : src/CMakeFiles/spawn.dir/all
 
 # Build rule for subdir invocation for target.
 src/CMakeFiles/spawn.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 7
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 8
 	$(MAKE) -f CMakeFiles/Makefile2 src/CMakeFiles/spawn.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/fulup/Workspace/Sandbox/spawn-binding/build/CMakeFiles 0
 .PHONY : src/CMakeFiles/spawn.dir/rule

@@ -346,29 +346,34 @@ static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandb
         for (int idx = 0; idx < count; idx++) {
             json_object *sandboxJ = json_object_array_get_idx(sandboxesJ, idx);
             err = sandboxLoadOne(api, &sandboxes[idx], sandboxJ);
-            if (err) goto OnErrorExit;
+            if (err) {
+                AFB_API_ERROR(api, "[sandboxLoadOne fail] to load sandbox=%s (sandboxConfig)", sandboxes[idx].uid);
+                goto OnErrorExit;
+            }
             sandboxes[idx].binding= binding;
         }
 
     } else {
         sandboxes = (sandBoxT*)calloc(2, sizeof (sandBoxT));
         err = sandboxLoadOne(api, &sandboxes[0], sandboxesJ);
-        if (err) goto OnErrorExit;
+        if (err) {
+            AFB_API_ERROR(api, "[sandboxLoadOne fail] to load sandbox=%s (sandboxConfig)", sandboxes[0].uid);
+            goto OnErrorExit;
+        }
         sandboxes[0].binding= binding;
     }
 
     // add static controls verbsmake
     err = CtrlLoadStaticVerbs (api, CtrlApiVerbs, (void*)sandboxes);
     if (err) {
-        AFB_API_ERROR(api, "CtrlLoadOneApi fail to Registry static API verbs");
+        AFB_API_ERROR(api, "[CtrlLoadStaticVerbs fail] to Registry static API verbs (sandboxConfig)");
         goto OnErrorExit;
     }
-
     return 0;
 
 OnErrorExit:
-    AFB_API_ERROR (api, "Fail to initialise shell check Json Config");
-    return 1;
+    AFB_API_ERROR (api, "[Fail config spawn-binding] ### check json config (sandboxConfig) ###");
+    return -1; // force binding kill
 }
 
 

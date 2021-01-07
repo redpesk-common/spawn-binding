@@ -2,6 +2,7 @@
  LIBRARY
 # Source files and their labels
 /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-binding.c
+/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-defaults.c
 /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-encoders.c
 /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-enums.c
 /home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-sandbox.c

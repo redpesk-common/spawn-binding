@@ -37,12 +37,12 @@
 #define MAX_BWRAP_ARGS 512
 #endif
 
-#ifndef SH_EXEC_MAX_ARG_LEN
-#define SH_EXEC_MAX_ARG_LEN 256
+#ifndef SPAWN_MAX_ARG_LEN
+#define SPAWN_MAX_ARG_LEN 256
 #endif
 
-#ifndef SH_EXEC_MAX_ARG_LABEL
-#define SH_EXEC_MAX_ARG_LABEL 64
+#ifndef SPAWN_MAX_ARG_LABEL
+#define SPAWN_MAX_ARG_LABEL 64
 #endif
 
 #ifndef ERROR
@@ -59,5 +59,13 @@
 #define MAGIC_SPAWN_COMMAND 789123
 #define MAGIC_SPAWN_TASKID  147258
 #define MAGIC_SPAWN_ENCODER 147258
+
+typedef char*(*spawnGetDefaultCbT)(const char *label, void *ctx);
+typedef struct {
+    const char *label;
+    spawnGetDefaultCbT callback;
+    void *ctx;
+} spawnDefaultsT;
+extern spawnDefaultsT spawnVarDefaults[];
 
 #endif /* _SPAWN_DEFAULTS_INCLUDE_ */

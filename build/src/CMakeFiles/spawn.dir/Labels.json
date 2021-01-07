@@ -5,6 +5,9 @@
 			"file" : "/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-binding.c"
 		},
 		{
+			"file" : "/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-defaults.c"
+		},
+		{
 			"file" : "/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-encoders.c"
 		},
 		{

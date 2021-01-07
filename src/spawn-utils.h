@@ -29,6 +29,8 @@
 #include <afb/afb-binding.h>
 #include <systemd/sd-event.h>
 
+#include "spawn-defaults.h"
+#include <json.h>
 
 #ifdef MEMFD_CREATE_MISSING
   // missing from Fedora, OpenSuse, ... !!!
@@ -36,7 +38,6 @@
 #endif
 
 // spawn-utils.c
-
 mode_t utilsUmaskSet (const char *mask);
 int utilsTaskPrivileged(void);
 
@@ -45,5 +46,10 @@ ssize_t utilsFileLoad (const char *filepath, char **buffer);
 int utilsFileAddControl (afb_api_t api, const char *uid, int dirFd, const char *ctrlname, const char *ctrlval);
 const char* utilsExecCmd (afb_api_t api, const char* source, const char* command);
 int utilsExecFdCmd (afb_api_t api, const char* source, const char* command);
+int utilsGetPathInod (const char* path);
+
+const char* utilsExpandString (spawnDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer);
+const char* utilsExpandKey (const char* inputString);
+const char* utilsExpandJson (const char* src, json_object *keysJ);
 
 #endif /* _SPAWN_UTILS_INCLUDE_ */

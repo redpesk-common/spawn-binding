@@ -109,6 +109,12 @@ static int nsParseOneMount (afb_api_t api,  json_object *mountJ, confMountT *mou
     );
     if (err) goto OnErrorExit;
 
+    // if source is defined try to expand $KEY
+    if (mount->source) {
+        mount->source= utilsExpandKey(mount->source);
+        if (!mount->source) goto OnErrorExit;
+    }
+
     if (keymode) {
         mount->mode= enumMapValue(mountMode, keymode);
         if (mount->mode <0) goto OnErrorExit;
@@ -254,8 +260,6 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, const char *uid, json_object *c
             goto OnErrorExit;
         }
     }
-
-
 
     if (cgCpuJ) {
         const char* cpuWeight=NULL, *cpuMax=NULL;
@@ -536,13 +540,19 @@ confSeccompT *sandboxParseSecRules(afb_api_t api, const char *uid, json_object *
     }
 
     if (seccomp->rulespath) {
+        const char*rulespath= utilsExpandKey(seccomp->rulespath); // expand keys
+        if (!rulespath) {
+            AFB_API_ERROR(api, "sandboxParseSecRules: [expand fail $ENV key] sandbox='%s' rulepath='%s'", uid, seccomp->rulespath);
+            goto OnErrorExit;
+        }
         struct sock_fprog *fsock=calloc(1, sizeof(struct sock_fprog));
         char *buffer;
-        ssize_t count= utilsFileLoad(seccomp->rulespath, &buffer);
+        ssize_t count= utilsFileLoad(rulespath, &buffer);
 
         fsock->len= (short unsigned int)count/8;
         fsock->filter=(struct sock_filter *)buffer;
         seccomp->fsock= fsock;
+        seccomp->rulespath=rulespath;
     } else if (rulesJ) {
         int count;
         switch (json_object_get_type (rulesJ)) {
@@ -572,7 +582,7 @@ confSeccompT *sandboxParseSecRules(afb_api_t api, const char *uid, json_object *
             default:
                 AFB_API_ERROR(api, "sandboxParseEnvs: [parsing error] group sandbox='%s' rules='%s'", uid, json_object_to_json_string(rulesJ));
                 goto OnErrorExit;
-        }  
+        }
     }
     return seccomp;
 

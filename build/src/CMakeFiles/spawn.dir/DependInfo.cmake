@@ -5,6 +5,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_C
   "/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-binding.c" "/home/fulup/Workspace/Sandbox/spawn-binding/build/src/CMakeFiles/spawn.dir/spawn-binding.c.o"
+  "/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-defaults.c" "/home/fulup/Workspace/Sandbox/spawn-binding/build/src/CMakeFiles/spawn.dir/spawn-defaults.c.o"
   "/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-encoders.c" "/home/fulup/Workspace/Sandbox/spawn-binding/build/src/CMakeFiles/spawn.dir/spawn-encoders.c.o"
   "/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-enums.c" "/home/fulup/Workspace/Sandbox/spawn-binding/build/src/CMakeFiles/spawn.dir/spawn-enums.c.o"
   "/home/fulup/Workspace/Sandbox/spawn-binding/src/spawn-sandbox.c" "/home/fulup/Workspace/Sandbox/spawn-binding/build/src/CMakeFiles/spawn.dir/spawn-sandbox.c.o"
@@ -23,6 +24,7 @@ set(CMAKE_TARGET_DEFINITIONS_C
 
 # The include file search paths:
 set(CMAKE_C_TARGET_INCLUDE_PATH
+  "/usr/include/uuid"
   "/usr/include/json-c"
   "/usr/include/libseccomp"
   "/usr/include/afb"

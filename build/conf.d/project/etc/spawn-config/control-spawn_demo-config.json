@@ -1,5 +1,4 @@
 {
-  "$schema": "http://iot.bzh/download/public/schema/json/ctl-schema.json",
   "metadata": {
     "uid": "spawn-svc",
     "version": "1.0",
@@ -79,6 +78,16 @@
 
       "commands": [
         {
+          "uid": "home",
+          "info" : "expand $home on server side",
+          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-ld", "$HOME"]}
+        },
+        {
+          "uid": "afbroot",
+          "info" : "expand afb_binder root directory",
+          "exec": {"cmdpath": "/usr/bin/echo", "args": ["$AFB_ROOTDIR"]}
+        },
+        {
           "uid": "mycap",
           "info" : "return sandbox capabilities",
           "privilege": "special privilege",
@@ -88,7 +97,7 @@
           "uid": "sleep",
           "info" : "sleep timeout second",
           "usage": {"timeout": "xx"},
-          "exec": {"cmdpath": "/usr/bin/sleep", "args": ["$timeout"]},
+          "exec": {"cmdpath": "/usr/bin/sleep", "args": ["%timeout%"]},
           "sample": [
             {"action":"start", "args": {"timeout": "180"}},
             {"action":"stop", "args": {"pid": 1234, "signal":"sigterm"}},
@@ -106,7 +115,7 @@
           "info" : "list files from a directory",
           "usage": {"dirname": "xxxxx"},
           // "format":{"plugin": "format-demo", "output": "filter", "opts":{"patern": "###"}},
-          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-lh", "$dirname"]},
+          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-lh", "%dirname%"]},
           "sample": [
             {"args": {"dirname": "/etc/udev"}},
             {"args": {"dirname": "/var/cache/"}},
@@ -126,7 +135,7 @@
           "uid": "display",
           "info": "display file contend",
           "usage": {"filename":"xxxx"},
-          "exec": {"cmdpath": "/usr/bin/cat", "args":["$filename"]},
+          "exec": {"cmdpath": "/usr/bin/cat", "args":["%filename%"]},
           "sample": [
             {"args": {"filename": "/etc/passwd"}},
           ]
