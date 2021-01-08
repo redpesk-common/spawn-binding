@@ -41,13 +41,9 @@ seccomp
     cat /proc/cmdline
     mount | grep cgroup2
 
-
-
-* coder l'encodeur json
 * coder l'encodeur ligne
+* coder l'encodeur json
 * coder un encodeur 10l/10l comme demo
-
-* faire le clear des sources dans pushfinal
 
 1) voir pour le verb info
 2) Ajouter bwrap

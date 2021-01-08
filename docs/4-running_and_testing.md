@@ -29,7 +29,10 @@ shell info
 shell admin/myid {"action":"start"}
 shell admin/env {"action":"start"}
 shell admin/cap {"action":"start"}
+
 shell admin/list {"action":"start","args":{"dirname":"/etc/udev"}}
+shell admin/display {"action":"start","args":{"filename":"/etc/passwd"}}
+
 shell admin/sleep {"action":"start","args":{"timeout":"180"}}
 shell admin/sleep {"action":"stop"}
 ```

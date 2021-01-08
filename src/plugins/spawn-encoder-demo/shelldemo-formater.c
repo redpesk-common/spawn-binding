@@ -21,7 +21,7 @@ typedef struct {
     uint32_t step;
 } rCountT;
 
-static int decodePigeonInfo (shellSourceT *source, taskFormatCbT *format, uint16_t *data, uint index, json_object **responseJ) {
+static int decodePigeonInfo (shellSourceT *source, taskEncoderCbT *format, uint16_t *data, uint index, json_object **responseJ) {
 
     *responseJ = json_object_new_object();
     json_object_object_add (*responseJ, "product", json_object_new_int(data[0]));
@@ -35,7 +35,7 @@ static int decodePigeonInfo (shellSourceT *source, taskFormatCbT *format, uint16
 }
 
 
-static int encodePigeonInfo(shellSourceT *source, taskFormatCbT *format, json_object *sourceJ, uint16_t **response, uint index) {
+static int encodePigeonInfo(shellSourceT *source, taskEncoderCbT *format, json_object *sourceJ, uint16_t **response, uint index) {
 
    if (!json_object_is_type (sourceJ, json_type_int))  goto OnErrorExit;
    (void)json_object_get_int (sourceJ);
@@ -46,7 +46,7 @@ OnErrorExit:
     return 1;
 }
 
-static int decodeRCount (shellSourceT *source, taskFormatCbT *format, uint16_t *data, uint index, json_object **responseJ) {
+static int decodeRCount (shellSourceT *source, taskEncoderCbT *format, uint16_t *data, uint index, json_object **responseJ) {
 
     // extract context to get previous value
     rCountT *counter = (rCountT*) source->context;
@@ -95,7 +95,7 @@ static int initRCount (shellSourceT *source, json_object *argsJ) {
 }
 
 // encode/decode callbacks
-static taskFormatCbT pigeonEncoders[] = {
+static taskEncoderCbT pigeonEncoders[] = {
     {.uid="devinfo", .info="json_array", .nbreg=6, .decodeCB=decodePigeonInfo, .encodeCB=encodePigeonInfo},
     {.uid="rcount", .info="json_integer", .nbreg=2, .decodeCB=decodeRCount, .encodeCB=NULL, .initCB=initRCount},
     {.uid=NULL} // must be NULL terminated

@@ -160,7 +160,7 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
     int err = 0;
     const char *privilege=NULL;
     afb_auth_t *authent=NULL;
-    json_object *execJ=NULL, *formatJ=NULL;
+    json_object *execJ=NULL, *encoderJ=NULL;
 
     // should already be allocated
     assert (cmdJ);
@@ -176,7 +176,7 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
                 ,"timeout", &cmd->timeout
                 ,"privilege", &privilege
                 ,"usage", &cmd->usageJ
-                ,"format", &formatJ
+                ,"encoder", &encoderJ
                 ,"sample", &cmd->sampleJ
                 ,"exec", &execJ
                 );
@@ -187,7 +187,7 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
 
     // find encode/decode callback
     cmd->api = api;
-    err = encoderFind (cmd, formatJ);
+    err = encoderFind (cmd, encoderJ);
     if (err) goto OnErrorExit;
 
     // If not special privilege use sandbox one

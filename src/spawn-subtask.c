@@ -117,9 +117,9 @@ static void taskPushFinalResponse (taskIdT *taskId) {
     fprintf (stderr, "**** taskPushFinalResponse taskId=0x%p pid=%d\n", taskId, taskId->pid);
 
     // read any remaining data
-    (void)cmd->format->actionsCB (taskId, ENCODER_STDOUT_DATA, cmd->format->fmtctx);
-    (void)cmd->format->actionsCB (taskId, ENCODER_STDERR_DATA, cmd->format->fmtctx);
-    (void)cmd->format->actionsCB (taskId, ENCODER_TASK_STOP, cmd->format->fmtctx);
+    (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
+    (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDERR, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
+    (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STOP, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
 
     // status should have been updated with signal handler
     AFB_API_NOTICE(cmd->api, "[child taskPushFinalResponse] taskId=0x%p action='stop' uid='%s' status=%s (taskPushFinalResponse)",  taskId, taskId->uid, json_object_get_string(taskId->statusJ));
@@ -139,11 +139,11 @@ static int spawnPipeFdCB (sd_event_source* source, int fd, uint32_t events, void
     if (taskId->pid) {
 
         if (fd == taskId->outFD && events & EPOLLIN) {
-            err= cmd->format->actionsCB (taskId, ENCODER_STDOUT_DATA, cmd->format->fmtctx);
+            err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_STD, cmd->encoder->fmtctx);
             if (err) taskPushResponse (taskId);
 
         } else if (fd == taskId->errFD && events & EPOLLIN) {
-            err= cmd->format->actionsCB (taskId, ENCODER_STDERR_DATA, cmd->format->fmtctx);
+            err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDERR, ENCODER_OPS_STD, cmd->encoder->fmtctx);
             if (!err) taskPushResponse (taskId);
         }
 
@@ -166,7 +166,7 @@ static int spawnTimerCB (TimerHandleT *handle) {
     // if process still run terminate it
     if (getpgid(taskId->pid) >= 0) {
         AFB_NOTICE("spawnTimerCB: Terminating task uid=%s", taskId->uid);
-        taskId->cmd->format->actionsCB (taskId, ENCODER_TASK_KILL, taskId->cmd->format->fmtctx);
+        taskId->cmd->encoder->actionsCB (taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, taskId->cmd->encoder->fmtctx);
         kill(taskId->pid, SIGKILL);
     }
     return 0; // OK count will stop timer
@@ -401,7 +401,7 @@ static int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ
         }
 
         // initilise cmd->cli corresponding output formater buffer
-        err= cmd->format->actionsCB (taskId, ENCODER_TASK_START, cmd->format->fmtctx);
+        err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_START, ENCODER_OPS_STD, cmd->encoder->fmtctx);
         if (err) goto OnErrorExit;
 
         // set pipe fd into noblock mode

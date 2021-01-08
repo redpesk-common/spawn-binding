@@ -395,9 +395,9 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
                 dst[destIdx++] = labelVal[labelIdx];
             }
         }
-        fprintf (stderr, "src[%d]= '%c'\n", srcIdx, src[srcIdx]);
     }
     dst[destIdx++] = '\0';
+    fprintf (stderr, "utilsExpandJson: argument '%s' => '%s'\n", src, dst);
 
     // when expanded make a copy of dst into params
     if (expanded) response= strdup(dst);

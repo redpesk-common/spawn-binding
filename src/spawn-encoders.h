@@ -37,25 +37,31 @@
 
 
 typedef enum {
-    ENCODER_STDOUT_DATA,
-    ENCODER_STDERR_DATA,
+    ENCODER_STDOUT_UNKNOWN,
+    ENCODER_TASK_STDOUT,
+    ENCODER_TASK_STDERR,
     ENCODER_TASK_START,
     ENCODER_TASK_STOP,
     ENCODER_TASK_KILL,
 } encoderActionE;
 
+typedef enum {
+    ENCODER_OPS_STD,
+    ENCODER_OPS_CLOSE,
+} encoderOpsE;
+
 typedef struct  {
   const char *uid;
   const char *info;
   int (*initCB)(shellCmdT *cmd, json_object *optsJ, void* fmtctx);
-  int (*actionsCB)(taskIdT *taskId, encoderActionE action, void* fmtctx);
+  int (*actionsCB)(taskIdT *taskId, encoderActionE action, encoderOpsE subAction, void* fmtctx);
   void *fmtctx;
-} taskFormatCbT;
+} taskEncoderCbT;
 
 // spawn-encoder.c
 void encoderInit(void);
-void encoderRegister (char *uid, taskFormatCbT *actionsCB);
-int  encoderFind (shellCmdT *cmd, json_object *formatJ);
-typedef void (*registerCbT) (const char *uid, taskFormatCbT *actionsCB);
+void encoderRegister (char *uid, taskEncoderCbT *actionsCB);
+int  encoderFind (shellCmdT *cmd, json_object *encoderJ);
+typedef void (*registerCbT) (const char *uid, taskEncoderCbT *actionsCB);
 
 #endif /* _SPAWN_ENCODER_S_INCLUDE_ */

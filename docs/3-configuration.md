@@ -3,7 +3,7 @@
 
 ## shell binding support a set of default encoder for values store within multiple registries
 
-* int16, bool => 1 register 
+* int16, bool => 1 register
 * int32 => 2 registers
 * int64 => 4 registers
 * float, floatabcd, floatdabc, ...
@@ -22,10 +22,10 @@ shell binding create one api/verb by sensor. By default each sensor api/verb is 
     "uri" : "tcp://192.168.1.110:502",
     "privilege": "global RTU required privilege",
     "autostart" : 1,  // connect to RTU at binder start
-    "prefix": "myrtu",  // api verb prefix 
+    "prefix": "myrtu",  // api verb prefix
     "timeout": xxxx, // optional response timeout in ms
     "debug": 0-3, // option libshell debug level
-    "hertz": 10,  // default pooling for event subscription 
+    "hertz": 10,  // default pooling for event subscription
     "iddle": 0,   // force event even when value does not change every hertz*iddle count
     "sensors": [
       {
@@ -42,8 +42,8 @@ shell binding create one api/verb by sensor. By default each sensor api/verb is 
         "format" : "BOOL",
         "register" : 1,
         "privilege": "optional sensor required privilege",
-        "herz": xxx, // special pooling rate for this sensor 
-        "iddle": xxx, // special iddle force event when value does not change 
+        "herz": xxx, // special pooling rate for this sensor
+        "iddle": xxx, // special iddle force event when value does not change
       },
       {
         "uid": "DIN01_counter",
@@ -51,9 +51,9 @@ shell binding create one api/verb by sensor. By default each sensor api/verb is 
         "format" : "UINT32",
         "register" : 6,
         "privilege": "optional sensor required privilege",
-        "herz": xxx // special pooling rate for this sensor 
+        "herz": xxx // special pooling rate for this sensor
       },
-...      
+...
 ```
 
 ## shell controller exposed
@@ -96,16 +96,16 @@ The shell binding supports both builtin format converter and optional custom con
 ```c
 // Sample of custom formatter (king-pigeon-encore.c)
 // -------------------------------------------------
-static taskFormatCbT pigeonEncoders[] = {
+static taskEncoderCbT pigeonEncoders[] = {
     {
       .uid="devinfo",
       .info="return KingPigeon Device Info as an array",
-      .nbreg=6, .decodeCB=decodePigeonInfo, 
+      .nbreg=6, .decodeCB=decodePigeonInfo,
       .encodeCB=encodePigeonInfo
     },{
       .uid="rcount",
-      .info="Return Relative Count from Uint32", 
-      .nbreg=2, .decodeCB=decodeRCount, .encodeCB=NULL, 
+      .info="Return Relative Count from Uint32",
+      .nbreg=2, .decodeCB=decodeRCount, .encodeCB=NULL,
       .initCB=initRCount
     },{.uid=NULL} // must be NULL terminated
 };

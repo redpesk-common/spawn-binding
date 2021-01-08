@@ -26,7 +26,7 @@
 #define _SPAWN_DEFAULTS_INCLUDE_
 
 #ifndef MAX_DOC_LINE_SIZE
-#define MAX_DOC_LINE_SIZE 256
+#define MAX_DOC_LINE_SIZE 512
 #endif
 
 #ifndef MAX_DOC_LINE_COUNT

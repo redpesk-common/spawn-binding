@@ -133,8 +133,9 @@
         },
         {
           "uid": "display",
-          "info": "display file contend",
+          "info": "(format text) return one event per line",
           "usage": {"filename":"xxxx"},
+          "encoder": {"output": "text", "opts": {"maxlen":512}},
           "exec": {"cmdpath": "/usr/bin/cat", "args":["%filename%"]},
           "sample": [
             {"args": {"filename": "/etc/passwd"}},
