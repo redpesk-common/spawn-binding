@@ -41,8 +41,10 @@ seccomp
     cat /proc/cmdline
     mount | grep cgroup2
 
-* coder l'encodeur ligne
-* coder l'encodeur json
+*********
+* encoder json faire le parser count de {} )
+*********
+
 * coder un encodeur 10l/10l comme demo
 
 1) voir pour le verb info

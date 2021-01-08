@@ -111,6 +111,17 @@
           "exec": {"cmdpath": "/usr/bin/sleep", "args": 80}
         },
         {
+          "uid": "json",
+          "info" : "test json encoder take json from stdout",
+          "encoder": {"output": "json", "opts": {"maxlen":1024}},
+          "exec": {"cmdpath": "/usr/bin/echo", "args": "%query%"},
+          "sample": [
+            {"args": {"query": "{'message':'simple'"}},
+            {"args": {"query": "-- ignore prefix --- {'message':'simple'} --- ignore tail ---"}}
+            {"args": {"query": "{'message':'complex'} {'test_1':1} {'test_2':0} {'complex':1, 'array':['elem1','elem2','elem3']}"}},
+          ]
+        },
+        {
           "uid": "list",
           "info" : "list files from a directory",
           "usage": {"dirname": "xxxxx"},

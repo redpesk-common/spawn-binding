@@ -43,6 +43,7 @@ typedef struct {
     char *data;
     long index;
     long size;
+    long count;
 } fmtDocBufT;
 
 // builtin document encoder
@@ -75,22 +76,129 @@ fmtDocBufT *fmtResetDocBuffer(fmtDocBufT *buffer, ssize_t size) {
         buffer->size=size;
     }
     buffer->index=0;
+    buffer->count=0;
     return buffer;
 }
 
 
+
 // document encoder callback add one line into document json array
-static int lineAddLinesToCB (taskIdT *taskId, fmtDocBufT *docId, ssize_t start, void *context, json_object *errorJ) {
+static int jsonEventCB (taskIdT *taskId, fmtDocBufT *docId, ssize_t start, void *context, json_object *errorJ) {
+    json_object *blobJ, *lineJ;
+
+    // try to build a json from current buffer
+    blobJ =json_tokener_parse(&docId->data[start]);
+
+    if (blobJ) {
+        afb_event_push(taskId->event, blobJ);
+
+    } else {
+        // push error event
+        if (!errorJ) errorJ= json_object_new_string("[parsing fail] invalid json");
+        wrap_json_pack(&lineJ, "{ss so*}", "data", &docId->data[start], "warning", errorJ);
+        afb_event_push(taskId->event, lineJ);
+        goto OnErrorExit;
+    }
+
+    return 0;
+
+OnErrorExit:
+    return 1;
+}
+
+// send one event for each completed json blob. If oversized send as a string error
+static int encoderJsonParser (taskIdT *taskId, fmtDocBufT *docId, ssize_t len, encoderAddLinesCbT callback, void* context) {
+    int err;
+    ssize_t idx, dataIdx=0;
+
+    // nothing to do
+    if (len == 0 && docId->index == 0) return 0;
+
+    // nothing else to read this is our last call
+    if (len == 0) {
+        if (docId->index == docId->size) {
+            AFB_API_NOTICE(taskId->cmd->api, "encoderJsonParser: [json too long] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
+            docId->data[docId->index++] = '\\';
+            docId->data[docId->index++] = '\0';
+            err= callback(taskId, docId, 0, context, json_object_new_string ("line too long truncated with '\\'"));
+            if (err) goto OnErrorExit;
+        } else {
+            docId->data[docId->index++] = '\0';
+            err= callback(taskId, docId, 0, context, NULL);
+            if (err) goto OnErrorExit;
+        }
+
+        // reset docId index and add continuation prefix
+        docId->index=0;
+
+    } else {
+        long initial=docId->count;
+        char eol;
+
+        // search within docId for newlines and optionally push them into jsonarray
+        for (idx=docId->index; idx<=(docId->index + len); idx++) {
+
+            // search for json blob ignoring extra prefix/trailer characters
+            if (docId->data[idx] == '{') docId->count++;
+            else if (docId->data[idx] == '}') docId->count--;
+
+            // ignore prefix characters
+            if (initial == docId->count) {
+                if (!docId->count) dataIdx=idx;
+                continue;
+            }
+            // if json blob not close keep searching
+            if (docId->count)  {
+                initial=-1;
+                continue;
+            }
+
+            // temporarely close C string to send event
+            eol= docId->data[idx+1];
+            docId->data[idx+1]='\0';
+            err= callback(taskId, docId, dataIdx, context,NULL);
+            if (err) goto OnErrorExit;
+            docId->data[idx+1]=eol;
+
+            initial=0; // restart a new json blob
+        }
+
+        // json not close let's update data index
+        if (!dataIdx) {
+            docId->index = docId->index + len;
+        } else {
+            // if some data remain move them to buffer head
+            if (dataIdx == idx) {
+                docId->index = 0;
+            } else {
+                long remaining = docId->index+len-dataIdx;
+                if (remaining > 0) {
+                    memmove (&docId->data[0], &docId->data[dataIdx], remaining);
+                    docId->index= remaining-1;
+                }
+            }
+        }
+    }
+    return 0;
+
+OnErrorExit:
+    return 1;
+}
+
+
+
+// document encoder callback add one line into document json array
+static int textEventCB (taskIdT *taskId, fmtDocBufT *docId, ssize_t start, void *context, json_object *errorJ) {
     json_object *lineJ;
 
-    int err = wrap_json_pack(&lineJ, "{ss* ss*}", "data", &docId->data[start], "warning", errorJ);
+    int err = wrap_json_pack(&lineJ, "{ss* so*}", "data", &docId->data[start], "warning", errorJ);
     if (!err) afb_event_push(taskId->event, lineJ);
     return err;
 }
 
 
 // document encoder callback add one line into document json array
-static int docAddLinesToCB (taskIdT *taskId, fmtDocBufT *docId, ssize_t start, void *context, json_object *errorJ) {
+static int docArrayCB (taskIdT *taskId, fmtDocBufT *docId, ssize_t start, void *context, json_object *errorJ) {
     fmtDocStreamT *docStream = (fmtDocStreamT*) context;
 
     // create output array only when needed
@@ -117,7 +225,7 @@ OnErrorExit:
 // search for newline delimiters and add it to json response array
 static int encoderLineParser (taskIdT *taskId, fmtDocBufT *docId, ssize_t len, encoderAddLinesCbT callback, void* context) {
     int err;
-    ssize_t idx, lineIdx=0;
+    ssize_t idx, dataIdx=0;
 
     // nothing to do
     if (len == 0 && docId->index == 0) return 0;
@@ -147,22 +255,22 @@ static int encoderLineParser (taskIdT *taskId, fmtDocBufT *docId, ssize_t len, e
             // for every newline close 'C' string and push it to the stdoutJ array
             if (docId->data[idx] == '\n' || docId->data[idx] == '\0') {
                 docId->data[idx] = '\0';
-                err= callback (taskId, docId, lineIdx, context, NULL);
+                err= callback (taskId, docId, dataIdx, context, NULL);
                 if (err) goto OnErrorExit;
 
-                lineIdx= idx+1; // next line start
+                dataIdx= idx+1; // next line start
             }
         }
 
         // no newline found simplely update docId index
-        if (!lineIdx) {
+        if (!dataIdx) {
             docId->index = docId->index + len;
         } else {
             // move remaining characters to docId start
-            if (lineIdx != idx +1) {
-                long remaining = docId->index+len-lineIdx;
+            if (dataIdx != idx +1) {
+                long remaining = docId->index+len-dataIdx;
                 if (remaining > 0) {
-                    memmove (&docId->data[0], &docId->data[lineIdx], remaining);
+                    memmove (&docId->data[0], &docId->data[dataIdx], remaining);
                     docId->index= remaining-1;
                 }
             } else {
@@ -177,7 +285,7 @@ OnErrorExit:
 }
 
 // fmtParsing take config cmd option and parse them into something usefull for taskId start
-static int fmtDocInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
+static int encoderInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     int err;
 
     fmtDocOptsT *opts = malloc(sizeof (fmtDocOptsT));
@@ -199,7 +307,7 @@ static int fmtDocInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
 
 
 // Every encoder should have a formating callback supporting switch options.
-static int docFmtActsCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
+static int encoderDocCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     assert (taskId->magic == MAGIC_SPAWN_TASKID);
     shellCmdT *cmd= taskId->cmd;
     fmtDocOptsT *opts=cmd->encoder->fmtctx;
@@ -219,9 +327,9 @@ static int docFmtActsCB (taskIdT *taskId, encoderActionE action, encoderOpsE ope
 
                 // we have some new data or data buffer is full
                 if (len > 0 || freeIdx == 0 || operation == ENCODER_OPS_CLOSE) {
-                    err= encoderLineParser (taskId, data->buffer, len, docAddLinesToCB, (void*)data);
+                    err= encoderLineParser (taskId, data->buffer, len, docArrayCB, (void*)data);
                     if (err) {
-                        AFB_API_ERROR(cmd->api, "docAddLinesToCB: [formatCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                        AFB_API_ERROR(cmd->api, "docArrayCB: [formatCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                         goto OnErrorExit;
                     }
                 fprintf (stderr, "**** ENCODER_DOC_STDOUT taskId=0x%p freeIdx=%ld len=%ld index=%ld\n", taskId, len, freeIdx, data->buffer->index);
@@ -242,9 +350,9 @@ static int docFmtActsCB (taskIdT *taskId, encoderActionE action, encoderOpsE ope
 
                 // we have some new data or data buffer is full
                 if (len > 0 || freeIdx==0 || operation == ENCODER_OPS_CLOSE) {
-                    err= encoderLineParser (taskId, data->buffer, len, docAddLinesToCB, (void*)data);
+                    err= encoderLineParser (taskId, data->buffer, len, docArrayCB, (void*)data);
                     if (err) {
-                        AFB_API_ERROR(cmd->api, "docAddLinesToCB: [format CB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                        AFB_API_ERROR(cmd->api, "docArrayCB: [format CB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                         goto OnErrorExit;
                     }
                 }
@@ -322,7 +430,7 @@ OnErrorExit:
 }
 
 // Send one event for line on stdout and stderr at the command end
-static int lineFmtActsCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
+static int encoderTextCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     assert (taskId->magic == MAGIC_SPAWN_TASKID);
     shellCmdT *cmd= taskId->cmd;
     fmtDocOptsT *opts=cmd->encoder->fmtctx;
@@ -342,9 +450,9 @@ static int lineFmtActsCB (taskIdT *taskId, encoderActionE action, encoderOpsE op
 
                 // we have some new data or data buffer is full
                 if (len > 0 || freeIdx == 0 || operation == ENCODER_OPS_CLOSE) {
-                    err= encoderLineParser (taskId, data->buffer, len, lineAddLinesToCB, (void*)data);
+                    err= encoderLineParser (taskId, data->buffer, len, textEventCB, (void*)data);
                     if (err) {
-                        AFB_API_ERROR(cmd->api, "lineAddLinesToCB: [formatCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                        AFB_API_ERROR(cmd->api, "textEventCB: [formatCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                         goto OnErrorExit;
                     }
                 fprintf (stderr, "**** ENCODER_LINE_STDOUT taskId=0x%p freeIdx=%ld len=%ld index=%ld\n", taskId, len, freeIdx, data->buffer->index);
@@ -354,9 +462,56 @@ static int lineFmtActsCB (taskIdT *taskId, encoderActionE action, encoderOpsE op
             break;
         }
 
-        // anything else is delegated to document callback
+        // anything else is delegated to document encoder
         default:
-            err= docFmtActsCB (taskId, action, operation, fmtctx);
+            err= encoderDocCB (taskId, action, operation, fmtctx);
+            if (err) goto OnErrorExit;
+            break;
+
+    }
+
+    return 0;
+
+OnErrorExit:
+    return 1;
+}
+
+// Send one event json blog and stdout as array when task stop
+static int encoderJsonCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
+    assert (taskId->magic == MAGIC_SPAWN_TASKID);
+    shellCmdT *cmd= taskId->cmd;
+    fmtDocOptsT *opts=cmd->encoder->fmtctx;
+    fmtDocContextT *taskctx= taskId->context;
+    int err;
+
+    switch (action) {
+
+        case ENCODER_TASK_STDOUT: {
+            fmtDocStreamT *data= taskctx->outStream;
+            ssize_t freeIdx, len;
+    fprintf (stderr, "**** ENCODER_JSON_STDOUT taskId=0x%p pid=%d taskId->context=0x%p data=0x%p\n", taskId, taskId->pid, taskId->context, data);
+
+            do {
+                freeIdx= opts->lineSize - data->buffer->index;
+                len = read (taskId->outFD, &data->buffer->data[data->buffer->index], freeIdx);
+
+                // we have some new data or data buffer is full
+                if (len > 0 || freeIdx == 0 || operation == ENCODER_OPS_CLOSE) {
+                    err= encoderJsonParser (taskId, data->buffer, len, jsonEventCB, (void*)data);
+                    if (err) {
+                        AFB_API_ERROR(cmd->api, "encoderJsonCB: [formatCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                        goto OnErrorExit;
+                    }
+                fprintf (stderr, "**** ENCODER_JSON_STDOUT taskId=0x%p freeIdx=%ld len=%ld index=%ld\n", taskId, len, freeIdx, data->buffer->index);
+                }
+            } while (len > 0);
+
+            break;
+        }
+
+        // anything else is delegated to document encoder
+        default:
+            err= encoderDocCB (taskId, action, operation, fmtctx);
             if (err) goto OnErrorExit;
             break;
 
@@ -464,8 +619,9 @@ OnErrorExit:
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
 taskEncoderCbT encoderBuiltin[] = {
-  {.uid="DOCUMENT"  , .info="text output [default formater]", .initCB=fmtDocInitCB, .actionsCB=docFmtActsCB},
-  {.uid="TEXT"      , .info="per line event",  .initCB=fmtDocInitCB, .actionsCB=lineFmtActsCB},
+  {.uid="DOCUMENT"  , .info="text output [default formater]", .initCB=encoderInitCB, .actionsCB=encoderDocCB},
+  {.uid="TEXT"      , .info="per line event",  .initCB=encoderInitCB, .actionsCB=encoderTextCB},
+  {.uid="JSON"      , .info="per line event",  .initCB=encoderInitCB, .actionsCB=encoderJsonCB},
 
   {.uid= NULL} // must be null terminated
 };

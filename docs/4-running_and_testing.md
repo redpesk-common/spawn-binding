@@ -33,6 +33,9 @@ shell admin/cap {"action":"start"}
 shell admin/list {"action":"start","args":{"dirname":"/etc/udev"}}
 shell admin/display {"action":"start","args":{"filename":"/etc/passwd"}}
 
+shell admin/json {"args":{"query":"{'test_1':1} {'test_2':0} {'complex':1, 'array': ['elem1', 'elem2', 'elem3']} "}}
+shell admin/json {"args":{"query":"{'complex':1, 'array': ['elem1', 'elem2', 'elem3']}}"}}
+
 shell admin/sleep {"action":"start","args":{"timeout":"180"}}
 shell admin/sleep {"action":"stop"}
 ```
