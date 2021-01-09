@@ -21,6 +21,8 @@
  * $RP_END_LICENSE$
 */
 
+// reference  https://facebookmicrosites.github.io/cgroup2/docs/cpu-controller.html
+
 
 #define _GNU_SOURCE
 
@@ -223,11 +225,12 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, const char *uid, json_object *c
     confCgroupT *cgroups = calloc(1, sizeof(confCgroupT));
     int err, cgRootFd, subgroupFd;
     json_object_get(cgroupsJ);
-    const char *mntpath=CGROUPS_MOUNT_POINT;
+    const char *cgCset, *mntpath=CGROUPS_MOUNT_POINT;
 
     // uppack cgroup namespace configuration
-    err= wrap_json_unpack(cgroupsJ, "{s?s s?o s?o s?o !}"
+    err= wrap_json_unpack(cgroupsJ, "{s?s s?s s?o s?o s?o !}"
     ,"mount", &mntpath
+    ,"cset",&cgCset
     ,"mem", &cgMemJ
     ,"cpu", &cgCpuJ
     ,"io" , &cgIoJ
@@ -259,6 +262,14 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, const char *uid, json_object *c
             AFB_API_ERROR(api, "sandboxParseCgroups: [cgroups open fail] sandbox='%s' cgroups='%s/%s' error=%s", uid, CGROUPS_MOUNT_POINT, uid, strerror(errno));
             goto OnErrorExit;
         }
+    }
+
+    if (cgCset) {
+        (void) utilsFileAddControl (api, uid, cgRootFd, "cgroup.subtree_control", "+cpuset");
+        err= utilsFileAddControl (api, uid, subgroupFd, "cgroup.subtree_control", "+cpuset");
+        err =+ utilsFileAddControl (api, uid, subgroupFd, "cpuset.cpus", cgCset);
+        if (err) goto OnErrorExit;
+
     }
 
     if (cgCpuJ) {

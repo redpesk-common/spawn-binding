@@ -15,7 +15,7 @@
   ],
   "sandboxes": [
     {
-      "uid": "sandbox-admin",
+      "uid": "sandbox-demo",
       "info": "Shell admin commands",
       "prefix": "admin",
       "privilege": "global privilege",
@@ -41,6 +41,7 @@
         ],
 
       "cgroups": {
+        "cset": "1-4",
         "mem": {"max": "512M", "hight": "256M", "min": "128K"},
         "cpu": {"weight":"100","max": "100000"}
       },
