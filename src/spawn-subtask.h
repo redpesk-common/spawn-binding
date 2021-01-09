@@ -34,8 +34,8 @@ struct taskIdS {
   int magic;
   int pid; // hashtable key
   char *uid;
-  int outFD;
-  int errFD;
+  int outfd;
+  int errfd;
   shellCmdT *cmd;
   void *context;
   TimerHandleT *timer;

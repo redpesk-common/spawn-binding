@@ -124,7 +124,7 @@ struct shellCmdS {
   const char **argv;
   int  argc;
   const char *apiverb;
-  taskEncoderCbT *encoder;
+  encoderCbT *encoder;
   struct sandBoxS *sandbox;
   int timeout;
   afb_api_t api;

@@ -40,7 +40,7 @@ static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandb
 // Config Section definition (note: controls section index should match handle
 // retrieval in HalConfigExec)
 static CtlSectionT ctrlSections[] = {
-    { .key = "plugins",.loadCB = PluginConfig, .handle= encoderRegister},
+    { .key = "plugins",.loadCB = PluginConfig, .handle= (void*) &encoderPluginCb},
     { .key = "onload", .loadCB = OnloadConfig },
     { .key = "sandboxes", .loadCB = sandboxConfig },
     { .key = NULL }
@@ -376,9 +376,30 @@ OnErrorExit:
     return -1; // force binding kill
 }
 
+// utilsExpandJson is call within forked process, let's keep a test instance within main process for debug purpose
+static void testExpansion () {
+    const char *test1= "--%dirname%--";
+    const char *test2= "--notexpanded=%%dirname%% expanded=%dirname%";
+    const char *test3= "--notfound=%filename%%";
+    const char *response;
+
+    json_object *tokenJ= json_tokener_parse("{'dirname':'/my/test/sample'}");
+    assert(tokenJ);
+
+    response= utilsExpandJson (test1, tokenJ);
+    assert(response);
+
+    response= utilsExpandJson (test2, tokenJ);
+    assert(response);
+
+    response= utilsExpandJson (test3, tokenJ);
+    assert(!response);
+}
 
 static int CtrlInitOneApi(afb_api_t api) {
     int err = 0;
+
+    testExpansion();
 
     // retrieve section config from api handle
     CtlConfigT* ctlConfig = (CtlConfigT*)afb_api_get_userdata(api);
@@ -416,7 +437,7 @@ int afbBindingEntry (afb_api_t api) {
     AFB_API_NOTICE(api, "Spawn Controller in afbBindingEntry");
 
     // register builtin encoders before plugin get load
-    encoderInit();
+    (void)encoderInit();
 
     envConfig= getenv("CONTROL_CONFIG_PATH");
     if (!envConfig) envConfig = CONTROL_CONFIG_PATH;

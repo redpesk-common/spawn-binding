@@ -7,12 +7,10 @@
   },
   "plugins": [
     {
-      "uid": "encoder-demo",
+      "uid": "encoder-sample",
       "info": "Plugin to handle user custom output formatting",
       "spath": "package/lib/:./lib/plugins:./var",
-      "libs": [
-         "spawn-encoder-demo.ctlso"
-      ]
+      "libs": "encoder-sample.ctlso"
     }
   ],
   "sandboxes": [
@@ -44,13 +42,10 @@
 
       "cgroups": {
         "mem": {"max": "512M", "hight": "256M", "min": "128K"},
-          "cpu": {"weight":"100","max": "100000"},
-          // "io":  "8:16 rbps=2097152 wiops=120"
+        "cpu": {"weight":"100","max": "100000"}
       },
 
-      // reference https://blog.yadutaf.fr/2014/05/29/introduction-to-seccomp-bpf-linux-syscall-filter/
       "seccomp": {
-          // "rulespath": "/my_rules",
           "default": "SCMP_ACT_ALLOW",
           "locked": false,
           "rules": [
@@ -117,19 +112,8 @@
           "exec": {"cmdpath": "/usr/bin/echo", "args": "%query%"},
           "sample": [
             {"args": {"query": "{'message':'simple'"}},
-            {"args": {"query": "-- ignore prefix --- {'message':'simple'} --- ignore tail ---"}}
+            {"args": {"query": "-- ignore prefix --- {'message':'simple'} --- ignore tail ---"}},
             {"args": {"query": "{'message':'complex'} {'test_1':1} {'test_2':0} {'complex':1, 'array':['elem1','elem2','elem3']}"}},
-          ]
-        },
-        {
-          "uid": "list",
-          "info" : "list files from a directory",
-          "usage": {"dirname": "xxxxx"},
-          // "format":{"plugin": "format-demo", "output": "filter", "opts":{"patern": "###"}},
-          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-lh", "%dirname%"]},
-          "sample": [
-            {"args": {"dirname": "/etc/udev"}},
-            {"args": {"dirname": "/var/cache/"}},
           ]
         },
         {
@@ -139,6 +123,7 @@
         },
         {
           "uid": "env",
+          "encoder":"line",
           "info" : "return current namespace env",
           "exec": {"cmdpath": "/usr/bin/env"},
         },
@@ -146,10 +131,31 @@
           "uid": "display",
           "info": "(format text) return one event per line",
           "usage": {"filename":"xxxx"},
-          "encoder": {"output": "text", "opts": {"maxlen":512}},
+          "encoder":"text",
           "exec": {"cmdpath": "/usr/bin/cat", "args":["%filename%"]},
           "sample": [
             {"args": {"filename": "/etc/passwd"}},
+          ]
+        },
+        {
+          "uid": "list",
+          "info" : "custom encoder sample outputs json_array of 'blkcount' lines",
+          "usage": {"dirname": "xxxxx"},
+          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-l", "%dirname%"]},
+          "sample": [
+            {"args": {"dirname": "/etc"}},
+            {"args": {"dirname": "/etc/udev"}},
+            {"args": {"dirname": "/var/cache/"}}
+          ]
+        },
+        {
+          "uid": "custom",
+          "info" : "custom encoder sample outputs json_array of 'blkcount' lines",
+          "usage": {"dirname": "xxxxx"},
+          "encoder":{"plugin": "format-demo", "output":"my-custom-encoder", "opts":{"blkcount":10, "maxlen":256}},
+          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-l", "%dirname%"]},
+          "sample": [
+            {"args": {"dirname": "/etc"}},
           ]
         }
       ]

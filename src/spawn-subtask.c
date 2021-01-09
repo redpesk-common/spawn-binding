@@ -79,7 +79,7 @@ static void taskPushResponse (taskIdT *taskId) {
 static void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
     assert (taskId->magic == MAGIC_SPAWN_TASKID);
 
-    fprintf (stderr, "**** taskPushFinalResponse taskId=0x%p pid=%d\n", taskId, taskId->pid);
+    // fprintf (stderr, "**** taskPushFinalResponse taskId=0x%p pid=%d\n", taskId, taskId->pid);
 
     // mark taskId as invalid
     taskId->pid=0;
@@ -94,20 +94,16 @@ static void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
         sd_event_source_unref (taskId->srcerr);
     }
 
-    fprintf (stderr, "**** taskPushFinalResponse taskId=0x%p step=2\n", taskId);
     if (taskId->timer) {
         TimerEvtStop(taskId->timer);
         free (taskId->timer);
     }
 
-    if (taskId->errFD) close (taskId->errFD);
-    if (taskId->outFD) close (taskId->outFD);
+    if (taskId->errfd) close (taskId->errfd);
+    if (taskId->outfd) close (taskId->outfd);
 
-    fprintf (stderr, "**** taskPushFinalResponse taskId=0x%p step=3\n", taskId);
     if (taskId->uid) free(taskId->uid);
     free(taskId);
-
-    fprintf (stderr, "**** taskPushFinalResponse taskId=0x%p step=4\n", taskId);
 
 }
 
@@ -138,22 +134,33 @@ static int spawnPipeFdCB (sd_event_source* source, int fd, uint32_t events, void
     // if taskId->pid == 0 then FMT_TASK_STOP was already called once
     if (taskId->pid) {
 
-        if (fd == taskId->outFD && events & EPOLLIN) {
+        if (fd == taskId->outfd && events & EPOLLIN) {
             err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_STD, cmd->encoder->fmtctx);
-            if (err) taskPushResponse (taskId);
+            if (err) {
+                wrap_json_pack (&taskId->responseJ, "{ss so* so*}"
+                   , "fail" ,"ENCODER_TASK_STDOUT"
+                   , "error" , taskId->errorJ
+                   , "status", taskId->statusJ
+                );
+                taskPushResponse (taskId);
+            }
 
-        } else if (fd == taskId->errFD && events & EPOLLIN) {
+        } else if (fd == taskId->errfd && events & EPOLLIN) {
             err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDERR, ENCODER_OPS_STD, cmd->encoder->fmtctx);
-            if (!err) taskPushResponse (taskId);
+            if (err) {
+                wrap_json_pack (&taskId->responseJ, "{ss so* so*}"
+                   , "fail" , "ENCODER_TASK_STDERR"
+                   , "error" , taskId->errorJ
+                   , "status", taskId->statusJ
+                );
+                taskPushResponse (taskId);
+            }
         }
-
         // what ever stdout/err pipe hanghup 1st we close both event sources
         if (events & EPOLLHUP) {
             spawnChildUpdateStatus (cmd->api, cmd->sandbox->binding, taskId);
-            taskId->pid=0; // mark taskId as done
         }
     }
-
     return 0;
 }
 
@@ -236,6 +243,7 @@ static int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ
     // create pipes FD to retreive son stdout/stderr
     pipe (stdoutP);
     pipe (stderrP);
+
     // fork son process
     sonPid= fork();
     if (sonPid < 0) goto OnErrorExit;
@@ -376,8 +384,8 @@ static int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ
         taskId->magic = MAGIC_SPAWN_TASKID;
         taskId->pid= sonPid;
         taskId->cmd= cmd;
-        taskId->outFD= stdoutP[0];
-        taskId->errFD= stderrP[0];
+        taskId->outfd= stdoutP[0];
+        taskId->errfd= stderrP[0];
         (void)asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
         AFB_API_NOTICE (api, "[taskid created] taskId=0x%p action='start' uid='%s' pid=%d (spawnTaskStart)", taskId, taskId->uid, sonPid);
 
@@ -405,20 +413,20 @@ static int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ
         if (err) goto OnErrorExit;
 
         // set pipe fd into noblock mode
-        fdFlags = fcntl(taskId->outFD, F_GETFL);
+        fdFlags = fcntl(taskId->outfd, F_GETFL);
         fdFlags &= ~O_NONBLOCK;
-        err= fcntl (taskId->outFD, F_SETFL, fdFlags);
+        err= fcntl (taskId->outfd, F_SETFL, fdFlags);
         if (err) goto OnErrorExit;
 
-        fdFlags = fcntl(taskId->errFD, F_GETFL);
+        fdFlags = fcntl(taskId->errfd, F_GETFL);
         fdFlags &= ~O_NONBLOCK;
-        err= fcntl (taskId->errFD, F_SETFL, fdFlags);
+        err= fcntl (taskId->errfd, F_SETFL, fdFlags);
         if (err) goto OnErrorExit;
 
         // register stdout/err piped FD within mainloop
-        err=sd_event_add_io(afb_api_get_event_loop(api), &taskId->srcout, taskId->outFD, EPOLLIN|EPOLLHUP, spawnPipeFdCB, taskId);
+        err=sd_event_add_io(afb_api_get_event_loop(api), &taskId->srcout, taskId->outfd, EPOLLIN|EPOLLHUP, spawnPipeFdCB, taskId);
         if (err) goto OnErrorExit;
-        err=sd_event_add_io(afb_api_get_event_loop(api), &taskId->srcerr, taskId->errFD, EPOLLIN|EPOLLHUP, spawnPipeFdCB, taskId);
+        err=sd_event_add_io(afb_api_get_event_loop(api), &taskId->srcerr, taskId->errfd, EPOLLIN|EPOLLHUP, spawnPipeFdCB, taskId);
         if (err) goto OnErrorExit;
 
         // update command anf binding global tids hashtable
@@ -648,7 +656,7 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnBindingT *binding, taskIdT *ta
     // taskId status was already collected
     if (taskId && !taskId->pid) return;
 
-    fprintf (stderr, "**** spawnChildUpdateStatus taskId=0x%p pid=%d\n", taskId, taskId->pid);
+    //fprintf (stderr, "**** spawnChildUpdateStatus taskId=0x%p pid=%d\n", taskId, taskId->pid);
 
     // we known what we're looking for
     if (taskId) expectPid=taskId->pid;

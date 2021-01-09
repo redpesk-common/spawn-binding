@@ -51,4 +51,4 @@ INSTALL(FILES
 	)
 
 
-# add_subdirectory("plugins")
+add_subdirectory("plugins")

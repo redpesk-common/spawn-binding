@@ -34,8 +34,6 @@
 #include  "spawn-binding.h"
 #include <afb-timer.h>
 
-
-
 typedef enum {
     ENCODER_STDOUT_UNKNOWN,
     ENCODER_TASK_STDOUT,
@@ -56,12 +54,33 @@ typedef struct  {
   int (*initCB)(shellCmdT *cmd, json_object *optsJ, void* fmtctx);
   int (*actionsCB)(taskIdT *taskId, encoderActionE action, encoderOpsE subAction, void* fmtctx);
   void *fmtctx;
-} taskEncoderCbT;
+} encoderCbT;
+
+typedef struct {
+    char *data;
+    long index;
+    long size;
+    long count;
+} streamBufT;
+
+#define PLUGIN_ENCODER_MAGIC 159357456
+
+typedef int encoderEventCbT (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context);
+typedef int encoderParserCbT(taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
+
+// this structure is returned by plugin registration callback
+typedef const struct {
+  long magic;
+  streamBufT *(*bufferSet) (streamBufT *buffer, ssize_t size);
+  int (*registrate) (const char *uid, encoderCbT *actionsCB);
+  int (*jsonParser) (taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
+  int (*textParser) (taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
+  int (*readStream) (taskIdT *taskId, int pipefd, streamBufT *buffer, ssize_t bufsize, encoderParserCbT parserCB, encoderEventCbT eventCB, encoderOpsE operation, void *userdata);
+} encoderPluginCbT;
 
 // spawn-encoder.c
-void encoderInit(void);
-void encoderRegister (char *uid, taskEncoderCbT *actionsCB);
-int  encoderFind (shellCmdT *cmd, json_object *encoderJ);
-typedef void (*registerCbT) (const char *uid, taskEncoderCbT *actionsCB);
+extern encoderPluginCbT encoderPluginCb;
+int encoderInit(void);
+int encoderFind (shellCmdT *cmd, json_object *encoderJ);
 
 #endif /* _SPAWN_ENCODER_S_INCLUDE_ */

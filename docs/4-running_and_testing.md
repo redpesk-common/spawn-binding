@@ -22,22 +22,29 @@ open binding UI with browser at `http://localhost:1234/devtools`
 
 ``` bash
 afb-client --human ws://localhost:1234/api
-# you can now send requests with the following syntax : <api> <verb> [eventual data in json format]
-# heare some available example for shell binding :
+    # default {"action":"start"}
+    # shell is tha name of you api within control config;json
+
 shell ping
 shell info
-shell admin/myid {"action":"start"}
-shell admin/env {"action":"start"}
-shell admin/cap {"action":"start"}
+shell admin/myid
+shell admin/env
+shell admin/cap
 
-shell admin/list {"action":"start","args":{"dirname":"/etc/udev"}}
-shell admin/display {"action":"start","args":{"filename":"/etc/passwd"}}
+shell admin/list {"args":{"dirname":"/etc"}}
+shell admin/display {"args":{"filename":"/etc/passwd"}}
 
 shell admin/json {"args":{"query":"{'test_1':1} {'test_2':0} {'complex':1, 'array': ['elem1', 'elem2', 'elem3']} "}}
 shell admin/json {"args":{"query":"{'complex':1, 'array': ['elem1', 'elem2', 'elem3']}}"}}
 
-shell admin/sleep {"action":"start","args":{"timeout":"180"}}
+shell admin/sleep {"args":{"timeout":"180"}}
+
+
+shell admin/sleep {"args":{"timeout":"180"}}
 shell admin/sleep {"action":"stop"}
+
+shell admin/custom {"args":{"dirname":"/etc"}}
+
 ```
 
 ## Adding your own config
@@ -46,7 +53,8 @@ Json config file is selected from *afb-binder --name=afb-midlename-xxx* option. 
 
 You may also choose to force your config file by exporting CONTROL_CONFIG_PATH environnement variable. For further information, check binding controller documentation [here](../../developer-guides/controllerConfig.html)
 
-**Warning:** some TCP shell device as KingPigeon check SalveID even for building I/O. Generic config make the assumption that your slaveID is set to *'1'*.
+WARNING: json is not very human friendly. Check your config syntax with a json linter as ```jq < myconfig.json``` 'jq' should be available on any decent Linux dispo.
+
 
 ```bash
 export CONTROL_CONFIG_PATH="$HOME/my-spawn-config-directory"

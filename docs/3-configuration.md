@@ -96,7 +96,7 @@ The shell binding supports both builtin format converter and optional custom con
 ```c
 // Sample of custom formatter (king-pigeon-encore.c)
 // -------------------------------------------------
-static taskEncoderCbT pigeonEncoders[] = {
+static encoderRegistryT pigeonEncoders[] = {
     {
       .uid="devinfo",
       .info="return KingPigeon Device Info as an array",

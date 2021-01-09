@@ -1,5 +1,5 @@
 
-PROJECT_TARGET_ADD(kingpigeon)
+PROJECT_TARGET_ADD(encoder-sample)
 
 	# compile any C file starting with a lower case
 	file(GLOB CSOURCES [a-z]*.c)
@@ -15,6 +15,6 @@ PROJECT_TARGET_ADD(kingpigeon)
 			OUTPUT_NAME ${TARGET_NAME}
 	)
 
-	# compilation include path 
+	# compilation include path
 	target_include_directories(${TARGET_NAME}
 	PRIVATE "${CMAKE_SOURCE_DIR}/src")

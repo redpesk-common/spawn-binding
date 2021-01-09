@@ -41,12 +41,8 @@ seccomp
     cat /proc/cmdline
     mount | grep cgroup2
 
-*********
-* encoder json faire le parser count de {} )
-*********
 
-* coder un encodeur 10l/10l comme demo
+DEBUG CUSTOM
 
-1) voir pour le verb info
 2) Ajouter bwrap
 3) faire la doc

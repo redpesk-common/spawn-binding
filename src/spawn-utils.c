@@ -364,7 +364,7 @@ const char *utilsExpandKey (const char* src) {
 
 // replace any %key% with its coresponding json value (warning: json is case sensitive)
 const char *utilsExpandJson (const char* src, json_object *keysJ) {
-    int srcIdx, destIdx=0, labelIdx=0, expanded=0;
+    int srcIdx, destIdx=0, labelIdx, expanded=0;
     char dst[SPAWN_MAX_ARG_LEN], label[SPAWN_MAX_ARG_LABEL];
     const char *response;
     json_object *labelJ;
@@ -372,14 +372,26 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
     if (!src || !keysJ) goto OnErrorExit;
 
     for (srcIdx=0; src[srcIdx]; srcIdx++) {
+
+        // replace "%%" by '%'
+        if (src[srcIdx] == '%' && src[srcIdx+1] == '%') {
+            dst[destIdx++]= src[srcIdx];
+            srcIdx++;
+            continue;
+        }
+
         if (src[srcIdx] != '%') {
             dst[destIdx++]= src[srcIdx];
+
         } else {
             expanded=1;
+            labelIdx=0;
             // extract expansion label for source argument
-            for (srcIdx=srcIdx+1; src[srcIdx] != '%'; srcIdx++) {
-                label[labelIdx++]= src[srcIdx];
-                if (labelIdx == SPAWN_MAX_ARG_LABEL) goto OnErrorExit;
+            for (srcIdx=srcIdx+1; src[srcIdx]  ; srcIdx++) {
+                if (src[srcIdx] != '%' ) {
+                    label[labelIdx++]= src[srcIdx];
+                    if (labelIdx == SPAWN_MAX_ARG_LABEL) goto OnErrorExit;
+                } else break;
             }
 
             // close label string and remove trailling '%' from destination
@@ -397,11 +409,14 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
         }
     }
     dst[destIdx++] = '\0';
-    fprintf (stderr, "utilsExpandJson: '%s' => '%s'\n", src, dst);
 
     // when expanded make a copy of dst into params
-    if (expanded) response= strdup(dst);
-    else response=src;
+    if (!expanded) {
+        response=src;
+    } else {
+        // fprintf (stderr, "utilsExpandJson: '%s' => '%s'\n", src, dst);
+        response= strdup(dst);
+    }
 
     return response;
 
