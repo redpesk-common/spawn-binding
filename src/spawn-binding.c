@@ -204,7 +204,7 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
     }
 
     // use sandbox timeout as default
-    if (!cmd->timeout && !sandbox->acls) cmd->timeout= sandbox->acls->timeout;
+    if (!cmd->timeout && sandbox->acls) cmd->timeout= sandbox->acls->timeout;
 
     // pre-parse command to boost runtime execution
     err= spawnParse (cmd, execJ);
@@ -429,19 +429,19 @@ int afbBindingEntry (afb_api_t api) {
     // register builtin encoders before plugin get load
     (void)encoderInit();
 
-    configFile= getenv("SPAWN_CONFIG_FILE");
+    configFile= getenv("AFB_SPAWN_CONFIG");
     if (!configFile) {
 
-        envConfig= getenv("SPAWN_CONFIG_PATH");
+        envConfig= getenv("AFB_SPAWN_PATH");
         if (!envConfig) envConfig = CONTROL_CONFIG_PATH;
 
         status=asprintf (&searchPath,"%s:%s/etc", envConfig, GetBindingDirPath(api));
-        AFB_API_DEBUG(api, "afbBindingEntry: Json config directory : %s", searchPath);
+        AFB_API_DEBUG(api, "spawn-binding: json config directory : %s", searchPath);
 
         prefix = "control";
         configFile= CtlConfigSearch(api, searchPath, prefix);
         if (!configFile) {
-            AFB_API_ERROR(api, "afbBindingEntry: No %s-%s* config found in %s ", prefix, GetBinderName(), searchPath);
+            AFB_API_ERROR(api, "spawn-binding: No %s-%s* config found in %s ", prefix, GetBinderName(), searchPath);
             status = ERROR;
             goto _exit_afbBindingEntry;
         }
@@ -449,7 +449,7 @@ int afbBindingEntry (afb_api_t api) {
     // load config file and create API
     CtlConfigT* ctlConfig = CtlLoadMetaData(api, configFile);
     if (!ctlConfig) {
-        AFB_API_ERROR(api, "### Invalid json config -- check with 'jq <%s' ###", configFile);
+        AFB_API_ERROR(api, "### spawn-binding invalid json config -- check with 'jq <%s' ###", configFile);
         status = ERROR;
         goto _exit_afbBindingEntry;
     }

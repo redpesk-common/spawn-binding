@@ -69,6 +69,7 @@ static int spawnPipeFdCB (sd_event_source* source, int fd, uint32_t events, void
     if (taskId->pid) {
 
         if (fd == taskId->outfd && events & EPOLLIN) {
+            if (taskId->verbose >2) AFB_API_INFO (cmd->api, "spawnPipeFdCB: uid=%s pid=%d [EPOLLIN stdout=%d]", taskId->uid, taskId->pid, taskId->outfd );
             err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_STD, cmd->encoder->fmtctx);
             if (err) {
                 wrap_json_pack (&taskId->responseJ, "{ss so* so*}"
@@ -77,9 +78,12 @@ static int spawnPipeFdCB (sd_event_source* source, int fd, uint32_t events, void
                    , "status", taskId->statusJ
                 );
                 taskPushResponse (taskId);
+                taskId->errorJ=NULL;
+                taskId->statusJ=NULL;
             }
 
         } else if (fd == taskId->errfd && events & EPOLLIN) {
+            if (taskId->verbose >2) AFB_API_INFO (cmd->api, "spawnPipeFdCB: uid=%s pid=%d [EPOLLIN stderr=%d]", taskId->uid, taskId->pid, taskId->outfd );
             err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDERR, ENCODER_OPS_STD, cmd->encoder->fmtctx);
             if (err) {
                 wrap_json_pack (&taskId->responseJ, "{ss so* so*}"
@@ -88,6 +92,8 @@ static int spawnPipeFdCB (sd_event_source* source, int fd, uint32_t events, void
                    , "status", taskId->statusJ
                 );
                 taskPushResponse (taskId);
+                taskId->errorJ=NULL;
+                taskId->statusJ=NULL;
             }
         }
         // what ever stdout/err pipe hanghup 1st we close both event sources
@@ -312,7 +318,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         taskId->outfd= stdoutP[0];
         taskId->errfd= stderrP[0];
         (void)asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
-        AFB_API_NOTICE (api, "[taskid created] taskId=0x%p action='start' uid='%s' pid=%d (spawnTaskStart)", taskId, taskId->uid, sonPid);
+        if (verbose) AFB_API_NOTICE (api, "[taskid created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
 
         // create task event
         taskId->event = afb_api_make_event(api, taskId->uid);

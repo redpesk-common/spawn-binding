@@ -1,0 +1,81 @@
+{
+  "metadata": {
+    "uid": "spawn-svc",
+    "version": "1.0",
+    "api": "shell",
+    "info": "Basic Config with no namespace, no plugin, no capabiliy"
+  },
+  "sandboxes": [
+    {
+      "uid": "sandbox-simple",
+      "info": "Shell simple demo",
+      "prefix": "admin",
+      "commands": [
+        {
+          "uid": "home",
+          "info" : "expand $home on server side",
+          "exec": {"cmdpath": "/bin/ls", "args": ["-l", "$HOME"]}
+        },
+        {
+          "uid": "afbroot",
+          "info" : "expand afb_binder root directory",
+          "exec": {"cmdpath": "/bin/echo", "args": ["$AFB_ROOTDIR"]}
+        },
+        {
+          "uid": "mycap",
+          "info" : "return sandbox capabilities",
+          "privilege": "special privilege",
+          "exec": {"cmdpath": "/sbin/capsh", "args": ["--print"]}
+        },
+        {
+          "uid": "sleep",
+          "info" : "sleep timeout second",
+          "usage": {"timeout": "xx"},
+          "exec": {"cmdpath": "/bin/sleep", "args": ["%timeout%"]},
+          "sample": [
+            {"action":"start", "args": {"timeout": "180"}},
+            {"action":"stop", "args": {"signal":"sigterm"}}
+          ]
+        },
+        {
+          "uid": "timeout",
+          "info" : "sleep should fail because of 3s timeout",
+          "timeout": 3,
+          "exec": {"cmdpath": "/bin/sleep", "args": 80}
+        },
+        {
+          "uid": "myid",
+          "info" : "return current namespace id",
+          "exec": {"cmdpath": "/usr/bin/id"}
+        },
+        {
+          "uid": "env",
+          "encoder":"line",
+          "info" : "return current namespace env",
+          "exec": {"cmdpath": "/usr/bin/env"}
+        },
+        {
+          "uid": "display",
+          "info": "(format text) return one event per line",
+          "usage": {"filename":"xxxx"},
+          "encoder":"text",
+          "exec": {"cmdpath": "/bin/cat", "args":["%filename%"]},
+          "sample": [
+            {"args": {"filename": "/etc/passwd"}}
+          ]
+        },
+        {
+          "uid": "list",
+          "info" : "custom encoder sample outputs json_array of 'blkcount' lines",
+          "usage": {"dirname": "xxxxx"},
+          "exec": {"cmdpath": "/bin/ls", "args": ["-l", "%dirname%"]},
+          "sample": [
+            {"args": {"dirname": "/etc"}},
+            {"args": {"dirname": "/etc/udev"}},
+            {"args": {"dirname": "/var/cache/"}}
+          ]
+        }
+      ]
+    }
+  ]
+}

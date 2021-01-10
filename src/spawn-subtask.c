@@ -321,7 +321,6 @@ int spawnParse (shellCmdT *cmd, json_object *execJ) {
     return 1;
 }
 
-
 // search taskId from child pid within global binding gtids
 static taskIdT *spawnChildGetTaskId (spawnBindingT *binding, int childPid) {
     taskIdT *taskId;

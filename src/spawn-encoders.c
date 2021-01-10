@@ -104,10 +104,10 @@ static int encoderJsonParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len,
     // nothing else to read this is our last call
     if (len == 0) {
         if (docId->index == docId->size) {
-            AFB_API_NOTICE(taskId->cmd->api, "encoderJsonParserCB: [json too long] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
+            if (taskId->cmd->verbose) AFB_API_NOTICE(taskId->cmd->api, "[json too long] encoderJsonParserCB: sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
             docId->data[docId->index++] = '\\';
             docId->data[docId->index++] = '\0';
-            err= callback(taskId, docId, 0, json_object_new_string ("line too long truncated with '\\'"),context);
+            err= callback(taskId, docId, 0, json_object_new_string ("line(s) too long folded with '\\' [increase {'linemax':xxxx}]"),context);
             if (err) goto OnErrorExit;
         } else {
             docId->data[docId->index++] = '\0';

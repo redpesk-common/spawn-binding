@@ -135,7 +135,7 @@ static int nsParseOneEnv (afb_api_t api, json_object *envJ, confEnvT *env)  {
     const char *keymode= NULL;
 
     err= wrap_json_unpack (envJ, "{ss s?s s?s !}"
-    ,"key", &env->key
+    ,"name", &env->key
     ,"value", &env->value
     ,"mode", &keymode
     );

@@ -21,11 +21,11 @@
       "privilege": "global privilege",
       "verbose":9,
       "envs" : [
-          {"key": "HOME", "value": "/home"},
-          {"key": "HOSTNAME", "value":"sandbox"},
-          {"key": "SESSION_MANAGER", "mode":"unset"},
-          {"key": "PATH", "value":"/bin"},
-          {"key": "LD_LIBRAY_PATH", "value":"/usr/lib64"}
+          {"name": "HOME", "value": "/home"},
+          {"name": "HOSTNAME", "value":"sandbox"},
+          {"name": "SESSION_MANAGER", "mode":"unset"},
+          {"name": "PATH", "value":"/bin"},
+          {"name": "LD_LIBRAY_PATH", "value":"/usr/lib64"}
         ],
 
       "acls": {

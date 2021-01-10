@@ -5,6 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
+          // AFB_SPAWN_CONFIG=../../conf.d/project/etc/spawn-sample-simple.json afb-binder --name=afb-spawn --binding=./lib/afb-spawn.so --verbose
           "name": "Demo Config cppdbg",
           "type": "cppdbg",
           "request": "launch",
@@ -14,14 +15,13 @@
             "--port=1234",
             "--ldpaths=.",
             "--workdir=.",
-            "--verbose",
-            "--verbose",
-            "--verbose",
+            "--binding=./lib/afb-spawn.so",
+            "-VVV",
             "--trap-faults=no"
           ],
-          "stopAtEntry": false,
+          "stopAtEntry": true,
           "cwd": "${workspaceFolder}/build/package",
-          "environment": [],
+          "environment": [{"name":"AFB_SPAWN_CONFIG", "value":"../../conf.d/project/etc/spawn-sample-simple.json"}],
           "externalConsole": false,
           "MIMode": "gdb",
           "setupCommands": [
