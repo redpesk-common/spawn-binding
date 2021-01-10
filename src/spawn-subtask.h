@@ -34,6 +34,7 @@ struct taskIdS {
   spawnMagicT magic;
   int pid; // hashtable key
   char *uid;
+  int verbose;
   int outfd;
   int errfd;
   shellCmdT *cmd;
@@ -58,6 +59,6 @@ void taskPushResponse (taskIdT *taskId);
 void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId);
 
 // spawn-child.c
-int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ);
+int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose);
 
 #endif /* _SPAWN_SUBTASK_INCLUDE_ */

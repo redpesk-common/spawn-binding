@@ -78,8 +78,7 @@ void taskPushResponse (taskIdT *taskId) {
 
 void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
     assert (taskId->magic == MAGIC_SPAWN_TASKID);
-
-    // fprintf (stderr, "**** taskPushFinalResponse taskId=0x%p pid=%d\n", taskId, taskId->pid);
+    if (taskId->verbose >2) AFB_API_INFO (api, "spawnFreeTaskId: uid=%s pid=%d", taskId->uid, taskId->pid);
 
     // mark taskId as invalid
     taskId->pid=0;
@@ -110,15 +109,12 @@ void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
 static void taskPushFinalResponse (taskIdT *taskId) {
     shellCmdT *cmd=taskId->cmd;
 
-    // fprintf (stderr, "**** taskPushFinalResponse taskId=0x%p pid=%d\n", taskId, taskId->pid);
-
-    // read any remaining data
+    // try to read any remaining data before building exit status
+    if (taskId->verbose >2) AFB_API_INFO (taskId->cmd->api, "taskPushFinalResponse: uid=%s pid=%d [step-1: collect remaining data]", taskId->uid, taskId->pid);
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDERR, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STOP, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
-
-    // status should have been updated with signal handler
-    AFB_API_NOTICE(cmd->api, "[child taskPushFinalResponse] taskId=0x%p action='stop' uid='%s' status=%s (taskPushFinalResponse)",  taskId, taskId->uid, json_object_get_string(taskId->statusJ));
+    if (taskId->verbose >2) AFB_API_INFO (taskId->cmd->api, "taskPushFinalResponse: uid=%s pid=%d [step-2: collect child status=%s]", taskId->uid, taskId->pid, json_object_get_string(taskId->statusJ));
 
     // push final response if any and clear taskId
     taskPushResponse (taskId);
@@ -130,6 +126,7 @@ static int taskCtrlOne (afb_req_t request, taskIdT *taskId, taskActionE action, 
     assert (taskId->magic == MAGIC_SPAWN_TASKID);
     int err;
 
+    if (taskId->verbose>1) AFB_REQ_INFO (request, "taskCtrlOne: sandbox=%s cmd=%s pid=%d action=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid, action);
     switch (action) {
         case SPAWN_ACTION_STOP:
             kill (taskId->pid, signal);
@@ -154,7 +151,7 @@ OnErrorExit:
     return 1;
 }
 
-static int spawnTaskControl (afb_req_t request, shellCmdT *cmd, taskActionE action, json_object *argsJ) {
+static int spawnTaskControl (afb_req_t request, shellCmdT *cmd, taskActionE action, json_object *argsJ, int verbose) {
     taskIdT *taskId, *tidNext;
     json_object *responseJ;
     int err=0;
@@ -224,10 +221,10 @@ void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ) {
     assert (cmd);
     const char *action="start";
     json_object *argsJ=NULL;
-    int err;
+    int err, verbose=0;
 
     if (json_object_is_type (queryJ, json_type_object)) {
-        err= wrap_json_unpack(queryJ, "{s?s s?o !}", "action", &action, "args", &argsJ);
+        err= wrap_json_unpack(queryJ, "{s?s s?o s?i !}", "action", &action, "args", &argsJ, "verbose", &verbose);
         if (err) {
             afb_req_fail_f(request, "query-error", "spawnTaskVerb: invalid 'json' sandbox=%s cmd=%s query=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(queryJ));
             goto OnErrorExit;
@@ -235,19 +232,19 @@ void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ) {
     }
 
     if (!strcasecmp (action, "start")) {
-        err = spawnTaskStart (request, cmd, argsJ);
+        err = spawnTaskStart (request, cmd, argsJ, verbose);
         if (err) goto OnErrorExit;
 
     } else if (!strcasecmp (action, "stop")) {
-        err = spawnTaskControl (request, cmd, SPAWN_ACTION_STOP, argsJ);
+        err = spawnTaskControl (request, cmd, SPAWN_ACTION_STOP, argsJ, verbose);
         if (err) goto OnErrorExit;
 
     } else if (!strcasecmp (action, "subscribe")) {
-        err = spawnTaskControl (request, cmd, SPAWN_ACTION_SUBSCRIBE, argsJ);
+        err = spawnTaskControl (request, cmd, SPAWN_ACTION_SUBSCRIBE, argsJ, verbose);
         if (err) goto OnErrorExit;
 
     } else if (!strcasecmp (action, "unsubscribe")) {
-        err = spawnTaskControl (request, cmd,  SPAWN_ACTION_UNSUBSCRIBE, argsJ);
+        err = spawnTaskControl (request, cmd,  SPAWN_ACTION_UNSUBSCRIBE, argsJ, verbose);
         if (err) goto OnErrorExit;
 
     } else {
@@ -340,19 +337,20 @@ static taskIdT *spawnChildGetTaskId (spawnBindingT *binding, int childPid) {
 
 void spawnChildUpdateStatus (afb_api_t api,  spawnBindingT *binding, taskIdT *taskId) {
     int childPid, childStatus;
-    int expectPid=-1;
+    int expectPid=0; // wait for any child whose process group ID is equal to calling process
     shellCmdT *cmd;
 
     // taskId status was already collected
     if (taskId && !taskId->pid) return;
 
-    //fprintf (stderr, "**** spawnChildUpdateStatus taskId=0x%p pid=%d\n", taskId, taskId->pid);
-
     // we known what we're looking for
-    if (taskId) expectPid=taskId->pid;
+    if (taskId) {
+        if (taskId->verbose >2) AFB_API_INFO (api, "spawnChildUpdateStatus: uid=%s pid=%d [step-1 wait sigchild]", taskId->uid, taskId->pid);
+        expectPid=taskId->pid;
+    }
 
     // retreive every child status as many child may share the same signal
-    while ((childPid = waitpid (expectPid, &childStatus, WNOHANG)) > 0) {
+    while ((childPid = waitpid (expectPid, &childStatus, 0 /* Fulup removed WNOHANG ??? */)) > 0) {
 
         // anonymous childs signal should be check agains global binding taskid
         if (!taskId) taskId= spawnChildGetTaskId (binding, childPid);
@@ -383,6 +381,7 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnBindingT *binding, taskIdT *ta
         }
 
         // push final respond to every taskId subscriber
+        if (taskId->verbose >2) AFB_API_INFO (api, "spawnChildUpdateStatus: uid=%s pid=%d [step-2 got sigchild status=%d]", taskId->uid, taskId->pid, childStatus);
         taskPushFinalResponse (taskId);
 
     } // end while
@@ -393,7 +392,7 @@ int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* 
     assert(binding->magic == MAGIC_SPAWN_BDING);
 
     // Ignore termination child signal outside of stdout pipe handup
-    AFB_API_NOTICE(binding->api, "[child gtids signal] (spawnChildSignalCB)");
+    /* if (binding->verbose >2) */ AFB_API_NOTICE(binding->api, "[child gtids signal] (spawnChildSignalCB)");
     spawnChildUpdateStatus (binding->api, binding, NULL);
 
     return 0;
@@ -413,16 +412,12 @@ int spawnChildMonitor (afb_api_t api, sd_event_io_handler_t callback, spawnBindi
         goto OnErrorExit;
     }
 
-/* Fulup do not monitor global sigchild as we may get a signal both from global and from pipe hangup
-    int sigFd;
-
-    sigFd = signalfd (-1, &sigMask, SFD_CLOEXEC | SFD_NONBLOCK);
+    int sigFd = signalfd (-1, &sigMask, SFD_CLOEXEC | SFD_NONBLOCK);
     if (sigFd < 0) {
         AFB_API_NOTICE(api, "[signalfd SIGCHLD fail] error=%s (spawnChildMonitor)", strerror(errno));
         goto OnErrorExit;
     }
-    (void*)sd_event_add_io(afb_api_get_event_loop(api), NULL, sigFd, EPOLLIN, callback, (void*)binding);
-*/
+    (void)sd_event_add_io(afb_api_get_event_loop(api), NULL, sigFd, EPOLLIN, callback, (void*)binding);
 
     return 0;
 

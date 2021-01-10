@@ -73,7 +73,6 @@ set (gcc_minimal_version 4.9)
 set (PKG_REQUIRED_LIST
 	uuid
 	json-c
-	libcap
 	libcap-ng
 	libseccomp
 	afb-binding

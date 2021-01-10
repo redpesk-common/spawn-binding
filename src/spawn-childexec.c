@@ -110,7 +110,7 @@ static void childDumpArgv (shellCmdT *cmd, const char **params) {
 
 // Build Child execv argument list. Argument list is compose of expanded argument from config + namespace specific one.
 // Note that argument expansion is done after fork(). Modifiing config RAM structure has no impact on afb-binder/binding
-static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ) {
+static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int verbose) {
     const char **params;
     int argcount;
 
@@ -142,18 +142,18 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ) {
 
             params[argcount++]= utilsExpandJson (cmd->argv[idx], argsJ);
             if (!params[argcount-1]) {
-                fprintf (stderr, "[fail expanding] sandbox=%s cmd='%s' args='%s' config=%s\n", cmd->sandbox->uid, cmd->uid, cmd->argv[idx], json_object_get_string(argsJ));
+                fprintf (stderr, "[fail expanding] sandbox=%s cmd='%s' config:args='%s' query:args=%s\n", cmd->sandbox->uid, cmd->uid, cmd->argv[idx], json_object_get_string(argsJ));
                 exit (1);
             }
         }
         params[argcount]=NULL;
     }
 
-    if (cmd->verbose) childDumpArgv (cmd, params);
+    if (verbose) childDumpArgv (cmd, params);
     return (char* const*)params;
 } // end childBuildArgv
 
-int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ) {
+int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose) {
     assert(cmd);
     json_object *responseJ;
     pid_t sonPid;
@@ -182,7 +182,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ) {
 
         // redirect stdout/stderr on binding pipes
         err= dup2(stdoutP[1], STDOUT_FILENO);
-        err=+dup2(stderrP[1], STDERR_FILENO);
+        if (verbose > 2) err=+dup2(stderrP[1], STDERR_FILENO);
         if (err < 0) {
             fprintf (stderr, "spawnTaskStart: [fail to dup stdout/err] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
             exit (1);
@@ -260,7 +260,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ) {
         }
 
         // build command arguments
-        params= childBuildArgv (cmd, argsJ);
+        params= childBuildArgv (cmd, argsJ, verbose);
 
         // finish by seccomp syscall filter as potentially this may prevent previous action to appen. (seccomp do not require privilege)
         if (cmd->sandbox->seccomp) {
@@ -308,6 +308,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ) {
         taskId->magic = MAGIC_SPAWN_TASKID;
         taskId->pid= sonPid;
         taskId->cmd= cmd;
+        taskId->verbose= verbose + cmd->verbose;
         taskId->outfd= stdoutP[0];
         taskId->errfd= stderrP[0];
         (void)asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid);

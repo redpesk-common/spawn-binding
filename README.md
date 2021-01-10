@@ -41,6 +41,7 @@ seccomp
     cat /proc/cmdline
     mount | grep cgroup2
 
+debug mort prematuré du Child
 
-2) Ajouter bwrap
-3) faire la doc
+    - tester sur (fonctionnal + fedora +ubuntu)
+    - faire la doc

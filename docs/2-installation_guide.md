@@ -21,9 +21,15 @@
   * binding helpers 'afb-libhelpers-devel'
   * cmake template 'afb-cmake-modules'
   * ui-devel html5 'afb-ui-devtools'
+
 * From your preferred Linux distribution repos
-  * Libshell 3.1.6
-  * Lua
+  * json-c-dev
+  * libcap-ng-dev  (verifier la dépendance avec libcap)
+  * libseccomp-dev
+  * liblua5.3-dev
+  * uthash-dev  (voir comment le mettre en dépendance sur Ferora)
+  * bwrap
+
 
 #### Install Libshell
 

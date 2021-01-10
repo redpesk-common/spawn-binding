@@ -19,12 +19,12 @@
       "info": "Shell admin commands",
       "prefix": "admin",
       "privilege": "global privilege",
-      "verbose":1,
+      "verbose":9,
       "envs" : [
           {"key": "HOME", "value": "/home"},
           {"key": "HOSTNAME", "value":"sandbox"},
           {"key": "SESSION_MANAGER", "mode":"unset"},
-          {"key": "PATH", "value":"/usr/bin"},
+          {"key": "PATH", "value":"/bin"},
           {"key": "LD_LIBRAY_PATH", "value":"/usr/lib64"}
         ],
 
@@ -78,24 +78,24 @@
         {
           "uid": "home",
           "info" : "expand $home on server side",
-          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-l", "$HOME"]}
+          "exec": {"cmdpath": "/bin/ls", "args": ["-l", "$HOME"]}
         },
         {
           "uid": "afbroot",
           "info" : "expand afb_binder root directory",
-          "exec": {"cmdpath": "/usr/bin/echo", "args": ["$AFB_ROOTDIR"]}
+          "exec": {"cmdpath": "/bin/echo", "args": ["$AFB_ROOTDIR"]}
         },
         {
           "uid": "mycap",
           "info" : "return sandbox capabilities",
           "privilege": "special privilege",
-          "exec": {"cmdpath": "/usr/sbin/capsh", "args": ["--print"]}
+          "exec": {"cmdpath": "/sbin/capsh", "args": ["--print"]}
         },
         {
           "uid": "sleep",
           "info" : "sleep timeout second",
           "usage": {"timeout": "xx"},
-          "exec": {"cmdpath": "/usr/bin/sleep", "args": ["%timeout%"]},
+          "exec": {"cmdpath": "/bin/sleep", "args": ["%timeout%"]},
           "sample": [
             {"action":"start", "args": {"timeout": "180"}},
             {"action":"stop", "args": {"pid": 1234, "signal":"sigterm"}},
@@ -106,13 +106,13 @@
           "uid": "timeout",
           "info" : "sleep should fail because of 3s timeout",
           "timeout": 3,
-          "exec": {"cmdpath": "/usr/bin/sleep", "args": 80}
+          "exec": {"cmdpath": "/bin/sleep", "args": 80}
         },
         {
           "uid": "json",
           "info" : "test json encoder take json from stdout",
           "encoder": {"output": "json", "opts": {"maxlen":1024}},
-          "exec": {"cmdpath": "/usr/bin/echo", "args": "%query%"},
+          "exec": {"cmdpath": "/bin/echo", "args": "%query%"},
           "sample": [
             {"args": {"query": "{'message':'simple'"}},
             {"args": {"query": "-- ignore prefix --- {'message':'simple'} --- ignore tail ---"}},
@@ -135,7 +135,7 @@
           "info": "(format text) return one event per line",
           "usage": {"filename":"xxxx"},
           "encoder":"text",
-          "exec": {"cmdpath": "/usr/bin/cat", "args":["%filename%"]},
+          "exec": {"cmdpath": "/bin/cat", "args":["%filename%"]},
           "sample": [
             {"args": {"filename": "/etc/passwd"}}
           ]
@@ -144,7 +144,7 @@
           "uid": "list",
           "info" : "custom encoder sample outputs json_array of 'blkcount' lines",
           "usage": {"dirname": "xxxxx"},
-          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-l", "%dirname%"]},
+          "exec": {"cmdpath": "/bin/ls", "args": ["-l", "%dirname%"]},
           "sample": [
             {"args": {"dirname": "/etc"}},
             {"args": {"dirname": "/etc/udev"}},
@@ -156,7 +156,7 @@
           "info" : "custom encoder sample outputs json_array of 'blkcount' lines",
           "usage": {"dirname": "xxxxx"},
           "encoder":{"plugin": "format-demo", "output":"my-custom-encoder", "opts":{"blkcount":10, "maxlen":256}},
-          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-l", "%dirname%"]},
+          "exec": {"cmdpath": "/bin/ls", "args": ["-l", "%dirname%"]},
           "sample": [
             {"args": {"dirname": "/etc"}}
           ]

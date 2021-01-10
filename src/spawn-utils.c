@@ -394,11 +394,14 @@ void utilsExpandJsonDebug (void) {
     json_object *tokenJ1= json_tokener_parse("{'dirname':'/my/test/sample'}"); assert(tokenJ1);
     json_object *tokenJ2= json_tokener_parse("{ 'filename': '/etc/passwd' }"); assert(tokenJ2);
 
+    // should work
     response= utilsExpandJson ("%filename%", tokenJ2);    assert(response);
-
     response= utilsExpandJson ("--%dirname%--", tokenJ1);    assert(response);
     response= utilsExpandJson ("--%dirname%--", tokenJ1);   assert(response);
     response= utilsExpandJson ("--notexpanded=%%dirname%% expanded=%dirname%", tokenJ1);  assert(response);
+    response= utilsExpandJson ("/home/test/fulup", tokenJ1);   assert(response);
+
+    // should fail
     response= utilsExpandJson ("--notfound=%filename%%", tokenJ1);  assert(!response);
 }
 

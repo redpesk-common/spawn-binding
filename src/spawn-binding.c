@@ -268,7 +268,7 @@ static int sandboxLoadOne(afb_api_t api, sandBoxT *sandbox, json_object *sandbox
     }
 
     // if verbose is 5 then check string expansion works
-    if (sandbox->verbose > 4) utilsExpandJsonDebug();
+    if (sandbox->verbose) utilsExpandJsonDebug(); // in verbose test parsing before forking a child
 
     if (envsJ) {
             sandbox->envs= sandboxParseEnvs(api, sandbox, envsJ);
@@ -343,8 +343,8 @@ static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandb
 
     // config is processed nothing more to be done
     if (!sandboxesJ) {
-        int err= spawnChildMonitor (api, spawnChildSignalCB, binding);
-        if (err) goto OnErrorExit;
+        // Fulup do not monitor non taskId childrens int err= spawnChildMonitor(api, spawnChildSignalCB, binding);
+        // if (err) goto OnErrorExit;
         return 0;
     }
 
