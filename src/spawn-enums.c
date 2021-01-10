@@ -81,6 +81,14 @@ const nsKeyEnumT mountMode[] = {
     {NULL} // terminator
 };
 
+const nsKeyEnumT nsShareMode[] = {
+    {"default", NS_SHARE_DEFAULT},
+    {"enable", NS_SHARE_ENABLE},
+    {"disable", NS_SHARE_DISABLE},
+
+    {NULL} // terminator
+};
+
 const nsKeyEnumT envMode[] = {
     {"set", NS_ENV_SET},
     {"unset", NS_ENV_UNSET},
@@ -98,6 +106,7 @@ const nsKeyEnumT capMode[] = {
 // search for key label within key/value array
 int enumMapValue (const nsKeyEnumT *keyvals, const char *label) {
     int value= -1;
+    if (!label) goto OnDefaultExit;
 
     for (int idx=0; keyvals[idx].label; idx++) {
         if (!strcasecmp (label,keyvals[ idx].label)) {
@@ -106,4 +115,7 @@ int enumMapValue (const nsKeyEnumT *keyvals, const char *label) {
         }
     }
     return value;
+
+OnDefaultExit:
+    return keyvals[0].value;
 }

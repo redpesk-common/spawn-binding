@@ -167,11 +167,15 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
     memset(cmd, 0, sizeof (shellCmdT));
     cmd->sandbox   = sandbox;
 
+    // default verbose is sandbox->verbose
+    cmd->verbose= -1;
+
     // parse shell command and lock format+exec object if defined
-    err = wrap_json_unpack(cmdJ, "{ss,s?s,s?i,s?s,s?o,s?o,s?o,s?o !}"
+    err = wrap_json_unpack(cmdJ, "{ss,s?s,s?i,s?i,s?s,s?o,s?o,s?o,s?o !}"
                 ,"uid", &cmd->uid
                 ,"info", &cmd->info
                 ,"timeout", &cmd->timeout
+                ,"verbose", &cmd->verbose
                 ,"privilege", &privilege
                 ,"usage", &cmd->usageJ
                 ,"encoder", &encoderJ
@@ -182,6 +186,9 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
         AFB_API_ERROR(api, "cmdLoadOne: [parsing error] sandbox='%s' fail to parse cmd=%s", sandbox->uid, json_object_to_json_string(cmdJ));
         goto OnErrorExit;
     }
+
+    // if verbose undefined
+    if (cmd->verbose<0) cmd->verbose=sandbox->verbose;
 
     // find encode/decode callback
     cmd->api = api;
@@ -241,11 +248,12 @@ static int sandboxLoadOne(afb_api_t api, sandBoxT *sandbox, json_object *sandbox
     sandbox->magic= MAGIC_SPAWN_SBOX;
 
     // user 'O' to force json objects not to be released
-    err = wrap_json_unpack(sandboxJ, "{ss,s?s,s?s,s?s,s?o,s?o,s?o,s?o,s?o,s?o,so !}"
+    err = wrap_json_unpack(sandboxJ, "{ss,s?s,s?s,s?s,s?i,s?o,s?o,s?o,s?o,s?o,s?o,so !}"
             ,"uid", &sandbox->uid
             ,"info", &sandbox->info
             ,"privilege", &sandbox->privilege
             ,"prefix", &sandbox->prefix
+            ,"verbose", &sandbox->verbose
             ,"envs", &envsJ
             ,"acls", &aclsJ
             ,"caps", &capsJ
@@ -258,6 +266,9 @@ static int sandboxLoadOne(afb_api_t api, sandBoxT *sandbox, json_object *sandbox
         AFB_API_ERROR(api, "sandboxLoadOne: [Fail to parse] sandbox config JSON='%s'", json_object_to_json_string(sandboxJ));
         goto OnErrorExit;
     }
+
+    // if verbose is 5 then check string expansion works
+    if (sandbox->verbose > 4) utilsExpandJsonDebug();
 
     if (envsJ) {
             sandbox->envs= sandboxParseEnvs(api, sandbox, envsJ);
@@ -316,7 +327,7 @@ static int sandboxLoadOne(afb_api_t api, sandBoxT *sandbox, json_object *sandbox
 
     return 0;
 
-OnErrorExit:
+ OnErrorExit:
     if (sandbox->namespace) free(sandbox->namespace);
     if (sandbox->caps) free(sandbox->caps);
     if (sandbox->acls) free(sandbox->acls);
@@ -349,6 +360,7 @@ static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandb
                 AFB_API_ERROR(api, "[sandboxLoadOne fail] to load sandbox=%s (sandboxConfig)", sandboxes[idx].uid);
                 goto OnErrorExit;
             }
+            // attach binding to newly created sandbox
             sandboxes[idx].binding= binding;
         }
 
@@ -359,6 +371,7 @@ static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandb
             AFB_API_ERROR(api, "[sandboxLoadOne fail] to load sandbox=%s (sandboxConfig)", sandboxes[0].uid);
             goto OnErrorExit;
         }
+        // attach binding to newly created sandbox
         sandboxes[0].binding= binding;
     }
 
@@ -375,25 +388,8 @@ OnErrorExit:
     return -1; // force binding kill
 }
 
-// utilsExpandJson is call within forked process, let's keep a test instance within main process for debug purpose
-static void testExpansion () {
-    const char *response;
-
-    json_object *tokenJ1= json_tokener_parse("{'dirname':'/my/test/sample'}"); assert(tokenJ1);
-    json_object *tokenJ2= json_tokener_parse("{ 'filename': '/etc/passwd' }"); assert(tokenJ2);
-
-    response= utilsExpandJson ("%filename%", tokenJ2);    assert(response);
-
-    response= utilsExpandJson ("--%dirname%--", tokenJ1);    assert(response);
-    response= utilsExpandJson ("--%dirname%--", tokenJ1);   assert(response);
-    response= utilsExpandJson ("--notexpanded=%%dirname%% expanded=%dirname%", tokenJ1);  assert(response);
-    response= utilsExpandJson ("--notfound=%filename%%", tokenJ1);  assert(!response);
-}
-
 static int CtrlInitOneApi(afb_api_t api) {
     int err = 0;
-
-    testExpansion();
 
     // retrieve section config from api handle
     CtlConfigT* ctlConfig = (CtlConfigT*)afb_api_get_userdata(api);
@@ -425,7 +421,7 @@ static int CtrlLoadOneApi(void* vcbdata, afb_api_t api) {
 
 int afbBindingEntry (afb_api_t api) {
     int status = 0;
-    char *searchPath, *envConfig;
+    char *searchPath, *envConfig, *configFile, *prefix;
     afb_api_t handle;
 
     AFB_API_NOTICE(api, "Spawn Controller in afbBindingEntry");
@@ -433,27 +429,31 @@ int afbBindingEntry (afb_api_t api) {
     // register builtin encoders before plugin get load
     (void)encoderInit();
 
-    envConfig= getenv("CONTROL_CONFIG_PATH");
-    if (!envConfig) envConfig = CONTROL_CONFIG_PATH;
+    configFile= getenv("SPAWN_CONFIG_FILE");
+    if (!configFile) {
 
-    status=asprintf (&searchPath,"%s:%s/etc", envConfig, GetBindingDirPath(api));
-    AFB_API_DEBUG(api, "afbBindingEntry: Json config directory : %s", searchPath);
+        envConfig= getenv("SPAWN_CONFIG_PATH");
+        if (!envConfig) envConfig = CONTROL_CONFIG_PATH;
 
-    const char* prefix = "control";
-    const char* configPath = CtlConfigSearch(api, searchPath, prefix);
-    if (!configPath) {
-        AFB_API_ERROR(api, "afbBindingEntry: No %s-%s* config found in %s ", prefix, GetBinderName(), searchPath);
-        status = ERROR;
-        goto _exit_afbBindingEntry;
+        status=asprintf (&searchPath,"%s:%s/etc", envConfig, GetBindingDirPath(api));
+        AFB_API_DEBUG(api, "afbBindingEntry: Json config directory : %s", searchPath);
+
+        prefix = "control";
+        configFile= CtlConfigSearch(api, searchPath, prefix);
+        if (!configFile) {
+            AFB_API_ERROR(api, "afbBindingEntry: No %s-%s* config found in %s ", prefix, GetBinderName(), searchPath);
+            status = ERROR;
+            goto _exit_afbBindingEntry;
+        }
     }
-
     // load config file and create API
-    CtlConfigT* ctlConfig = CtlLoadMetaData(api, configPath);
+    CtlConfigT* ctlConfig = CtlLoadMetaData(api, configFile);
     if (!ctlConfig) {
-        AFB_API_ERROR(api, "### Invalid json config -- check with 'jq <%s' ###", configPath);
+        AFB_API_ERROR(api, "### Invalid json config -- check with 'jq <%s' ###", configFile);
         status = ERROR;
         goto _exit_afbBindingEntry;
     }
+
     // create one API per config file (Pre-V3 return code ToBeChanged)
     handle = afb_api_new_api(api, ctlConfig->api, ctlConfig->info, 1, CtrlLoadOneApi, ctlConfig);
     status = (handle) ? 0 : -1;

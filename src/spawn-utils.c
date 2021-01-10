@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/signalfd.h>
+#include <assert.h>
 
 #ifndef MEMFD_CREATE_MISSING
     //int memfd_create (const char *__name, unsigned int __flags);
@@ -383,6 +384,22 @@ const char *utilsExpandKeyCtx (const char* src, void *ctx) {
 
   OnErrorExit:
     return NULL;
+}
+
+
+// utilsExpandJson is call within forked process, let's keep a test instance within main process for debug purpose
+void utilsExpandJsonDebug (void) {
+    const char *response;
+
+    json_object *tokenJ1= json_tokener_parse("{'dirname':'/my/test/sample'}"); assert(tokenJ1);
+    json_object *tokenJ2= json_tokener_parse("{ 'filename': '/etc/passwd' }"); assert(tokenJ2);
+
+    response= utilsExpandJson ("%filename%", tokenJ2);    assert(response);
+
+    response= utilsExpandJson ("--%dirname%--", tokenJ1);    assert(response);
+    response= utilsExpandJson ("--%dirname%--", tokenJ1);   assert(response);
+    response= utilsExpandJson ("--notexpanded=%%dirname%% expanded=%dirname%", tokenJ1);  assert(response);
+    response= utilsExpandJson ("--notfound=%filename%%", tokenJ1);  assert(!response);
 }
 
 // replace any %key% with its coresponding json value (warning: json is case sensitive)

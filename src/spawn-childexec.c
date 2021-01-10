@@ -101,13 +101,11 @@ static int spawnPipeFdCB (sd_event_source* source, int fd, uint32_t events, void
 static void childDumpArgv (shellCmdT *cmd, const char **params) {
     int argcount;
 
-    fprintf (stderr, "\nchildDumpArgv: cmd=%s cli=%s\nbwrap ", cmd->uid, cmd->cli);
+    fprintf (stderr, "bwrap ");
 
     for (argcount=1; params[argcount]; argcount++) {
         fprintf (stderr, "%s ", params[argcount]);
     }
-    fprintf (stderr, "# argcount=%d\n\n", argcount);
-
 }
 
 // Build Child execv argument list. Argument list is compose of expanded argument from config + namespace specific one.
@@ -149,10 +147,9 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ) {
             }
         }
         params[argcount]=NULL;
-    fprintf (stderr, "argcount=%d param[0]=%s\n", argcount, params[0]);
     }
 
-    childDumpArgv (cmd, params);
+    if (cmd->verbose) childDumpArgv (cmd, params);
     return (char* const*)params;
 } // end childBuildArgv
 
@@ -185,7 +182,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ) {
 
         // redirect stdout/stderr on binding pipes
         err= dup2(stdoutP[1], STDOUT_FILENO);
-        // **** Fulup if (err > 0) dup2(stderrP[1], STDERR_FILENO);
+        err=+dup2(stderrP[1], STDERR_FILENO);
         if (err < 0) {
             fprintf (stderr, "spawnTaskStart: [fail to dup stdout/err] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
             exit (1);

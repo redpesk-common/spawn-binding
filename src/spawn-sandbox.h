@@ -86,12 +86,12 @@ typedef struct {
 
 // name space global config
 typedef struct {
-    int all;
-    int user;
-    int cgroup;
-    int ipc;
-    int pid;
-    int net;
+    nsShareFlagE all;
+    nsShareFlagE user;
+    nsShareFlagE cgroup;
+    nsShareFlagE ipc;
+    nsShareFlagE pid;
+    nsShareFlagE net;
 } confNamespaceTagsT;
 
 typedef struct {
@@ -109,6 +109,7 @@ struct sandBoxS {
   spawnMagicT magic;
   const char *uid;
   const char *info;
+  int verbose;
   const char *privilege;
   const char *prefix;
   confAclT *acls;
@@ -127,6 +128,7 @@ struct shellCmdS {
   const char *uid;
   const char *info;
   const char *cli;
+  int verbose;
   json_object *usageJ;
   json_object *sampleJ;
   const char **argv;

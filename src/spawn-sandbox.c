@@ -33,6 +33,7 @@
 #include "spawn-subtask.h"
 #include "spawn-utils.h"
 #include "spawn-defaults.h"
+#include "spawn-enums.h"
 
 #include <errno.h>
 #include <pwd.h>
@@ -675,16 +676,43 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
 
     if (sharesJ) {
         namespace->shares = calloc (1, sizeof (confNamespaceTagsT));
+        const char *shareall=NULL, *shareuser=NULL, *sharecgroup=NULL, *sharenet=NULL, *shareipc=NULL;
 
-        err = wrap_json_unpack(sharesJ, "{s?b s?b s?b s?b s?b !}"
-            ,"all" , &namespace->shares->all
-            ,"user", &namespace->shares->user
-            ,"cgroup" , &namespace->shares->cgroup
-            ,"net" , &namespace->shares->net
-            ,"ipc" , &namespace->shares->ipc
+        err = wrap_json_unpack(sharesJ, "{s?s s?s s?s s?s s?s !}"
+            ,"all" , &shareall
+            ,"user", &shareuser
+            ,"cgroup" , &sharecgroup
+            ,"net" , &sharenet
+            ,"ipc" , &shareipc
             );
         if (err) {
             AFB_API_ERROR(api, "sandboxParseNamespace: [parsing share] sandbox=%s share='%s' invalid json", sandbox->uid, json_object_to_json_string(sharesJ));
+            goto OnErrorExit;
+        }
+
+        namespace->shares->all = enumMapValue(nsShareMode, shareall);
+        if (namespace->shares->all < 0) {
+            AFB_API_ERROR(api, "sandboxParseNamespace: [share flag unknow] sandbox=%s shareall='%s'", sandbox->uid, shareall);
+            goto OnErrorExit;
+        }
+        namespace->shares->user= enumMapValue(nsShareMode, shareuser);
+        if (namespace->shares->user < 0) {
+            AFB_API_ERROR(api, "sandboxParseNamespace: [share flag unknow] sandbox=%s shareuser='%s'", sandbox->uid, shareuser);
+            goto OnErrorExit;
+        }
+        namespace->shares->cgroup = enumMapValue(nsShareMode, sharecgroup);
+        if (namespace->shares->cgroup < 0) {
+            AFB_API_ERROR(api, "sandboxParseNamespace: [share flag unknow] sandbox=%s sharecgroup='%s'", sandbox->uid, sharecgroup);
+            goto OnErrorExit;
+        }
+        namespace->shares->net = enumMapValue(nsShareMode, sharenet);
+        if (namespace->shares->net < 0) {
+            AFB_API_ERROR(api, "sandboxParseNamespace: [share flag unknow] sandbox=%s sharenet='%s'", sandbox->uid, sharenet);
+            goto OnErrorExit;
+        }
+        namespace->shares->ipc = enumMapValue(nsShareMode, shareipc);
+        if (namespace->shares->ipc < 0) {
+            AFB_API_ERROR(api, "sandboxParseNamespace: [share flag unknow] sandbox=%s shareipc='%s'", sandbox->uid, shareipc);
             goto OnErrorExit;
         }
 
@@ -704,6 +732,20 @@ OnErrorExit:
     return NULL;
 }
 
+static const char *sandboxSetShare (nsShareFlagE mode, const char * enable, char *disable) {
+    switch (mode) {
+        case NS_SHARE_ENABLE:
+            return enable;
+            break;
+
+        case NS_SHARE_DISABLE:
+            return disable;
+            break;
+        default:
+            break;
+    }
+    return NULL;
+}
 
 // build bwrap argv argument list
 const char **sandboxBwrapArg (afb_api_t api, sandBoxT *sandbox, confNamespaceT *namespace) {
@@ -734,23 +776,12 @@ const char **sandboxBwrapArg (afb_api_t api, sandBoxT *sandbox, confNamespaceT *
         argval[argcount++]= namespace->opts.hostname;
     }
 
-    if (shares->all) argval[argcount++]="--share-all";
-    else argval[argcount++]="--unshare-all";
-
-    if (shares->user) argval[argcount++]="--share-user";
-    else argval[argcount++]="--unshare-user";
-
-    if (shares->cgroup) argval[argcount++]="--share-cgroup";
-    else argval[argcount++]="--unshare-cgroup";
-
-    if (shares->ipc) argval[argcount++]="--share-ipc";
-    else argval[argcount++]="--unshare-ipc";
-
-    if (shares->pid) argval[argcount++]="--share-pid";
-    else argval[argcount++]="--unshare-pid";
-
-    if (shares->net)  argval[argcount++]="--share-net";
-    else argval[argcount++]="--unshare-net";
+    if (shares->all   != NS_SHARE_DEFAULT) argval[argcount++]= sandboxSetShare (shares->all, "--share-all", "--unshare-all");
+    if (shares->user  != NS_SHARE_DEFAULT) argval[argcount++]= sandboxSetShare (shares->user, "--share-user", "--unshare-user");
+    if (shares->cgroup!= NS_SHARE_DEFAULT) argval[argcount++]= sandboxSetShare (shares->cgroup, "--share-cgroup", "--unshare-cgroup");
+    if (shares->ipc   != NS_SHARE_DEFAULT) argval[argcount++]= sandboxSetShare (shares->ipc, "--share-ipc", "--unshare-ipc");
+    if (shares->pid   != NS_SHARE_DEFAULT) argval[argcount++]= sandboxSetShare (shares->pid, "--share-pid", "--unshare-pid");
+    if (shares->net   != NS_SHARE_DEFAULT) argval[argcount++]= sandboxSetShare (shares->net, "--share-net", "--unshare-net");
 
     // apply mounts
     for (int idx=0; mounts[idx].source; idx++) {

@@ -110,7 +110,7 @@ void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
 static void taskPushFinalResponse (taskIdT *taskId) {
     shellCmdT *cmd=taskId->cmd;
 
-    fprintf (stderr, "**** taskPushFinalResponse taskId=0x%p pid=%d\n", taskId, taskId->pid);
+    // fprintf (stderr, "**** taskPushFinalResponse taskId=0x%p pid=%d\n", taskId, taskId->pid);
 
     // read any remaining data
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);

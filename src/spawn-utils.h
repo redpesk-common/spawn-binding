@@ -53,5 +53,6 @@ const char* utilsExpandString (spawnDefaultsT *defaults, const char* inputS, con
 const char *utilsExpandKeyCtx (const char* src, void *ctx);
 const char* utilsExpandKey (const char* inputString);
 const char* utilsExpandJson (const char* src, json_object *keysJ);
+void utilsExpandJsonDebug (void);
 
 #endif /* _SPAWN_UTILS_INCLUDE_ */

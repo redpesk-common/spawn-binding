@@ -19,6 +19,7 @@
       "info": "Shell admin commands",
       "prefix": "admin",
       "privilege": "global privilege",
+      "verbose":1,
       "envs" : [
           {"key": "HOME", "value": "/home"},
           {"key": "HOSTNAME", "value":"sandbox"},
@@ -59,16 +60,14 @@
           "autocreate": true
         },
         "shares": {
-          "all": false,
-          "user":false,
-          "cgroup": false,
-          "net": false,
-          "ipc": false
+          "all": "default",
+          "user":"disable",
+          "net": "enable"
         },
         "mounts": [
           {"target": "/home", "source": "/var/tmp/$SANDBOX", "mode": "rw"},
           {"target": "/usr",  "source": "/usr", "mode": "ro"},
-          {"target": "/lib64",  "source": "usr/lib64", "mode": "symlink"},
+          {"target": "/lib64",  "source": "/lib64", "mode": "ro"},
           {"target": "/etc/resolv.conf", "mode": "symlink"},
           {"target": "/tmp", "mode": "anonymous"},
           {"target": "/dev", "mode":"devfs"}
@@ -117,19 +116,19 @@
           "sample": [
             {"args": {"query": "{'message':'simple'"}},
             {"args": {"query": "-- ignore prefix --- {'message':'simple'} --- ignore tail ---"}},
-            {"args": {"query": "{'message':'complex'} {'test_1':1} {'test_2':0} {'complex':1, 'array':['elem1','elem2','elem3']}"}},
+            {"args": {"query": "{'message':'complex'} {'test_1':1} {'test_2':0} {'complex':1, 'array':['elem1','elem2','elem3']}"}}
           ]
         },
         {
           "uid": "myid",
           "info" : "return current namespace id",
-          "exec": {"cmdpath": "/usr/bin/id"},
+          "exec": {"cmdpath": "/usr/bin/id"}
         },
         {
           "uid": "env",
           "encoder":"line",
           "info" : "return current namespace env",
-          "exec": {"cmdpath": "/usr/bin/env"},
+          "exec": {"cmdpath": "/usr/bin/env"}
         },
         {
           "uid": "display",
@@ -138,7 +137,7 @@
           "encoder":"text",
           "exec": {"cmdpath": "/usr/bin/cat", "args":["%filename%"]},
           "sample": [
-            {"args": {"filename": "/etc/passwd"}},
+            {"args": {"filename": "/etc/passwd"}}
           ]
         },
         {
@@ -159,7 +158,7 @@
           "encoder":{"plugin": "format-demo", "output":"my-custom-encoder", "opts":{"blkcount":10, "maxlen":256}},
           "exec": {"cmdpath": "/usr/bin/ls", "args": ["-l", "%dirname%"]},
           "sample": [
-            {"args": {"dirname": "/etc"}},
+            {"args": {"dirname": "/etc"}}
           ]
         }
       ]

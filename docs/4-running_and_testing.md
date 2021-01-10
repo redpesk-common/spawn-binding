@@ -50,7 +50,8 @@ shell admin/custom {"args":{"dirname":"/etc"}}
 
 Debug namespace
 ```
-bwrap --die-with-parent --new-session --unshare-all --bind /var/tmp/sandbox-demo /home --ro-bind /usr /usr --symlink usr/lib64 /lib64 /usr/bin/ls -l
+- opensuse bwrap --die-with-parent --new-session --unshare-all --bind /var/tmp/sandbox-demo /home --ro-bind /usr /usr  --ro-bind /lib64 /lib64 /usr/bin/ls -l
+-- fedora bwrap --die-with-parent --new-session --unshare-all --bind /var/tmp/sandbox-demo /home --ro-bind /usr /usr --symlink usr/lib64 /lib64 /usr/bin/ls -l
 ```
 
 ## Adding your own config
