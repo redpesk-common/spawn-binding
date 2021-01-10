@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020 IoT.bzh Company
+ * Copyright (C) 2015-2021 IoT.bzh Company
  * Author "Fulup Ar Foll"
  *
  * $RP_BEGIN_LICENSE$
@@ -21,8 +21,6 @@
  * $RP_END_LICENSE$
 */
 
-// Le contexte de cmd loader au moment de l'API n'est retrouvé avec le request ****
-
 #define _GNU_SOURCE
 
 #include "spawn-binding.h"
@@ -41,7 +39,7 @@ static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandb
 // retrieval in HalConfigExec)
 static CtlSectionT ctrlSections[] = {
     { .key = "plugins",.loadCB = PluginConfig, .handle= (void*) &encoderPluginCb},
-    { .key = "onload", .loadCB = OnloadConfig },
+    // { .key = "onload", .loadCB = OnloadConfig },
     { .key = "sandboxes", .loadCB = sandboxConfig },
     { .key = NULL }
 };
@@ -240,6 +238,7 @@ static int sandboxLoadOne(afb_api_t api, sandBoxT *sandbox, json_object *sandbox
     json_object_get(sandboxJ);
 
     memset(sandbox, 0, sizeof (sandBoxT)); // default is empty
+    sandbox->magic= MAGIC_SPAWN_SBOX;
 
     // user 'O' to force json objects not to be released
     err = wrap_json_unpack(sandboxJ, "{ss,s?s,s?s,s?s,s?o,s?o,s?o,s?o,s?o,s?o,so !}"
@@ -261,22 +260,22 @@ static int sandboxLoadOne(afb_api_t api, sandBoxT *sandbox, json_object *sandbox
     }
 
     if (envsJ) {
-            sandbox->envs= sandboxParseEnvs(api, sandbox->uid, envsJ);
+            sandbox->envs= sandboxParseEnvs(api, sandbox, envsJ);
             if (!sandbox->envs) goto OnErrorExit;
     }
 
     if (aclsJ) {
-        sandbox->acls= sandboxParseAcls(api, sandbox->uid, aclsJ);
+        sandbox->acls= sandboxParseAcls(api, sandbox, aclsJ);
         if (!sandbox->acls) goto OnErrorExit;
     }
 
     if (capsJ) {
-        sandbox->caps= sandboxParseCaps(api, sandbox->uid, capsJ);
+        sandbox->caps= sandboxParseCaps(api, sandbox, capsJ);
         if (!sandbox->caps) goto OnErrorExit;
     }
 
     if (seccompJ) {
-        sandbox->seccomp= sandboxParseSecRules(api, sandbox->uid, seccompJ);
+        sandbox->seccomp= sandboxParseSecRules(api, sandbox, seccompJ);
         if (!sandbox->seccomp) goto OnErrorExit;
     }
 
@@ -284,14 +283,14 @@ static int sandboxLoadOne(afb_api_t api, sandBoxT *sandbox, json_object *sandbox
         if (!utilsTaskPrivileged()) {
             AFB_API_NOTICE(api, "[cgroups ignored] sandbox=%s user=%d not privileged (sandboxLoadOne)", sandbox->uid, getuid());
         } else {
-            sandbox->cgroups= sandboxParseCgroups(api, sandbox->uid, cgroupsJ);
+            sandbox->cgroups= sandboxParseCgroups(api, sandbox, cgroupsJ);
             if (!sandbox->cgroups) goto OnErrorExit;
         }
     }
 
     // if namespace defined parse try to parse it
     if (namespaceJ) {
-        sandbox->namespace = sandboxParseNamespace (api, sandbox->uid, namespaceJ);
+        sandbox->namespace = sandboxParseNamespace (api, sandbox, namespaceJ);
         if (!sandbox->namespace) goto OnErrorExit;
     }
 
@@ -327,7 +326,7 @@ OnErrorExit:
 static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandboxesJ) {
     sandBoxT *sandboxes;
     spawnBindingT *binding= calloc(1, sizeof(spawnBindingT));
-    binding->magic= MAGIC_SPAWN_BINDING;
+    binding->magic= MAGIC_SPAWN_BDING;
     binding->api  = api;
     int err;
 
@@ -372,28 +371,23 @@ static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandb
     return 0;
 
 OnErrorExit:
-    AFB_API_ERROR (api, "[Fail config spawn-binding] ### check json config (sandboxConfig) ###");
+    AFB_API_ERROR (api, "[Fail config spawn-binding] ### check json config ###");
     return -1; // force binding kill
 }
 
 // utilsExpandJson is call within forked process, let's keep a test instance within main process for debug purpose
 static void testExpansion () {
-    const char *test1= "--%dirname%--";
-    const char *test2= "--notexpanded=%%dirname%% expanded=%dirname%";
-    const char *test3= "--notfound=%filename%%";
     const char *response;
 
-    json_object *tokenJ= json_tokener_parse("{'dirname':'/my/test/sample'}");
-    assert(tokenJ);
+    json_object *tokenJ1= json_tokener_parse("{'dirname':'/my/test/sample'}"); assert(tokenJ1);
+    json_object *tokenJ2= json_tokener_parse("{ 'filename': '/etc/passwd' }"); assert(tokenJ2);
 
-    response= utilsExpandJson (test1, tokenJ);
-    assert(response);
+    response= utilsExpandJson ("%filename%", tokenJ2);    assert(response);
 
-    response= utilsExpandJson (test2, tokenJ);
-    assert(response);
-
-    response= utilsExpandJson (test3, tokenJ);
-    assert(!response);
+    response= utilsExpandJson ("--%dirname%--", tokenJ1);    assert(response);
+    response= utilsExpandJson ("--%dirname%--", tokenJ1);   assert(response);
+    response= utilsExpandJson ("--notexpanded=%%dirname%% expanded=%dirname%", tokenJ1);  assert(response);
+    response= utilsExpandJson ("--notfound=%filename%%", tokenJ1);  assert(!response);
 }
 
 static int CtrlInitOneApi(afb_api_t api) {
@@ -456,7 +450,7 @@ int afbBindingEntry (afb_api_t api) {
     // load config file and create API
     CtlConfigT* ctlConfig = CtlLoadMetaData(api, configPath);
     if (!ctlConfig) {
-        AFB_API_ERROR(api, "afbBindingEntry No valid config json file in:\n-- %s", configPath);
+        AFB_API_ERROR(api, "### Invalid json config -- check with 'jq <%s' ###", configPath);
         status = ERROR;
         goto _exit_afbBindingEntry;
     }

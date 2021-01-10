@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020 IoT.bzh Company
+ * Copyright (C) 2015-2021 IoT.bzh Company
  * Author "Fulup Ar Foll"
  *
  * $RP_BEGIN_LICENSE$
@@ -84,7 +84,7 @@ OnErrorExit:
 	return NULL;
 }
 
-int utilsFileStat (const char *filepath, int mode) {
+int utilsFileModeIs (const char *filepath, int mode) {
     int err;
     struct stat statbuf;
 
@@ -132,7 +132,7 @@ OnErrorExit:
 
 
 // if string is not null extract umask and apply
-mode_t utilsUmaskSet (const char *mask) {
+mode_t utilsUmaskSetGet (const char *mask) {
 	mode_t oldmask, newmask;
 	if (!mask) {
         oldmask= umask(0);
@@ -243,9 +243,10 @@ OnErrorExit:
 
 
 // Extract $KeyName and replace with $Key Env or default Value
-static int utilExpandEnvKey (spawnDefaultsT *defaults, int *idxIn, const char *inputS, int *idxOut, char *outputS, int maxlen) {
+static int utilExpandEnvKey (spawnDefaultsT *defaults, int *idxIn, const char *inputS, int *idxOut, char *outputS, int maxlen, void *userdata) {
     char envkey[64];
     char *envval=NULL;
+    int index;
 
     // get envkey from $ to any 1st non alphanum character
     for (int idx=0; inputS[*idxIn] != '\0'; idx++) {
@@ -262,9 +263,10 @@ static int utilExpandEnvKey (spawnDefaultsT *defaults, int *idxIn, const char *i
     }
 
     // Search for a default key
-    for (int idx=0; defaults[idx].label; idx++) {
-        if (!strcmp (envkey, defaults[idx].label)) {
-            envval = (*(spawnGetDefaultCbT)defaults[idx].callback) (defaults[idx].label, defaults[idx].ctx);
+    for (index=0; defaults[index].label; index++) {
+        if (!strcmp (envkey, defaults[index].label)) {
+            envval = (*(spawnGetDefaultCbT)defaults[index].callback) (defaults[index].label, defaults[index].ctx, userdata);
+            if (!envval) goto OnErrorExit;
             for (int jdx=0; envval[jdx]; jdx++) {
                 if (*idxOut >= maxlen) goto OnErrorExit;
                 outputS[(*idxOut)++]= envval[jdx];
@@ -272,6 +274,17 @@ static int utilExpandEnvKey (spawnDefaultsT *defaults, int *idxIn, const char *i
             free (envval);
         }
     }
+
+    // if label was not found but default callback is defined
+    if (!envval && defaults[index].callback) {
+        envval = (*(spawnGetDefaultCbT)defaults[index].callback) (defaults[index].label, defaults[index].ctx, userdata);
+        for (int jdx=0; envval[jdx]; jdx++) {
+            if (*idxOut >= maxlen) goto OnErrorExit;
+            outputS[(*idxOut)++]= envval[jdx];
+        }
+        free (envval);
+    }
+
     if (!envval) goto OnErrorExit;
     return 0;
 
@@ -301,7 +314,7 @@ OnErrorExit:
     }
 }
 
-const char *utilsExpandString (spawnDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer) {
+const char *utilsExpandString (spawnDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer, void *userdata) {
     int count=0, idxIn, idxOut=0;
     char outputS[SPAWN_MAX_ARG_LEN];
     int err;
@@ -323,7 +336,7 @@ const char *utilsExpandString (spawnDefaultsT *defaults, const char* inputS, con
 
         } else {
             if (count == SPAWN_MAX_ARG_LABEL) goto OnErrorExit;
-            err=utilExpandEnvKey (defaults, &idxIn, inputS, &idxOut, outputS, SPAWN_MAX_ARG_LEN);
+            err=utilExpandEnvKey (defaults, &idxIn, inputS, &idxOut, outputS, SPAWN_MAX_ARG_LEN, userdata);
             if (err) {
                 fprintf (stderr, "ERROR: [utilsExpandString] ==> %s <== (check xxxx-defaults.c)\n", outputS);
                 goto OnErrorExit;
@@ -355,7 +368,17 @@ const char *utilsExpandString (spawnDefaultsT *defaults, const char* inputS, con
 // default basic string expansion
 const char *utilsExpandKey (const char* src) {
     if (!src) goto OnErrorExit;
-    const char *outputString= utilsExpandString (spawnVarDefaults, src, NULL, NULL);
+    const char *outputString= utilsExpandString (spawnVarDefaults, src, NULL, NULL, NULL);
+    return outputString;
+
+  OnErrorExit:
+    return NULL;
+}
+
+// default basic string expansion
+const char *utilsExpandKeyCtx (const char* src, void *ctx) {
+    if (!src) goto OnErrorExit;
+    const char *outputString= utilsExpandString (spawnVarDefaults, src, NULL, NULL, ctx);
     return outputString;
 
   OnErrorExit:

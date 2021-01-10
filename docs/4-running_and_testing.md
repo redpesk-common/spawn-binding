@@ -32,6 +32,7 @@ shell admin/env
 shell admin/cap
 
 shell admin/list {"args":{"dirname":"/etc"}}
+shell admin/list {"args":{"dirname":"/home"}}
 shell admin/display {"args":{"filename":"/etc/passwd"}}
 
 shell admin/json {"args":{"query":"{'test_1':1} {'test_2':0} {'complex':1, 'array': ['elem1', 'elem2', 'elem3']} "}}
@@ -45,6 +46,11 @@ shell admin/sleep {"action":"stop"}
 
 shell admin/custom {"args":{"dirname":"/etc"}}
 
+```
+
+Debug namespace
+```
+bwrap --die-with-parent --new-session --unshare-all --bind /var/tmp/sandbox-demo /home --ro-bind /usr /usr --symlink usr/lib64 /lib64 /usr/bin/ls -l
 ```
 
 ## Adding your own config

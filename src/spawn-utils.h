@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020 IoT.bzh Company
+ * Copyright (C) 2015-2021 IoT.bzh Company
  * Author "Fulup Ar Foll"
  *
  * $RP_BEGIN_LICENSE$
@@ -38,17 +38,19 @@
 #endif
 
 // spawn-utils.c
-mode_t utilsUmaskSet (const char *mask);
+mode_t utilsUmaskSetGet (const char *mask);
 int utilsTaskPrivileged(void);
 
-int utilsFileStat (const char *filepath, int mode);
+int utilsFileModeIs (const char *filepath, int mode);
 ssize_t utilsFileLoad (const char *filepath, char **buffer);
 int utilsFileAddControl (afb_api_t api, const char *uid, int dirFd, const char *ctrlname, const char *ctrlval);
 const char* utilsExecCmd (afb_api_t api, const char* source, const char* command);
 int utilsExecFdCmd (afb_api_t api, const char* source, const char* command);
 long unsigned int utilsGetPathInod (const char* path);
+mode_t utilsUmaskSetGet (const char *mask);
 
-const char* utilsExpandString (spawnDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer);
+const char* utilsExpandString (spawnDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer, void *ctx);
+const char *utilsExpandKeyCtx (const char* src, void *ctx);
 const char* utilsExpandKey (const char* inputString);
 const char* utilsExpandJson (const char* src, json_object *keysJ);
 

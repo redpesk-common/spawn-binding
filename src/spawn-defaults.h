@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020 IoT.bzh Company
+ * Copyright (C) 2015-2021 IoT.bzh Company
  * Author "Fulup Ar Foll"
  *
  * $RP_BEGIN_LICENSE$
@@ -37,8 +37,12 @@
 #define CGROUPS_MOUNT_POINT "/sys/fs/cgroup"
 #endif
 
-#ifndef MAX_BWRAP_ARGS
-#define MAX_BWRAP_ARGS 512
+#ifndef BWRAP_EXE_PATH
+#define BWRAP_EXE_PATH "/usr/bin/bwrap"
+#endif
+
+#ifndef BWRAP_ARGC_MAX
+#define BWRAP_ARGC_MAX 512
 #endif
 
 #ifndef SPAWN_MAX_ARG_LEN
@@ -57,14 +61,7 @@
 #define DONE 1
 #endif
 
-// few magic to help debugging
-#define MAGIC_SPAWN_BINDING 123456
-#define MAGIC_SPAWN_SANDBOX 456789
-#define MAGIC_SPAWN_COMMAND 789123
-#define MAGIC_SPAWN_TASKID  147258
-#define MAGIC_SPAWN_ENCODER_ 147258
-
-typedef char*(*spawnGetDefaultCbT)(const char *label, void *ctx);
+typedef char*(*spawnGetDefaultCbT)(const char *label, void *ctx, void *userdata);
 typedef struct {
     const char *label;
     spawnGetDefaultCbT callback;

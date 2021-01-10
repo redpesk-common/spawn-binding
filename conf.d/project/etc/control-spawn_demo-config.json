@@ -19,7 +19,6 @@
       "info": "Shell admin commands",
       "prefix": "admin",
       "privilege": "global privilege",
-
       "envs" : [
           {"key": "HOME", "value": "/home"},
           {"key": "HOSTNAME", "value":"sandbox"},
@@ -56,27 +55,31 @@
         },
 
       "namespace" : {
-          "shares": {
-            "all": false,
-            "user":false,
-            "cgroup": false,
-            "net": false,
-            "ipc": false
-          },
-          "mounts": [
-            {"target": "/home", "source": "/var/spawn-test", "mode": "rw"},
-            {"target": "/usr", "mode": "ro"},
-            {"target": "/etc/resolv.conf", "mode": "symlink"},
-            {"target": "/tmp", "mode": "anonymous"},
-            {"target": "/dev", "mode":"devfs"}
-          ]
+        "opts": {
+          "autocreate": true
+        },
+        "shares": {
+          "all": false,
+          "user":false,
+          "cgroup": false,
+          "net": false,
+          "ipc": false
+        },
+        "mounts": [
+          {"target": "/home", "source": "/var/tmp/$SANDBOX", "mode": "rw"},
+          {"target": "/usr",  "source": "/usr", "mode": "ro"},
+          {"target": "/lib64",  "source": "usr/lib64", "mode": "symlink"},
+          {"target": "/etc/resolv.conf", "mode": "symlink"},
+          {"target": "/tmp", "mode": "anonymous"},
+          {"target": "/dev", "mode":"devfs"}
+        ]
       },
 
       "commands": [
         {
           "uid": "home",
           "info" : "expand $home on server side",
-          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-ld", "$HOME"]}
+          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-l", "$HOME"]}
         },
         {
           "uid": "afbroot",

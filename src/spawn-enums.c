@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020 IoT.bzh Company
+ * Copyright (C) 2015-2021 IoT.bzh Company
  * Author "Fulup Ar Foll"
  *
  * $RP_BEGIN_LICENSE$
@@ -36,15 +36,15 @@ const nsKeyEnumT nsScmpFilter [] = {
     {"SCMP_FLTATR_CTL_TSYNC", SCMP_FLTATR_CTL_TSYNC},
     {"SCMP_FLTATR_API_TSKIP", SCMP_FLTATR_API_TSKIP},
     {"SCMP_FLTATR_CTL_LOG", SCMP_FLTATR_CTL_LOG},
-#ifdef SCMP_FLTATR_CTL_OPTIMIZE    
+#ifdef SCMP_FLTATR_CTL_OPTIMIZE
     {"SCMP_FLTATR_CTL_OPTIMIZE", SCMP_FLTATR_CTL_OPTIMIZE},
-#endif    
-#ifdef SCMP_FLTATR_API_SYSRAWRC    
+#endif
+#ifdef SCMP_FLTATR_API_SYSRAWRC
     {"SCMP_FLTATR_API_SYSRAWRC", SCMP_FLTATR_API_SYSRAWRC},
-#endif    
-#ifdef SCMP_FLTATR_CTL_SSB    
+#endif
+#ifdef SCMP_FLTATR_CTL_SSB
     {"SCMP_FLTATR_CTL_SSB", SCMP_FLTATR_CTL_SSB},
-#endif    
+#endif
 
     {NULL} // terminator
 };
@@ -56,9 +56,9 @@ const nsKeyEnumT nsScmpAction[] = {
     {"SCMP_ACT_TRAP", SCMP_ACT_TRAP},
     {"SCMP_ACT_LOG", SCMP_ACT_LOG},
     {"SCMP_ACT_ALLOW", SCMP_ACT_ALLOW},
-#ifdef  SCMP_ACT_NOTIFY   
+#ifdef  SCMP_ACT_NOTIFY
     {"SCMP_ACT_NOTIFY", SCMP_ACT_NOTIFY},
-#endif    
+#endif
 
     {NULL} // terminator
 };

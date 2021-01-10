@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020 IoT.bzh Company
+ * Copyright (C) 2015-2021 IoT.bzh Company
  * Author "Fulup Ar Foll"
  *
  * $RP_BEGIN_LICENSE$
@@ -31,7 +31,7 @@
 
 
 struct taskIdS {
-  int magic;
+  spawnMagicT magic;
   int pid; // hashtable key
   char *uid;
   int outfd;
@@ -48,10 +48,16 @@ struct taskIdS {
   UT_hash_handle tidsHash, gtidsHash;    /* makes this structure hashable */
 };
 
+// spawn-task.c
 void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ);
 int spawnParse (shellCmdT *cmd, json_object *execJ);
 int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* context);
 int spawnChildMonitor (afb_api_t api, sd_event_io_handler_t callback, spawnBindingT *binding);
 void spawnChildUpdateStatus (afb_api_t api,  spawnBindingT *binding, taskIdT *taskId);
+void taskPushResponse (taskIdT *taskId);
+void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId);
+
+// spawn-child.c
+int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ);
 
 #endif /* _SPAWN_SUBTASK_INCLUDE_ */

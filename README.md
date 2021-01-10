@@ -42,7 +42,5 @@ seccomp
     mount | grep cgroup2
 
 
-DEBUG CUSTOM
-
 2) Ajouter bwrap
 3) faire la doc

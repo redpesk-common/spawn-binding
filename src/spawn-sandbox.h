@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020 IoT.bzh Company
+ * Copyright (C) 2015-2021 IoT.bzh Company
  * Author "Fulup Ar Foll"
  *
  * $RP_BEGIN_LICENSE$
@@ -67,6 +67,8 @@ typedef struct {
 typedef struct {
     const char *bwrap;
     const char *hostname;
+    int autocreate;
+    int selinux;
 } nsNamespaceOptsT;
 
 typedef struct {
@@ -93,13 +95,18 @@ typedef struct {
 } confNamespaceTagsT;
 
 typedef struct {
-    nsNamespaceOptsT *opts;
+    spawnMagicT magic;
+    const char **argv;
+    int argc;
+    int secompFD;
+    nsNamespaceOptsT opts;
     confNamespaceTagsT*shares;
     confEnvT *envs;
     confMountT *mounts;
 } confNamespaceT;
 
 struct sandBoxS {
+  spawnMagicT magic;
   const char *uid;
   const char *info;
   const char *privilege;
@@ -116,6 +123,7 @@ struct sandBoxS {
 };
 
 struct shellCmdS {
+  spawnMagicT magic;
   const char *uid;
   const char *info;
   const char *cli;
@@ -135,12 +143,13 @@ struct shellCmdS {
 };
 
 // spawn-sandbox.c
-confEnvT *sandboxParseEnvs (afb_api_t api, const char *uid, json_object *envsJ);
-confAclT *sandboxParseAcls(afb_api_t api, const char *uid, json_object *namespaceJ);
-confCapT *sandboxParseCaps(afb_api_t api,const char *uid, json_object *capsJ);
-confCgroupT *sandboxParseCgroups (afb_api_t api, const char *uid, json_object *cgroupsJ);
-confSeccompT *sandboxParseSecRules(afb_api_t api, const char *uid, json_object *seccompJ);
-confNamespaceT *sandboxParseNamespace(afb_api_t api, const char *uid, json_object *namespaceJ);
+confEnvT *sandboxParseEnvs (afb_api_t api, sandBoxT *sandbox, json_object *envsJ);
+confAclT *sandboxParseAcls(afb_api_t api, sandBoxT *sandbox, json_object *namespaceJ);
+confCapT *sandboxParseCaps(afb_api_t api, sandBoxT *sandbox, json_object *capsJ);
+confCgroupT *sandboxParseCgroups (afb_api_t api, sandBoxT *sandbox, json_object *cgroupsJ);
+confSeccompT *sandboxParseSecRules(afb_api_t api, sandBoxT *sandbox, json_object *seccompJ);
+confNamespaceT *sandboxParseNamespace(afb_api_t api, sandBoxT *sandbox, json_object *namespaceJ);
+const char **sandboxBwrapArg (afb_api_t api, sandBoxT *sandbox, confNamespaceT *namespace);
 
 int sandboxApplyAcls(confAclT *acls, int isPrivileged);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020 IoT.bzh Company
+ * Copyright (C) 2015-2021 IoT.bzh Company
  * Author "Fulup Ar Foll"
  *
  * $RP_BEGIN_LICENSE$
@@ -35,8 +35,25 @@ typedef struct shellCmdS shellCmdT;
 typedef struct taskIdS   taskIdT;
 typedef struct sandBoxS  sandBoxT;
 
+
+// few magic to help debugging
+typedef enum {
+    MAGIC_SPAWN_BDING=12345678,
+    MAGIC_SPAWN_SBOX,
+    MAGIC_SPAWN_NSPACE,
+    MAGIC_SPAWN_CMD,
+    MAGIC_SPAWN_TASKID,
+    MAGIC_SPAWN_ENCODER,
+} spawnMagicT;
+
+// dummy object to check magic number
 typedef struct {
-    int magic;
+  spawnMagicT magic;
+
+} spawnObjectT;
+
+typedef struct {
+    spawnMagicT magic;
     afb_api_t api;
     taskIdT *gtids;
     pthread_rwlock_t sem;
