@@ -837,9 +837,10 @@ const char **sandboxBwrapArg (afb_api_t api, sandBoxT *sandbox, confNamespaceT *
             break;
 
         case NS_MOUNT_EXECFD:
+            // Fulup TBD store memfd within sandbox to lseek(fd,0,SEEK_SET) at each sandbox creation
             argval[(argcount)++]="--file";
-            argval[(argcount)++]=utilsExecCmd (api, source, target);
-            if (!argval[argcount]) goto OnErrorExit;
+            argval[(argcount)++]=utilsExecCmd (api, target, source);
+            if (!argval[argcount-1]) goto OnErrorExit;
             argval[(argcount)++]=target;
             break;
 

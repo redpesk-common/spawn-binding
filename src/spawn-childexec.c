@@ -193,7 +193,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
 
         // redirect stdout/stderr on binding pipes
         err= dup2(stdoutP[1], STDOUT_FILENO);
-        if (verbose > 2) err=+dup2(stderrP[1], STDERR_FILENO);
+        if (verbose < 3) err=+dup2(stderrP[1], STDERR_FILENO);
         if (err < 0) {
             fprintf (stderr, "spawnTaskStart: [fail to dup stdout/err] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
             exit (1);

@@ -1,6 +1,6 @@
 # Architecture presentation
 
-spawn-binding exposes a standard HTML5 service base on AFB security framework to launch 'children-processes' under secure container sandboxes. 
+spawn-binding exposes throught a standard set of REST/Websocket APIs a simple mecahnism to launch within secure sandbox containers your prefered shell/script or Linux commands. 
 
 spawn-binding may start any binary/script Linux command that support a non-interactive mode. It security model scale from basic Linux access control based on uid/gid to advanced Linux security model with cgroups,capability,seccomp and namespaces. Output generated during children execution on stdout/srderr are send back to HTML client interface as standard AFB events.
 

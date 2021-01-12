@@ -19,7 +19,7 @@
       "info": "Shell admin commands",
       "prefix": "admin",
       "privilege": "global privilege",
-      "verbose":9,
+      "verbose":3,
       "envs" : [
           {"name": "HOME", "value": "/home"},
           {"name": "HOSTNAME", "value":"sandbox"},
@@ -65,10 +65,12 @@
           "net": "enable"
         },
         "mounts": [
+          {"target": "/etc/passwd", "mode":"execfd", "source": "getent passwd $SBOXUSER 65534"},
           {"target": "/home", "source": "/var/tmp/$SANDBOX", "mode": "rw"},
           {"target": "/usr",  "source": "/usr", "mode": "ro"},
           {"target": "/lib64",  "source": "/lib64", "mode": "ro"},
           {"target": "/sbin", "source": "/usr/sbin", "mode": "symlink"},
+          {"target": "/bin" , "source": "/usr/bin", "mode": "symlink"},
           {"target": "/tmp", "mode": "tmpfs"},
           {"target": "/dev", "mode":"devfs"}
         ]
@@ -89,7 +91,7 @@
           "uid": "mycap",
           "info" : "return sandbox capabilities",
           "privilege": "special privilege",
-          "exec": {"cmdpath": "/sbin/capsh", "args": ["--print"]}
+          "exec": {"cmdpath": "$SBIN/capsh", "args": ["--print"]}
         },
         {
           "uid": "sleep",

@@ -41,20 +41,24 @@
     #include <sys/mman.h>
 #else
   // missing from Fedora, OpenSuse, ... !!!
-  int memfd_create (const char *name, unsigned int __flags) {
+  int memfd_create (const char *name, unsigned int flags) {
      #include <sys/syscall.h>
      #include <linux/memfd.h>
-     long fd;
-     if((fd = syscall(SYS_memfd_create, name, MFD_CLOEXEC)) == -1) return 1;
-     return 0;
+     return (syscall(SYS_memfd_create, name, flags));
   }
 #endif
 
 // Exec a command in a memory buffer and return stdout result as FD
-const char* utilsExecCmd (afb_api_t api, const char* source, const char* command) {
+const char* utilsExecCmd (afb_api_t api, const char* target, const char* command) {
 	char fdstr[32];
-	int fd = memfd_create(source, 0);
-	if (fd <0) goto OnErrorExit;
+
+    // create a valid string name for memfd from target name
+    strncpy (fdstr, target, sizeof(fdstr));
+    for (int idx=0; fdstr[idx] != '\0'; idx++) {
+        if (fdstr[idx]=='/') fdstr[idx]=':';
+    }
+	int fd = memfd_create(target, MFD_ALLOW_SEALING);
+	if (fd <= 0) goto OnErrorExit;
 
 	int pid = fork();
 	if (pid != 0) {
@@ -73,15 +77,16 @@ const char* utilsExecCmd (afb_api_t api, const char* source, const char* command
 		dup2(fd, 1);
 		close (fd);
 		execv("/usr/bin/sh", argv);
-		AFB_API_ERROR(api, "hoops: utilsExecCmd exec command return command=%s error=%s\n", command, strerror(errno));
+		fprintf (stderr, "hoops: utilsExecCmd execfd command return command=%s error=%s\n", command, strerror(errno));
 	}
 
 	// argv require string
-    snprintf (fdstr, sizeof(fdstr), "%d", fd);
-	return strdup(fdstr);
+    char *response;
+    asprintf (&response, "%d", fd);
+	return response;
 
 OnErrorExit:
-	AFB_API_ERROR(api, "error: utilsExecCmd Fail to exec command=%s\n", command);
+	AFB_API_ERROR(api, "error: utilsExecCmd target=%s Fail to exec command='%s' error='%s'\n", target, command, strerror(errno));
 	return NULL;
 }
 
@@ -274,19 +279,19 @@ static int utilExpandEnvKey (spawnDefaultsT *defaults, int *idxIn, const char *i
                 if (*idxOut >= maxlen) goto OnErrorExit;
                 outputS[(*idxOut)++]= envval[jdx];
             }
-            free (envval);
+            if (defaults[index].allocation == SPAWN_MEM_DYNAMIC) free (envval);
         }
     }
 
-    // if label was not found but default callback is defined
+    // if label was not found but default callback is defined Warning default should use static memory
     if (!envval && defaults[index].callback) {
         envval = (*(spawnGetDefaultCbT)defaults[index].callback) (defaults[index].label, defaults[index].ctx, userdata);
         for (int jdx=0; envval[jdx]; jdx++) {
             if (*idxOut >= maxlen) goto OnErrorExit;
             outputS[(*idxOut)++]= envval[jdx];
         }
-        free (envval);
     }
+    if (defaults[index].allocation == SPAWN_MEM_DYNAMIC) free (envval);
 
     if (!envval) goto OnErrorExit;
     return 0;

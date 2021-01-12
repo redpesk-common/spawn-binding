@@ -22,12 +22,6 @@
           "exec": {"cmdpath": "/bin/echo", "args": ["$AFB_ROOTDIR"]}
         },
         {
-          "uid": "mycap",
-          "info" : "return sandbox capabilities",
-          "privilege": "special privilege",
-          "exec": {"cmdpath": "/sbin/capsh", "args": ["--print"]}
-        },
-        {
           "uid": "sleep",
           "info" : "sleep timeout second",
           "usage": {"timeout": "xx"},

@@ -5,8 +5,8 @@
     "version": "0.2.0",
     "configurations": [
         {
-          // AFB_SPAWN_CONFIG=../../conf.d/project/etc/spawn-sample-simple.json afb-binder --name=afb-spawn --binding=./lib/afb-spawn.so --verbose
-          "name": "Demo Config cppdbg",
+          // AFB_SPAWN_CONFIG=../../conf.d/project/etc/spawn-simple-config.json afb-binder --name=afb-spawn --binding=./lib/afb-spawn.so --verbose
+          "name": "CPPdbg spawn-sandbox-config.json (vscode)",
           "type": "cppdbg",
           "request": "launch",
           "program": "/usr/bin/afb-binder",
@@ -20,7 +20,7 @@
           ],
           "stopAtEntry": false,
           "cwd": "${workspaceFolder}/build/package",
-          "environment": [{"name":"AFB_SPAWN_CONFIG", "value":"${workspaceFolder}/conf.d/project/etc/spawn-sample-sandbox.json"}],
+          "environment": [{"name":"AFB_SPAWN_CONFIG", "value":"${workspaceFolder}/conf.d/project/etc/spawn-sandbox-config.json"}],
           "externalConsole": false,
           "MIMode": "gdb",
           "setupCommands": [

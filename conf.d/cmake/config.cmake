@@ -85,7 +85,7 @@ set (PKG_REQUIRED_LIST
 if(IS_DIRECTORY $ENV{HOME}/opt/afb-monitoring)
 set(MONITORING_ALIAS "--alias=/monitoring:$ENV{HOME}/opt/afb-monitoring")
 endif()
-set( CLOSING_MESSAGE "Debug: afb-binder --name=afb-spawn --port=1234 ${MONITORING_ALIAS} --workdir=$ENV{PWD}/package --ldpaths=. -vvv # http://localhost:1234/devtools/index.html")
+set( CLOSING_MESSAGE "Debug: AFB_SPAWN_CONFIG=../conf.d/project/etc/spawn-simple-config.json afb-binder --name=afb-spawn --binding=package/lib/afb-spawn.so -vvv # http://localhost:1234/devtools/index.html")
 set(PACKAGE_MESSAGE "Install widget file using in the target : afm-util install ${PROJECT_NAME}.wgt")
 
 # Customize link option

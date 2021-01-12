@@ -12,12 +12,14 @@ sudo dnf install spawn-binding afb-ui-devtools
 **Prerequisite**: activate redpesk developer repository: [(see doc)](../../developer-guides/host-configuration/docs/1-Setup-your-build-host.html)
 
 ```
-- Fedora: sudo dnf install spawn-binding afb-ui-devtools
-- OpenSuse: sudo zypper install spawn-binding afb-ui-devtools
-- Ubuntu: sudo apt-get install spawn-binding afb-ui-devtools
+- Fedora: sudo dnf install spawn-binding afb-ui-devtools bwrap libcap-progs
+- OpenSuse: sudo zypper install spawn-binding bubblewrap libcap-progs afb-ui-devtools bubblewrap libcap-progs afb-ui-devtools
+- Ubuntu: sudo apt-get install spawn-binding afb-ui-devtools bubblewrap libcap-progs
 ```
 
-*Optionally if you rather CLI interface to HTML5, feel free to replace 'afb-ui-devtools' with 'afb-client'.
+* Optionally:
+   * if you rather CLI interface to HTML5, feel free to replace 'afb-ui-devtools' with 'afb-client'.
+
 
 ## Rebuild 'spawn-binding' from sources
 
@@ -68,6 +70,6 @@ make
 
 ### Run a test from building tree
 ```
-export AFB_SPAWN_CONFIG=../conf.d/project/etc/spawn-sample-simple.json
+export AFB_SPAWN_CONFIG=../conf.d/project/etc/spawn-simple-config.json
 afb-binder --name=afb-spawn --binding=./package/lib/afb-spawn.so -vvv 
 ```

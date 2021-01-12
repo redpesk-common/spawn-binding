@@ -21,6 +21,7 @@
  * $RP_END_LICENSE$
 */
 
+
 #define _GNU_SOURCE
 
 // we need AFB definition to access binder config API
@@ -39,6 +40,8 @@
 #include <sys/types.h>
 #include <uuid/uuid.h>
 #include <time.h>
+#include <sys/stat.h>
+
 
 static char*GetEnviron(const char *label, void *dflt, void *userdata) {
     const char*key= dflt;
@@ -52,7 +55,7 @@ static char*GetEnviron(const char *label, void *dflt, void *userdata) {
             value="#undef";
         }
     }
-    return strdup(value);
+    return (char*)value;
 }
 
 static char*GetUuidString(const char *label, void *dflt, void *userdata) {
@@ -97,13 +100,13 @@ static char*GetPid(const char *label, void *dflt, void *userdata) {
 
 static char*GetBindingRoot(const char *label, void *dflt, void *userdata) {
     const char *rootdir= GetBindingDirPath(afbBindingRoot);
-    return strdup(rootdir);
+    return (char*)rootdir;
 }
 
 static char*GetBindingSettings(const char *label, void *dflt, void *userdata) {
     json_object *settings= afb_api_settings(afbBindingRoot);
     const char *value= json_object_get_string(settings);
-    return strdup(value);
+    return (char*)value;
 }
 
 static char*GetObjectUid(const char *label, void *ctx, void *userdata) {
@@ -114,10 +117,10 @@ static char*GetObjectUid(const char *label, void *ctx, void *userdata) {
             sandBoxT *sandbox= (sandBoxT*) userdata;
             switch (request) {
                 case  MAGIC_SPAWN_SBOX:
-                    return strdup(sandbox->uid);
+                    return (char*)(sandbox->uid);
                     break;
                 case  MAGIC_SPAWN_BDING:
-                    return strdup(afb_api_name(sandbox->binding->api));
+                    return (char*)(afb_api_name(sandbox->binding->api));
                     break;
                 default:
                     return NULL;
@@ -128,13 +131,13 @@ static char*GetObjectUid(const char *label, void *ctx, void *userdata) {
             shellCmdT *cmd =(shellCmdT*)userdata;
             switch (request) {
                 case  MAGIC_SPAWN_CMD:
-                    return strdup(cmd->uid);
+                    return (char*)(cmd->uid);
                     break;
                 case  MAGIC_SPAWN_SBOX:
-                    return strdup(cmd->sandbox->uid);
+                    return (char*)(cmd->sandbox->uid);
                     break;
                 case  MAGIC_SPAWN_BDING:
-                    return strdup(afb_api_name(cmd->api));
+                    return (char*)(afb_api_name(cmd->api));
                     break;
                 default:
                     return NULL;
@@ -147,25 +150,57 @@ static char*GetObjectUid(const char *label, void *ctx, void *userdata) {
     return NULL;
 }
 
+// check if system file exit in /sbin otherwise prefix '/sbin' with '/usr'
+static char*SelectSbinPath(const char *label, void *dflt, void *userdata) {
+    const char *filepath = (const char*) userdata;
+    struct stat statbuf;
+    int err = stat(filepath, &statbuf);
+
+    // if file does not exist or is a symbolic link then system uses /usr/sbin
+    if (err < 0 || !(statbuf.st_mode & S_IFREG)) {
+        return "/usr/sbin";
+    }
+
+    // filepath exist and is not a symlink /sbin is not is /usr/sbin
+    return "/sbin";
+}
+
+// return user id as defined within sandbox
+static char*GetSandBoxUser(const char *label, void *dflt, void *userdata) {
+    sandBoxT *sandbox= (sandBoxT*) userdata;
+    if (sandbox->magic != MAGIC_SPAWN_SBOX || !sandbox->acls) return NULL; 
+
+    char string[10];
+    snprintf (string, sizeof(string), "%d", sandbox->acls->uid);
+    return strdup(string);
+}
+
+
 // Warning: REDDEFLT_CB will get its return free
 spawnDefaultsT spawnVarDefaults[]= {
     // static strings
-    {"LOGNAME"        , GetEnviron, (void*)"Unknown"},
-    {"HOSTNAME"       , GetEnviron, (void*)"localhost"},
-    {"HOME"           , GetEnviron, (void*)"/sandbox"},
+    {"LOGNAME"        , GetEnviron, SPAWN_MEM_STATIC, (void*)"Unknown"},
+    {"HOSTNAME"       , GetEnviron, SPAWN_MEM_STATIC, (void*)"localhost"},
+    {"HOME"           , GetEnviron, SPAWN_MEM_STATIC, (void*)"/sandbox"},
 
-    {"AFB_ROOTDIR"    , GetBindingRoot, NULL},
-    {"AFB_CONFIG"     , GetBindingSettings, NULL},
+    {"AFB_ROOTDIR"    , GetBindingRoot, SPAWN_MEM_STATIC, NULL},
+    {"AFB_CONFIG"     , GetBindingSettings, SPAWN_MEM_STATIC, NULL},
 
-    {"SANDBOX"        , GetObjectUid, (void*)MAGIC_SPAWN_SBOX},
-    {"COMMAND"        , GetObjectUid, (void*)MAGIC_SPAWN_CMD},
-    {"API"            , GetObjectUid, (void*)MAGIC_SPAWN_BDING},
+    {"SANDBOX"        , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_SBOX},
+    {"COMMAND"        , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_CMD},
+    {"API"            , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_BDING},
 
-    {"PID"            , GetPid, NULL},
-    {"UID"            , GetUid, NULL},
-    {"GID"            , GetGid, NULL},
-    {"TODAY"          , GetDateString, NULL},
-    {"UUID"           , GetUuidString, NULL},
 
-    {NULL, GetEnviron, NULL} /* sentinel and dflt callback */
+
+    {"SBIN"           , SelectSbinPath, SPAWN_MEM_STATIC, "/sbin/service"}, 
+
+
+    {"SBOXUSER"       , GetSandBoxUser, SPAWN_MEM_DYNAMIC, NULL},
+    {"PID"            , GetPid, SPAWN_MEM_DYNAMIC, NULL},
+    {"UID"            , GetUid, SPAWN_MEM_DYNAMIC, NULL},
+    {"GID"            , GetGid, SPAWN_MEM_DYNAMIC, NULL},
+    {"TODAY"          , GetDateString, SPAWN_MEM_DYNAMIC, NULL},
+    {"UUID"           , GetUuidString, SPAWN_MEM_DYNAMIC, NULL},
+
+    {NULL, GetEnviron, SPAWN_MEM_STATIC, NULL} /* sentinel and default callback */
 };

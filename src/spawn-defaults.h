@@ -61,10 +61,16 @@
 #define DONE 1
 #endif
 
+typedef enum {
+    SPAWN_MEM_STATIC=0,
+    SPAWN_MEM_DYNAMIC,
+} spawnMemDefaultsE;
+
 typedef char*(*spawnGetDefaultCbT)(const char *label, void *ctx, void *userdata);
 typedef struct {
     const char *label;
     spawnGetDefaultCbT callback;
+    spawnMemDefaultsE  allocation;
     void *ctx;
 } spawnDefaultsT;
 extern spawnDefaultsT spawnVarDefaults[];
