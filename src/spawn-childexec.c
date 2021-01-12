@@ -162,16 +162,21 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
 int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose) {
     assert(cmd);
     json_object *responseJ;
-    pid_t sonPid;
+    pid_t sonPid = -1;
     char* const* params;
     afb_api_t api= cmd->api;
     int   stdoutP[2];
     int   stderrP[2];
     int   fdFlags, err;
+    taskIdT *taskId = NULL;
 
     // create pipes FD to retreive son stdout/stderr
-    pipe (stdoutP);
-    pipe (stderrP);
+    if(pipe (stdoutP)<0){
+        goto OnErrorExit;
+    }
+    if(pipe (stderrP)<0){
+        goto OnErrorExit;
+    }
 
     // fork son process
     sonPid= fork();
@@ -310,14 +315,16 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         close (stdoutP[1]);
 
         // create task context
-        taskIdT *taskId= taskId= calloc (1, sizeof(taskIdT));
+        taskId = (taskIdT*) calloc (1, sizeof(taskIdT));
         taskId->magic = MAGIC_SPAWN_TASKID;
         taskId->pid= sonPid;
         taskId->cmd= cmd;
         taskId->verbose= verbose + cmd->verbose;
         taskId->outfd= stdoutP[0];
         taskId->errfd= stderrP[0];
-        (void)asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+        if(asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid)<0){
+            goto OnErrorExit;
+        }
         if (verbose) AFB_API_NOTICE (api, "[taskid created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
 
         // create task event

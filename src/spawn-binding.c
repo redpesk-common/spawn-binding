@@ -219,7 +219,9 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
 
     // if prefix not empty add it to verb api
     if (sandbox->prefix[0] != '\0') {
-        asprintf ((char**) &cmd->apiverb, "%s/%s", sandbox->prefix, cmd->uid);
+        if(asprintf ((char**) &cmd->apiverb, "%s/%s", sandbox->prefix, cmd->uid)<0){
+            goto OnErrorExit;
+        }
     } else {
         cmd->apiverb = cmd->uid;
     }

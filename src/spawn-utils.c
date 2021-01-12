@@ -187,7 +187,9 @@ int utilsTaskPrivileged(void) {
     if (seteuid(0) != 0) {
         status = 0;
     } else {
-        seteuid(getuid());
+        if(seteuid(getuid())<0){
+            return status;
+        }
         status = 1;
     }
     return status;
@@ -304,7 +306,7 @@ OnErrorExit:
         outputS[index++] = '=';
 
         for (int jdx=0; envval[jdx]; jdx++) {
-            if (index >= maxlen) {
+            if (index >= maxlen-1) {
                 outputS[index] = '\0';
                 return 1;
             }
@@ -403,6 +405,8 @@ void utilsExpandJsonDebug (void) {
 
     // should fail
     response= utilsExpandJson ("--notfound=%filename%%", tokenJ1);  assert(!response);
+    
+    return (void)response; //Useless, this is just to avoid warnings
 }
 
 // replace any %key% with its coresponding json value (warning: json is case sensitive)

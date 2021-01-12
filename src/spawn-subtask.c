@@ -323,7 +323,7 @@ int spawnParse (shellCmdT *cmd, json_object *execJ) {
 
 // search taskId from child pid within global binding gtids
 static taskIdT *spawnChildGetTaskId (spawnBindingT *binding, int childPid) {
-    taskIdT *taskId;
+    taskIdT *taskId = NULL;
 
     // search if PID is present within binding list
     if (! pthread_rwlock_rdlock(&binding->sem)) {
