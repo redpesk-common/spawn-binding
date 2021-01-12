@@ -423,7 +423,7 @@ static int CtrlLoadOneApi(void* vcbdata, afb_api_t api) {
 
 int afbBindingEntry (afb_api_t api) {
     int status = 0;
-    char *searchPath, *envConfig, *configFile, *prefix;
+    char *searchPath=NULL, *envConfig, *configFile, *prefix;
     afb_api_t handle;
 
     AFB_API_NOTICE(api, "Spawn Controller in afbBindingEntry");
@@ -461,6 +461,6 @@ int afbBindingEntry (afb_api_t api) {
     status = (handle) ? 0 : -1;
 
 _exit_afbBindingEntry:
-    free(searchPath);
+    if (searchPath) free(searchPath);
     return status;
 }

@@ -2,7 +2,7 @@
   "metadata": {
     "uid": "spawn-svc",
     "version": "1.0",
-    "api": "shell",
+    "api": "spawn",
     "info": "Basic Config with no namespace, no plugin, no capabiliy"
   },
   "sandboxes": [

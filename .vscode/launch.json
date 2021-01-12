@@ -12,16 +12,15 @@
           "program": "/usr/bin/afb-binder",
           "args": [
             "--name=afb-spawn",
-            "--port=1234",
-            "--ldpaths=.",
-            "--workdir=.",
             "--binding=./lib/afb-spawn.so",
-            "-VVV",
+            "--verbose",
+            "--verbose",
+            "--verbose",
             "--trap-faults=no"
           ],
-          "stopAtEntry": true,
+          "stopAtEntry": false,
           "cwd": "${workspaceFolder}/build/package",
-          "environment": [{"name":"AFB_SPAWN_CONFIG", "value":"../../conf.d/project/etc/spawn-sample-simple.json"}],
+          "environment": [{"name":"AFB_SPAWN_CONFIG", "value":"${workspaceFolder}/conf.d/project/etc/spawn-sample-sandbox.json"}],
           "externalConsole": false,
           "MIMode": "gdb",
           "setupCommands": [
