@@ -2,7 +2,7 @@
   "metadata": {
     "uid": "spawn-svc",
     "version": "1.0",
-    "api": "shell",
+    "api": "spawn",
     "info": "Generic shell binding API demo default Test Config"
   },
   "plugins": [
@@ -61,15 +61,15 @@
         },
         "shares": {
           "all": "default",
-          "user":"disable",
+          "users":"disable",
           "net": "enable"
         },
         "mounts": [
           {"target": "/home", "source": "/var/tmp/$SANDBOX", "mode": "rw"},
           {"target": "/usr",  "source": "/usr", "mode": "ro"},
           {"target": "/lib64",  "source": "/lib64", "mode": "ro"},
-          {"target": "/etc/resolv.conf", "mode": "symlink"},
-          {"target": "/tmp", "mode": "anonymous"},
+          {"target": "/sbin", "source": "/usr/sbin", "mode": "symlink"},
+          {"target": "/tmp", "mode": "tmpfs"},
           {"target": "/dev", "mode":"devfs"}
         ]
       },

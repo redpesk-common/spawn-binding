@@ -1,112 +1,190 @@
 
 # Configuration
 
-## shell binding support a set of default encoder for values store within multiple registries
+## spawn-binding AFB hierarchy config
 
-* int16, bool => 1 register
-* int32 => 2 registers
-* int64 => 4 registers
-* float, floatabcd, floatdabc, ...
+spawn-binding config depends on afb-controller and people used to redpesk or agl AFB controllers should feel home. For the other one config.json as described below remains pretty simple.
 
-Nevertheless user may also add its own encoding/decoding format to handle device specific representation (ex: device info string),or custom application encoding (ex: float to uint16 for an analog output). Custom encoder/decoder are store within user plugin (see sample at src/plugins/kingpigeon).
+*It is nevertheless highly recommended to check your config.json with a json linter after any modification.*
+```
+# check config.json validity with JQ
+jq < config.json
+```
+
+### top hierarchy
+
+* metadata: API name 
+* plugins: encoder plugins path and names
+* sandbox: access control and command list
+
+### sandbox definition
+
+* **uid**: sandbox name, is used to build children taskid
+* **info**: optional field describing sandbox
+* **prefix**: will be added to every command API. When not defined sandbox->uid is used. Note that using prefix="" fully removes prefix from commands API, providing a flat namespace to every commands independently of their umbrella sandbox.
+* **verbose**: [0-9] value. Turn on/off some debug/log capabilities
+* **privilege**: required corresponding [Cynagora](https://docs.redpesk.bzh/docs/en/master/developer-guides/afb-overview.html) privilege.
+* **envs**: environment variable inherited or not by child at fork/execv time
+* **acl**: basic Linux [DAC](https://en.wikipedia.org/wiki/Discretionary_access_control) 
+* **caps**: Linux [capabilities](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html). Note:  to gain privileges binder should run in privileged mode.
+* **cgoups**: create a cgroup-v2 in */sys/fs/cgroup/sandbox-uid* and attach every children spawn to the corresponding cgroup (binder need to be privileged to activate cgroups)
+* **seccom**: restict kernel syscall with [SECure COMPuting with filters](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html)
+* **namespace**: create an unprivilege rootless container based on [unshare](https://www.kernel.org/doc/html/v4.16/userspace-api/unshare.html?highlight=unshare#benefits) kernel call. 
+* **commands**: the list of commands use wish to expose as HTML5 api/verb.
+
+#### acls (basic access control)
+
+* **umask**: standard Linux umask, if not defined use system default.
+* **user**:  either 'fullname' or 'uid'. Note: when running under privileged mode, 'user' should be defined. If you want 'root' you should enforce 'user':'root' in your config.
+* **group**: equivalent to user
+* **chdir**: change dir before child fork/exec.
+* **label**: set SeLinux/Smack security label for spawn children to either: LSM_LABEL_SBOX, LSM_LABEL_API, LSM_LABEL_CMD or LSM_LABEL_NO. Tagging children with a security label requirer either SMACK or SeLinux on the platform as well as running under privileged mode.
+* **timeout**: default execution timeout for every sandbox command. Overload possible at cmd config level.
+
+#### caps (linux capabilities)
+
+Linux [capabilities](https://linux-audit.com/linux-capabilities-101/) allow a process to gain a subset of traditional "super admin" privileges. For example it may give the "chown" or "kill" authorization without giving full "sudo" rights. . When running non-privileged spawn-binding may only drop capabilities. If order to give extra capabilities to non-privileged user spawn-binding must run in privileged mode.
+
+#### groups (control groups-v2)
+
+[Cgroups](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html) allow to control/limit resources as CPU,RAM,IO,... Spawn-binding enforces 'cgroup-v2' which is default for Redpesk or latest Fedora. Unfortunately cgroup V1-V2 have a incompatible APIs and even if some compatibility mode exist in practice it is better not to use them.  The good news is that any recent Linux distribution as Ubuntu-20.4 or OpenSuse-15.2, ... have a builtin option to run cgroups-v2, the bad news is that by default they still activate V1. On those distro user should edit corresponding boot flag to activate V2. See [activating cgroup-v2] at the end of this page. 
+
+
+* **cset**: provides CPU affinity. As example "3-5" will limit child process to CPU:3,4,5. [kernel-doc](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/cpusets.html?highlight=cset)
+* **mem**: limit the amount of RAM support "max","hight","min" label. [kernel-doc](https://www.kernel.org/doc/html/v4.19/admin-guide/cgroup-v2.html#memory)
+* **cpu**: restrict CPU usage support "weight" and "max" label. [kernel-doc](https://www.kernel.org/doc/html/v4.19/admin-guide/cgroup-v2.html#cpu)
+* **io**: restrict per devices (major/minor) usage. [kernel-doc](https://www.kernel.org/doc/html/v4.19/admin-guide/cgroup-v2.html#io)
+
+#### seccomp secure computing filters
+
+[Seccomp](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html) allows to restrict the syscall a given may acces. Seccomp rules may either be provided within a json_array or in a file of compiled BPF rules [BPF/XDP-doc](https://docs.cilium.io/en/v1.9/). While *seccomp* is a very powerful tool to secure a container wirtting a complex set of security rules is not a simple task. Redhat has nevertheless a good introduction paper that may help people to start writting there own rules [here](https://www.openshift.com/blog/seccomp-for-fun-and-profit).
+
+* **default**: defines default seccomp action for any non defined rules. Options are: SCMP_ACT_ALLOW, SCMP_ACT_KILL_PROCESS, SMP_ACT_KILL_THREAD, SCMP_ACT_KILL, SCMP_ACT_TRAP, SCMP_ACT_LOG, SCMP_ACT_ALLOW, SCMP_ACT_NOTIFY depending on your system some option as SCMP_ACT_NOTIFY might not be available. ***Warning**: setting default to SCMP_ACT_KILL will impose you to declare every 'syscall' you authorize.*
+* **locked**: when true this flash will set two extra options:
+  * PR_SET_NO_NEW_PRIVS prevent children to request or inherit from from file sticky bit or capabilities extra permissions
+  * PR_SET_DUMPABLE prevent children from activating ptrace escape
+* **rules**: a json array defining basic *seccomp* rules with the form   {"syscall": "syscall_name", "action": "SCMP_ACT_XXX"}
+* **rulespath**: path top your BPF compiled rules. Notr than when using a sandbox this file is apply only after unshare namespace are established, when previous rules applies before.
+
+#### Namespace (unprivileged rootless container)
+
+Namespace allows to restrict children visibility to the filesystem by executing the process within a private namespace. Note than every children get a private namespace container at execution time, this even when they are configured under the same sandbox umbrella within config.json. Technically namespace relies on Linux kernel 'unshare' 
+
+* **opts** allows to defined generic namespace behavior. 
+  * **autocreate**: try to create source mount point when they does not exist. If mountpath does not exist and creation fail, spawn-binding will refuse to start.
+  * **hostname**: change namespace hostname when UTS is unshare
+  * **bwrap**: specify a custom brwap file
+
+* **shares**: defines what existing namespace you import from spawn-binding to forked children.  Shares support 'default','disable','enable' tags. Default depend on the hosting environment but generally match with 'enable'.
+  * **all**: set all following namespaces.
+  * **users**: allow or not access to core userspace. When 'disable' children visible UID/GID do not match with hosting environnement. *Note that in order to simplify developer live spawn-binding will set a 'fake' uid/gid matching with the one define with namespace->acls.*
+  * **cgroup**: when 'disable' children see a new empty cgroup. This even if previously defined cgroups still apply.
+  * **net**: remove network visibility. When 'disable' the only remaining available network is 'localhost'. This mode allows the children to exchange with the hosting environnement, while preventing them from accessing the Internet.
+  * **ipc**: equivalent to 'net' restriction but for Linux 'ipc' mgsset/get system call.
+
+* **mounts**: define mounted entry points to add into children containers. The goal is to provide the minimal set of resources necessary for the execution of a given children. ***Warning**: too many restrictions may prevent children from starting. This scenario might be harder than expected to debug.*
+
+
+  * **target**: this label is mandatory it define the mount point inside your container namespace as view by children processes.
+  * **source**: this is an optional entry point that defines the path within your hosting environnement that you wish to import. When undefined source==target, which repond to the situation whre you want the same path inside and outside of the container : /usr,/lib64,... When used source path is check at configuration time. If source does not exist and 'autocreate' is set, the spawn-binding will try to create the mounting point on the hosting environnement. When source does not exist or cannot be created spawn-binding refuses to start.
+
+  * **mode**: specify the type of mount to use:
+    * **rw/ro** or 'read'/'write' is used to mount directory in either read-only or read-write.
+    * **symlink** does not really mount a resource, but create a symbolic link within container after its creation. For example {"target": "/sbin", source "/usr/sbin", "mode": "symlink"} will create a legacy link for applications that require and access to /sbin.
+    * **dir** create a directory on children namespace. Depending on where this directory is created, it may remain after children terminate, or be shared in between children.
+    * **tmpfs** create a temporally filesystem visible only from within this children container. Note that 'tmpfs' entry point are not share in between children of a given sandbox. 
+    * **dev**: mount a empty '/dev' file system. When children have corresponding rights they may later mount specific devices.
+    * **procfs**: idem 'dev' but for '/proc'
+    * **mqueue**: idem 'dev' but for '/dev/mqueue'
+    * **devfs** : idem 'dev' but for '/dev'
+
+## Commands
+
+This section exposes for a given sandbox children commands. Command only requires 'uid' and 'exec' label any other one are optionals.
+
+* **uid** is required to build command API/verb under the form 'sandbox-prefix/cmd-uid. Note that if sandbox-prefix="" (not undefined) then cmd api use a flat namespace with API/verb compose only of commands uid independently of its umbrella sandbox. *Note: is is a good behavior to prefix command api/verb with a sandbox prefix/uid.*
+
+* **exec**
+
+  * **cmdpath**: full command file path to execute (no search path allowed). Spawn-binding check at startup time that exec file is executable by the hosting environnement. Nevertheless it cannot assert that it will still be executable after applying sandbox restrictions. 
+  * **args** : a unique or array of arguments. Arguments can be expandable either at config time with '$NAME' or at query time with '%patern%'. ***Warning**: argument expansion at query time is case sensitive.* 
+    * **$NAME** : config time expansion. On top of traditional environnement variables spawn-binding support few extra builtin expansion: $SANDBOX, $COMMAND, $APINAME, $PID, $UID, $GID, $TODAY, $UUID.
+    * **%name%***  those patterns are expanded at command launching time. By searching within query args json_object corresponding key. For example if your command line used '"exec": {"cmdpath": "/bin/sleep", "args": ["%timeout%"]}' then a query with '{"action":"start", "args": {"timeout": "180"}}' will fork/exec 'sleep 180'.
+
+* **verbose**: overload sandbox verbosity level.
+* **timeout**: overload sandbox timeout. (note zero == no-timeout)
+* **info**: describes command function. Is return as part of 'api/info' introspection.
+* **usage**: is used to populate HTML5 help query area.
+* **encoder**: specify with output encoder should be used. When not used default 'document' encoder is used. spawn-binding privides 3 buildin encoders, nevertheless developer may add custom output formatting with encoder plugins. *Note: check plugin directory on github for a custom encoder sample.*
+  
+  * **document**: returns a json_array for both stdout/stderr at the end of command execution. Supports 'maxlen' & 'maxline' options.
+  * **line**: returns a json_string even each time a new line appear on stdout. Stderr keeps 'document' behavior.
+  * **json**: returns an event each time a new json blob is produce on stdout. Stderr keeps 'document' behavior.
+  * **xxxx**: where 'xxxx' is the 'uid' you gave to your plugin custom encoder.
+
+  *Example of json encoder accepting a maximum of 1KB object.*
+
+```
+"encoder": {"output": "json", "opts": {"maxlen":1024}},
+```  
+
+* **samples**: this is an optional label used return when 'api/info' verb is called to automatically built HTML5 testing page. No check is done on 'sample' which allow to provision test that should fail.
+
+```
+          "samples": [
+            {"args": {"dirname": "/etc"}},
+            {"args": {"dirname": "/etc/udev"}},
+            {"args": {"dirname": "/var/cache/"}}
+          ]
+```
+
+
 
 ## API usage
 
-shell binding create one api/verb by sensor. By default each sensor api/verb is prefixed by the RTU uid. With following config mak
-
-```json
-"shell": [
-  {
-    "uid": "King-Pigeon-myrtu",
-    "info": "King Pigeon TCP I/O Module",
-    "uri" : "tcp://192.168.1.110:502",
-    "privilege": "global RTU required privilege",
-    "autostart" : 1,  // connect to RTU at binder start
-    "prefix": "myrtu",  // api verb prefix
-    "timeout": xxxx, // optional response timeout in ms
-    "debug": 0-3, // option libshell debug level
-    "hertz": 10,  // default pooling for event subscription
-    "iddle": 0,   // force event even when value does not change every hertz*iddle count
-    "sensors": [
-      {
-        "uid": "PRODUCT_INFO",
-        "info" : "Array with Product Number, Lot, Serial, OnlineTime, Hardware, Firmware",
-        "function": "Input_Register",
-        "format" : "plugin://king-pigeon/devinfo",
-        "register" : 26,
-        "privilege": "optional sensor required privilege"
-      },
-      {
-        "uid": "DIN01_switch",
-        "function": "Coil_input",
-        "format" : "BOOL",
-        "register" : 1,
-        "privilege": "optional sensor required privilege",
-        "herz": xxx, // special pooling rate for this sensor
-        "iddle": xxx, // special iddle force event when value does not change
-      },
-      {
-        "uid": "DIN01_counter",
-        "function": "Register_Holding",
-        "format" : "UINT32",
-        "register" : 6,
-        "privilege": "optional sensor required privilege",
-        "herz": xxx // special pooling rate for this sensor
-      },
-...
-```
-
-## shell controller exposed
-
+each command create a standard api/verb that can be requested by all AFB transport by default: REST/WebSocket/UnixDomain
+ 
 ### Two builtin api/verb
 
-* api://shell/ping // check if binder is alive
-* api://shell/info // return registered MTU
 
-### One introspection api/verb per declared RTU
+* api://spawn/ping // assert binder is alive
+* api://spawn/info // return parsed config to automatically build HTML5 debug/test page [binder-devtool](xxxx)
 
-* api://shell/myrtu/info
+*Note: In following samples 'spawn' should be replaced by what ever you chose as API name in your config.json.*
 
-### On action api/verb per declared Sensor
+### One api/verb/privilege per command
 
-* api://shell/myrtu/din01_switch
-* api://shell/myrtu/din01_counter
-* etc ...
+Each command may define its own required privileges (Linux SeLinux/Smack & Cynara privileges). Optional arguments depend on chosen action.
 
-### For each sensors the API accept 3 actions
+* **action**: 
+  default (action: 'start')
+  * **start**: create a new container for targeted command with arguments and security model.
+  * **stop**: stop all or specified task previously started
+  * **subscribe**: request subscription to the output of a given command. *Note: by default any client starting an action automatically subscribe the its output.*
+  * **unsubscribe**: force unsubscribe to output events of a given command.
 
-* action=read (return register(s) value after format decoding)
-* action=write (push value on register(s) after format encoding)
-* action=subscribe (subscribe to sensors value changes, frequency is defined by sensor or globally at RTU level)
+* **args**:
 
-### Format Converter
+  Dynamic argument provided by the client to be used at childen launching time. Args is a json-array that SHOULD match with config command exec/args definition. Each argument contain within this array is check agains %patern% used within command definition. If a label is missing then command is not started. 'verbose' is an extra builtin label that allows to over load command or sandbox verbosity level.
 
-The shell binding supports both builtin format converter and optional custom converter provided by user through plugins.
+ ```
+ Example: {"args":{"filename":"/etc/passwd", "verbosity":1}}
+ ```
 
-* Standard converter include the traditional INT16, UINT16, INT32, UINT32, FLOATABCD, ... Depending on the format one or more register is read
+## Activating cgroup-v2
 
-* Custom converter are provided through optional plugins. Custom converter should declare a static structure and register it at plugin loadtime(CTLP_ONLOAD).
+While recent OpenSuse, Ubuntu or Debian support cgroups-v2 by default they only activate compatibility mode. In this mode cgroup controller use in V1 cannot be use in V2 and vice versa. As spawn-binding request all controller in V2, compatibility mode is not really useful and you should move all control to V2. The good news is that when rebooting systemd, lxc, docker,... notice the change and commute automatically to full V2 mode. Except is you have custom applications that support only V1 mode the shift to V2 should be fully transparent.
 
-  * uid is the formatter name as declare inside JSON config file.
-  * decode/encore callback are respectively called for read/write action
-  * init callback is call at format registration time and might be used to process a special value for a given sensor (e.g; deviation for a wind sensor). Each sensor attaches a void* context. Developer may declare a private context for each sensor (e.g. to store a previous value, a min/max, ...). The init callback receive sensor source to store context and optionally the ARGS json object when present within sensor json config.
+### OpenSuse
 
-* WARNING: do not confuse format count and nbreg. NBreg is the number of 16bits registers use for a given formatter (e.g. 4 for a 64bits float). Count is the number of value you want to read in one operation (e.g. you may want to read all your digital input in one operation and receive them as an array of boolean)
-
-```c
-// Sample of custom formatter (king-pigeon-encore.c)
-// -------------------------------------------------
-static encoderRegistryT pigeonEncoders[] = {
-    {
-      .uid="devinfo",
-      .info="return KingPigeon Device Info as an array",
-      .nbreg=6, .decodeCB=decodePigeonInfo,
-      .encodeCB=encodePigeonInfo
-    },{
-      .uid="rcount",
-      .info="Return Relative Count from Uint32",
-      .nbreg=2, .decodeCB=decodeRCount, .encodeCB=NULL,
-      .initCB=initRCount
-    },{.uid=NULL} // must be NULL terminated
-};
+* add to /etc/default/grub the two following parameters
+```
+  sudo vi /etc/default/grub
+  - systemd.unified_cgroup_hierarchy=1
+  - cgroup=no_v1=all
+```
+* update grub & reboot
+```
+sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+sudo reboot
 ```

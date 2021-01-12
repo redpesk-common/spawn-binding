@@ -26,7 +26,7 @@
 
 typedef enum {
     NS_MOUNT_UNKNOWN=0,
-    NS_MOUNT_ANONYMOUS,
+    NS_MOUNT_DIR,
     NS_MOUNT_RO,
     NS_MOUNT_RW,
     NS_MOUNT_SYMLINK,
@@ -56,6 +56,13 @@ typedef enum {
     NS_SHARE_ENABLE,
     NS_SHARE_DISABLE,
 } nsShareFlagE;
+
+typedef enum {
+    LSM_LABEL_NONE=0,
+    LSM_LABEL_SBOX,
+    LSM_LABEL_API,
+    LSM_LABEL_CMD,
+} nsLSMFlagE;
 
 typedef struct {
     const char *label;

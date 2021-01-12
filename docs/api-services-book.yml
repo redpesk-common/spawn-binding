@@ -1,9 +1,9 @@
 type: books
 books:
 -
-    id: shell_binding
-    title: shell
-    description: shell binding documentation
+    id: spawn_binding
+    title: spawn-binding
+    description: spwan-binding binding documentation
     keywords:
     chapters:
     - url: 1-architecture_presentation.md

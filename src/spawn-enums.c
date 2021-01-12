@@ -69,7 +69,7 @@ const nsKeyEnumT mountMode[] = {
     {"read", NS_MOUNT_RO},
     {"rw", NS_MOUNT_RW},
     {"write", NS_MOUNT_RW},
-    { "anonymous",  NS_MOUNT_ANONYMOUS},
+    { "anonymous",  NS_MOUNT_DIR},
     { "symlink",    NS_MOUNT_SYMLINK},
     { "execfd" ,    NS_MOUNT_EXECFD},
     { "Tmpfs"    ,  NS_MOUNT_TMPFS},

@@ -158,7 +158,7 @@ spawnDefaultsT spawnVarDefaults[]= {
     {"AFB_CONFIG"     , GetBindingSettings, NULL},
 
     {"SANDBOX"        , GetObjectUid, (void*)MAGIC_SPAWN_SBOX},
-    {"COMMAND"        , GetObjectUid, (void*)MAGIC_SPAWN_SBOX},
+    {"COMMAND"        , GetObjectUid, (void*)MAGIC_SPAWN_CMD},
     {"API"            , GetObjectUid, (void*)MAGIC_SPAWN_BDING},
 
     {"PID"            , GetPid, NULL},

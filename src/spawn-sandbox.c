@@ -680,8 +680,8 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
 
         err = wrap_json_unpack(sharesJ, "{s?s s?s s?s s?s s?s !}"
             ,"all" , &shareall
-            ,"user", &shareuser
-            ,"cgroup" , &sharecgroup
+            ,"users", &shareuser
+            ,"cgroups" , &sharecgroup
             ,"net" , &sharenet
             ,"ipc" , &shareipc
             );
@@ -843,7 +843,7 @@ const char **sandboxBwrapArg (afb_api_t api, sandBoxT *sandbox, confNamespaceT *
             argval[(argcount)++]=target;
             break;
 
-        case NS_MOUNT_ANONYMOUS:
+        case NS_MOUNT_DIR:
             argval[(argcount)++]="--dir";
             argval[(argcount)++]=target;
             break;
