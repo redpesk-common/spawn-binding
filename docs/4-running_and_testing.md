@@ -36,7 +36,7 @@ afb-binder --name=afb-spawn --binding=./package/lib/afb-spawn.so --verbose
 
 open binding UI with browser at [http://localhost:1234/devtools/](http://localhost:1234/devtools/index.html) your should see a page as the one below fitting your configuration. To activate a command simply click, select a sample and sent. 
 
-![afb-ui-devtool spawn Screenshot](assets/spawn-binding-landing.jpg)
+![afb-ui-devtool](assets/spawn-binding-exec.jpg)
 
 ## Command line test 
 ## Connect *afb-client* to spawn-binding service

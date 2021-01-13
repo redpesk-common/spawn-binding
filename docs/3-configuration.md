@@ -111,7 +111,7 @@ This section exposes for a given sandbox children commands. Command only require
     * **$NAME** : config time expansion. On top of traditional environnement variables spawn-binding support few extra builtin expansion: $SANDBOX, $COMMAND, $APINAME, $PID, $UID, $GID, $TODAY, $UUID.
     * **%name%***  those patterns are expanded at command launching time. By searching within query args json_object corresponding key. For example if your command line used '"exec": {"cmdpath": "/bin/sleep", "args": ["%timeout%"]}' then a query with '{"action":"start", "args": {"timeout": "180"}}' will fork/exec 'sleep 180'.
 
-* **verbose**: overload sandbox verbosity level.
+* **verbose**: overload sandbox verbosity level. ***Warning** verbosity [5-9] are reserve to internal code debugging. With verbosity=5, query arguments expansion happen in main process and not in child to help 'gdb' debugging, nevertheless in this case any expansion error may kill the server.*
 * **timeout**: overload sandbox timeout. (note zero == no-timeout)
 * **info**: describes command function. Is return as part of 'api/info' introspection.
 * **usage**: is used to populate HTML5 help query area.

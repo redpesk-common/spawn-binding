@@ -750,7 +750,8 @@ static const char *sandboxSetShare (nsShareFlagE mode, const char * enable, char
 // build bwrap argv argument list
 const char **sandboxBwrapArg (afb_api_t api, sandBoxT *sandbox, confNamespaceT *namespace) {
     const char **argval= NULL;
-    int argcount=0;
+    int *filefds=NULL;
+    int argcount=0, fdcount=0;
     int err;
 
     assert(namespace);
@@ -784,7 +785,7 @@ const char **sandboxBwrapArg (afb_api_t api, sandBoxT *sandbox, confNamespaceT *
     if (shares->net   != NS_SHARE_DEFAULT) argval[argcount++]= sandboxSetShare (shares->net, "--share-net", "--unshare-net");
 
     // apply mounts
-    for (int idx=0; mounts[idx].source; idx++) {
+    for (int idx=0; mounts[idx].target; idx++) {
         nsMountFlagE mode= mounts[idx].mode;
         const char* source= mounts[idx].source;
         const char* target=mounts[idx].target;
@@ -818,68 +819,75 @@ const char **sandboxBwrapArg (afb_api_t api, sandBoxT *sandbox, confNamespaceT *
         }
 
         switch (mode) {
+
         case NS_MOUNT_RW:
-            argval[(argcount)++]="--bind";
-            argval[(argcount)++]=source;
-            argval[(argcount)++]=target;
+            argval[argcount++]="--bind";
+            argval[argcount++]=source;
+            argval[argcount++]=target;
             break;
 
         case NS_MOUNT_RO:
-            argval[(argcount)++]="--ro-bind";
-            argval[(argcount)++]=source;
-            argval[(argcount)++]=target;
+            argval[argcount++]="--ro-bind";
+            argval[argcount++]=source;
+            argval[argcount++]=target;
             break;
 
         case NS_MOUNT_SYMLINK:
-            argval[(argcount)++]="--symlink";
-            argval[(argcount)++]=source;
-            argval[(argcount)++]=target;
+            argval[argcount++]="--symlink";
+            argval[argcount++]=source;
+            argval[argcount++]=target;
             break;
 
         case NS_MOUNT_EXECFD:
-            // Fulup TBD store memfd within sandbox to lseek(fd,0,SEEK_SET) at each sandbox creation
-            argval[(argcount)++]="--file";
-            argval[(argcount)++]=utilsExecCmd (api, target, source);
-            if (!argval[argcount-1]) goto OnErrorExit;
-            argval[(argcount)++]=target;
+            if (!filefds) filefds= calloc (BWRAP_ARGC_MAX, sizeof(int));
+            if (fdcount == BWRAP_ARGC_MAX) {
+                AFB_API_ERROR(api, "sandboxBuildArgv: [execfd too-many] sandbox=%s source=%s execfd count >%d", sandbox->uid, source, BWRAP_ARGC_MAX);
+                goto OnErrorExit;
+            }
+            argval[argcount++]="--file";
+            argval[argcount++]=utilsExecCmd (api, target, source, &filefds[fdcount]);
+            if (filefds[fdcount++] <0) goto OnErrorExit;
+            argval[argcount++]=target;
             break;
 
         case NS_MOUNT_DIR:
-            argval[(argcount)++]="--dir";
-            argval[(argcount)++]=target;
+            argval[argcount++]="--dir";
+            argval[argcount++]=target;
             break;
 
         case NS_MOUNT_TMPFS:
-            argval[(argcount)++]="--tmpfs";
-            argval[(argcount)++]=target;
+            argval[argcount++]="--tmpfs";
+            argval[argcount++]=target;
             break;
 
         case NS_MOUNT_DEVFS:
-            argval[(argcount)++]="--dev";
-            argval[(argcount)++]=target;
+            argval[argcount++]="--dev";
+            argval[argcount++]=target;
             break;
 
         case NS_MOUNT_PROCFS:
-            argval[(argcount)++]="--proc";
-            argval[(argcount)++]= target;
+            argval[argcount++]="--proc";
+            argval[argcount++]= target;
             break;
 
         case NS_MOUNT_MQUEFS:
-            argval[(argcount)++]="--mqueue";
-            argval[(argcount)++]= target;
+            argval[argcount++]="--mqueue";
+            argval[argcount++]= target;
             break;
 
         case NS_MOUNT_LOCK:
-            argval[(argcount)++]="--lock-file";
-            argval[(argcount)++]= target;
+            argval[argcount++]="--lock-file";
+            argval[argcount++]= target;
             break;
 
         default:
             break;
         }
     }
-    // keep track of effectivement bwrap arguments and return
-    namespace->argc=argcount;
+    argval[argcount++]=NULL; // close argument list
+    namespace->argc=argcount; // store effective bwrap arguments count
+    sandbox->filefds= realloc (filefds , fdcount*sizeof(int)); // save some ram
+    argval=  realloc(argval, argcount*sizeof(char*));
     return (argval);
 
 OnErrorExit:

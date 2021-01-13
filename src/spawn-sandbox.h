@@ -115,6 +115,7 @@ struct sandBoxS {
   confAclT *acls;
   confCapT *caps;
   confEnvT *envs;
+  int *filefds;
   confCgroupT *cgroups;
   confSeccompT *seccomp;
   confNamespaceT *namespace;

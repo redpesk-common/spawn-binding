@@ -19,7 +19,7 @@
       "info": "Shell admin commands",
       "prefix": "admin",
       "privilege": "global privilege",
-      "verbose":3,
+      "verbose":2,
       "envs" : [
           {"name": "HOME", "value": "/home"},
           {"name": "HOSTNAME", "value":"sandbox"},

@@ -221,7 +221,7 @@ void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ) {
     assert (cmd);
     const char *action="start";
     json_object *argsJ=NULL;
-    int err, verbose=0;
+    int err, verbose=-1;
 
     if (json_object_is_type (queryJ, json_type_object)) {
         err= wrap_json_unpack(queryJ, "{s?s s?o s?i !}", "action", &action, "args", &argsJ, "verbose", &verbose);
@@ -231,6 +231,8 @@ void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ) {
         }
     }
 
+    // default is not null but cmd->verbose and query can not set verbosity to more than 4
+    if (verbose < 0 || verbose >4) verbose=cmd->verbose;
     if (!strcasecmp (action, "start")) {
         err = spawnTaskStart (request, cmd, argsJ, verbose);
         if (err) goto OnErrorExit;

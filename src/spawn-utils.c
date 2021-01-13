@@ -49,7 +49,7 @@
 #endif
 
 // Exec a command in a memory buffer and return stdout result as FD
-const char* utilsExecCmd (afb_api_t api, const char* target, const char* command) {
+const char* utilsExecCmd (afb_api_t api, const char* target, const char* command, int *filefd) {
 	char fdstr[32];
 
     // create a valid string name for memfd from target name
@@ -81,6 +81,7 @@ const char* utilsExecCmd (afb_api_t api, const char* target, const char* command
 	}
 
 	// argv require string
+    *filefd=fd;
     char *response;
     asprintf (&response, "%d", fd);
 	return response;
@@ -421,7 +422,8 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
     const char *response;
     json_object *labelJ;
 
-    if (!src || !keysJ) goto OnErrorExit;
+    if (!keysJ) return (src);
+    if (!src) goto OnErrorExit;
 
     for (srcIdx=0; src[srcIdx]; srcIdx++) {
 

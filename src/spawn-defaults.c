@@ -190,10 +190,7 @@ spawnDefaultsT spawnVarDefaults[]= {
     {"COMMAND"        , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_CMD},
     {"API"            , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_BDING},
 
-
-
     {"SBIN"           , SelectSbinPath, SPAWN_MEM_STATIC, "/sbin/service"}, 
-
 
     {"SBOXUSER"       , GetSandBoxUser, SPAWN_MEM_DYNAMIC, NULL},
     {"PID"            , GetPid, SPAWN_MEM_DYNAMIC, NULL},

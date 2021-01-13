@@ -112,13 +112,14 @@ static void childDumpArgv (shellCmdT *cmd, const char **params) {
     for (argcount=1; params[argcount]; argcount++) {
         fprintf (stderr, "%s ", params[argcount]);
     }
+    fprintf (stderr, "\n");
 }
 
 // Build Child execv argument list. Argument list is compose of expanded argument from config + namespace specific one.
 // Note that argument expansion is done after fork(). Modifiing config RAM structure has no impact on afb-binder/binding
 static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int verbose) {
     const char **params;
-    int argcount;
+    int argcount, argsize;
 
     // if no argument to expand and not namespace use directly the config argument list.
     if (!argsJ && !cmd->sandbox->namespace) {
@@ -126,11 +127,13 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
     } else {
 
         // total arguments list is namespace+cmd argv
-        if (cmd->sandbox->namespace->argc) argcount=cmd->sandbox->namespace->argc;
-        argcount =+ cmd->argc;
+        if (!cmd->sandbox->namespace->argc) argsize= cmd->argc+2;
+        else argsize= cmd->argc + cmd->sandbox->namespace->argc+2;
+
+        if (verbose >4) fprintf (stderr, "childBuildArgv: arguments size=%d cmd=%d sandbox=%d\n",argsize,  cmd->argc , cmd->sandbox->namespace->argc);
 
         // allocate execv arguments value
-        params= calloc (argcount, sizeof (char*));
+        params= calloc (argsize, sizeof (char*));  // add NULL terminator and command line name
         argcount=0;
         params[argcount++]= cmd->uid;
 
@@ -138,24 +141,26 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
         if (cmd->sandbox->namespace) {
             for (int idx=1; cmd->sandbox->namespace->argv[idx]; idx++) {
                 params[argcount++]= cmd->sandbox->namespace->argv[idx];
+                if (verbose > 4) fprintf (stderr, "sbox args[%d] params[%d] config=%s\n", idx, argcount-1, cmd->sandbox->namespace->argv[idx]);
             }
             // add cmd execv command as bwrap 1st parameter
             params[argcount++]=cmd->cli;
         }
 
-        // if needed expand arguments replacing all $UPERCASE by json field
         for (int idx=1; cmd->argv[idx]; idx++) {
 
+            // if needed expand arguments replacing all $UPERCASE by json field
             params[argcount++]= utilsExpandJson (cmd->argv[idx], argsJ);
             if (!params[argcount-1]) {
                 fprintf (stderr, "[fail expanding] sandbox=%s cmd='%s' config:args='%s' query:args=%s\n", cmd->sandbox->uid, cmd->uid, cmd->argv[idx], json_object_get_string(argsJ));
                 exit (1);
             }
+            if (verbose > 4) fprintf (stderr, "cmd args[%d] params[%d] config=%s expanded=%s\n", idx, argcount-1, cmd->argv[idx], params[argcount-1]);
         }
         params[argcount]=NULL;
     }
+    if (verbose > 2) childDumpArgv (cmd, params);
 
-    if (verbose) childDumpArgv (cmd, params);
     return (char* const*)params;
 } // end childBuildArgv
 
@@ -163,7 +168,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
     assert(cmd);
     json_object *responseJ;
     pid_t sonPid = -1;
-    char* const* params;
+    char* const* params=NULL;
     afb_api_t api= cmd->api;
     int   stdoutP[2];
     int   stderrP[2];
@@ -178,6 +183,9 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         goto OnErrorExit;
     }
 
+    // if verbose > 8 try to build argument within main process to enable gdb
+    if (verbose > 8) params= childBuildArgv (cmd, argsJ, verbose);
+
     // fork son process
     sonPid= fork();
     if (sonPid < 0) goto OnErrorExit;
@@ -190,6 +198,18 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         int isPrivileged= utilsTaskPrivileged();
         confAclT *acls= cmd->sandbox->acls;
         confCapT *caps= cmd->sandbox->caps;
+
+        // if we have some fileexec reset them to start
+        if (cmd->sandbox->filefds) {
+            int *filefds=cmd->sandbox->filefds;
+            for (int idx=0; filefds[idx]; idx++) {
+                int offset= lseek (filefds[idx], 0, SEEK_SET);
+                if (offset <0) {
+                    fprintf (stderr, "spawnTaskStart: [fail lseek execfd=%d error=%s\n",filefds[idx], strerror(errno));  
+                    exit(1);
+                }
+            }
+        }
 
         // redirect stdout/stderr on binding pipes
         err= dup2(stdoutP[1], STDOUT_FILENO);
@@ -271,7 +291,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         }
 
         // build command arguments
-        params= childBuildArgv (cmd, argsJ, verbose);
+        if (!params) params= childBuildArgv (cmd, argsJ, verbose);
 
         // finish by seccomp syscall filter as potentially this may prevent previous action to appen. (seccomp do not require privilege)
         if (cmd->sandbox->seccomp) {

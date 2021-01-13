@@ -42,7 +42,11 @@
 #endif
 
 #ifndef BWRAP_ARGC_MAX
-#define BWRAP_ARGC_MAX 512
+#define BWRAP_ARGC_MAX 128
+#endif
+
+#ifndef BWRAP_FILEFDS_MAX
+#define BWRAP_FILEFDS_MAX 16
 #endif
 
 #ifndef SPAWN_MAX_ARG_LEN

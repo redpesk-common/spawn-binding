@@ -44,7 +44,7 @@ int utilsTaskPrivileged(void);
 int utilsFileModeIs (const char *filepath, int mode);
 ssize_t utilsFileLoad (const char *filepath, char **buffer);
 int utilsFileAddControl (afb_api_t api, const char *uid, int dirFd, const char *ctrlname, const char *ctrlval);
-const char* utilsExecCmd (afb_api_t api, const char* source, const char* command);
+const char* utilsExecCmd (afb_api_t api, const char* source, const char* command, int *filefd);
 int utilsExecFdCmd (afb_api_t api, const char* source, const char* command);
 long unsigned int utilsGetPathInod (const char* path);
 mode_t utilsUmaskSetGet (const char *mask);
