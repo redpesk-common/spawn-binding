@@ -43,7 +43,7 @@ jq < config.json
 
 #### caps (linux capabilities)
 
-Linux [capabilities](https://linux-audit.com/linux-capabilities-101/) allow a process to gain a subset of traditional "super admin" privileges. For example it may give the "chown" or "kill" authorization without giving full "sudo" rights. . When running non-privileged spawn-binding may only drop capabilities. If order to give extra capabilities to non-privileged user spawn-binding must run in privileged mode.
+Linux [capabilities](https://www.openshift.com/blog/linux-capabilities-in-openshift) allow a process to gain a subset of traditional "super admin" privileges. For example it may give the "chown" or "kill" authorization without giving full "sudo" rights. . When running non-privileged spawn-binding may only drop capabilities. If order to give extra capabilities to non-privileged user spawn-binding must run in privileged mode.
 
 #### groups (control groups-v2)
 
