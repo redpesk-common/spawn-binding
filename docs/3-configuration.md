@@ -1,4 +1,3 @@
-
 # Configuration
 
 ## spawn-binding AFB hierarchy config
@@ -148,7 +147,7 @@ each command create a standard api/verb that can be requested by all AFB transpo
 
 
 * api://spawn/ping // assert binder is alive
-* api://spawn/info // return parsed config to automatically build HTML5 debug/test page [binder-devtool](xxxx)
+* api://spawn/info // return parsed config to automatically build HTML5 debug/test page [binder-devtool](../../ci-cd/monitoring.html)
 
 *Note: In following samples 'spawn' should be replaced by what ever you chose as API name in your config.json.*
 

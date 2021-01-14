@@ -34,7 +34,10 @@ afb-binder --name=afb-spawn --binding=./package/lib/afb-spawn.so --verbose
 
 ## HTML5 test 
 
-open binding UI with browser at [http://localhost:1234/devtools/](http://localhost:1234/devtools/index.html) your should see a page as the one below fitting your configuration. To activate a command simply click, select a sample and sent. 
+Open binding UI with browser at `[host]:[port]/devtools/index.html` in your browser address bar.
+*For example: `localhost:1234/devtools/index.html` for a binding running on localhost, on port 1234.*
+
+You should see a page as the one below fitting your configuration. To activate a command simply click, select a sample and sent. 
 
 ![afb-ui-devtool](assets/spawn-binding-exec.jpg)
 
