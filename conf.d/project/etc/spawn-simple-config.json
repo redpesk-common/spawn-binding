@@ -1,16 +1,22 @@
 {
   "metadata": {
-    "uid": "spawn-svc",
+    "uid": "spawn-simple",
     "version": "1.0",
-    "api": "spawn",
+    "api": "simple",
     "info": "Basic Config with no namespace, no plugin, no capabiliy"
   },
   "sandboxes": [
     {
       "uid": "sandbox-simple",
-      "info": "Shell simple demo",
+      "info": "simple demo [basic acls, no namespace]",
       "prefix": "admin",
       "verbose": 0,
+      "acls": {
+        "umask": "027",
+        "user": "daemon",
+        "group":"dialout",
+        "chdir": "/var/tmp"
+      },
       "commands": [
         {
           "uid": "home",

@@ -37,11 +37,11 @@
 #include <assert.h>
 
 #ifndef MEMFD_CREATE_MISSING
-    //int memfd_create (const char *__name, unsigned int __flags);
+    //long memfd_create (const char *__name, unsigned int __flags);
     #include <sys/mman.h>
 #else
   // missing from Fedora, OpenSuse, ... !!!
-  int memfd_create (const char *name, unsigned int flags) {
+  long memfd_create (const char *name, unsigned int flags) {
      #include <sys/syscall.h>
      #include <linux/memfd.h>
      return (syscall(SYS_memfd_create, name, flags));
@@ -57,7 +57,7 @@ const char* utilsExecCmd (afb_api_t api, const char* target, const char* command
     for (int idx=0; fdstr[idx] != '\0'; idx++) {
         if (fdstr[idx]=='/') fdstr[idx]=':';
     }
-	int fd = memfd_create(target, MFD_ALLOW_SEALING);
+	int fd = (int)memfd_create(target, MFD_ALLOW_SEALING);
 	if (fd <= 0) goto OnErrorExit;
 
 	int pid = fork();
@@ -99,10 +99,10 @@ int utilsFileModeIs (const char *filepath, int mode) {
     if (err < 0 || !(statbuf.st_mode & mode)) {
         goto OnErrorExit;
     }
-    return 0;
+    return 1;
 
 OnErrorExit:
-    return 1;
+    return 0;
 }
 
 ssize_t utilsFileLoad (const char *filepath, char **buffer) {
@@ -153,7 +153,7 @@ mode_t utilsUmaskSetGet (const char *mask) {
 
 // Exec a command in a memory buffer and return stdout result as FD
 int utilsExecFdCmd (afb_api_t api, const char* source, const char* command) {
-	int fd = memfd_create(source, 0);
+	int fd = (int)memfd_create(source, 0);
 	if (fd <0) goto OnErrorExit;
 
 	int pid = fork();
@@ -411,7 +411,7 @@ void utilsExpandJsonDebug (void) {
 
     // should fail
     response= utilsExpandJson ("--notfound=%filename%%", tokenJ1);  assert(!response);
-    
+
     return (void)response; //Useless, this is just to avoid warnings
 }
 

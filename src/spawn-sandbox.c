@@ -638,7 +638,7 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
 
     // provide default value for bwrap cli and assert it is executable
     if (!namespace->opts.bwrap) namespace->opts.bwrap= BWRAP_EXE_PATH;
-    if (utilsFileModeIs(namespace->opts.bwrap, S_IXUSR)) {
+    if (!utilsFileModeIs(namespace->opts.bwrap, S_IXUSR)) {
         AFB_API_ERROR(api, "sandboxParseNamespace: [bwrap not executable] sandbox='%s' bwrap='%s'", sandbox->uid, namespace->opts.bwrap);
         goto OnErrorExit;
     }

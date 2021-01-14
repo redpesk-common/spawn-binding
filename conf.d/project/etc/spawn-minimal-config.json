@@ -1,11 +1,12 @@
 {
   "metadata": {
-    "uid": "spawn-svc",
-    "api": "simple",
+    "uid": "spawn-minimal",
+    "api": "minimal",
     "version": "1.0"
   },
   "sandboxes": {
-      "uid": "sandbox-simple",
+      "uid": "sandbox",
+      "info": "minimal demo [no acls, no namespace]",
       "commands": [
         {
           "uid": "distro",

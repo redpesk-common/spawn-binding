@@ -57,6 +57,10 @@
 #define SPAWN_MAX_ARG_LABEL 64
 #endif
 
+#ifndef SPAWN_MAX_CONF_FILE
+#define SPAWN_MAX_CONF_FILE 16
+#endif
+
 #ifndef ERROR
 #define ERROR -1
 #endif

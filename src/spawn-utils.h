@@ -34,7 +34,7 @@
 
 #ifdef MEMFD_CREATE_MISSING
   // missing from Fedora, OpenSuse, ... !!!
-  int memfd_create (const char *name, unsigned int __flags);
+  long memfd_create (const char *name, unsigned int __flags);
 #endif
 
 // spawn-utils.c

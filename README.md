@@ -1,12 +1,16 @@
 # Spawn Binding
 
 spawn-binding exposes through a standard set of REST/Websocket APIs a simple mechanism to launch within secure sandbox containers your preferred Linux native commands or scripts: bash, python, node, ruby ...
+Sandbox security model scales from simple Linux access control to advanced mechanism as capabilities, cgroups, namespaces, ...
 
-* Sandbox security model scales from simple Linux access control to advanced mechanism as capabilities, cgroups, namespaces, ...
-* Based on AGL AFB micro-service architecture
-    * Access control to APIs might be restricted by SeLinux/Smack
-    * Command output can natively be rendered within an HTML5 page.
 
-Checkout the documentation from sources on docs folder or on [the redpesk documentation](http://docs.redpesk.bzh/docs/en/master/apis-services/spwan-binding/spwan_binding_doc.html).
 
-![spawn-biding-html5](docs/assets/spawn-binding-exec.jpg)
+
+
+**Developer and user documentation at [redpesk-docs](http://docs.redpesk.bzh/docs/en/master/apis-services/spwan-binding/spwan_binding_doc.html)**
+
+## Based on AGL/AFB-V3 micro-service architecture
+
+spawn-binding can be used in standalone to provide a simple secure HTML5 interface to your preferred scripts. When used in conjunction with AGL/AFB framework its also leverage SeLinux/Smack to check API access with Cynara.
+
+![spawn-biding-html5](docs/assets/spawn-binding-dirconf.jpg)

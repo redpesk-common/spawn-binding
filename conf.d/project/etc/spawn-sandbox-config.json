@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "uid": "spawn-svc",
+    "uid": "spawn-sandbox",
     "version": "1.0",
     "api": "spawn",
     "info": "Generic shell binding API demo default Test Config"
@@ -8,15 +8,15 @@
   "plugins": [
     {
       "uid": "encoder-sample",
-      "info": "Plugin to handle user custom output formatting",
+      "info": "Full demo with advanced acls+namespace+encoders",
       "spath": "package/lib/:./lib/plugins:./var",
       "libs": "encoder-sample.ctlso"
     }
   ],
   "sandboxes": [
     {
-      "uid": "sandbox-demo",
-      "info": "Shell admin commands",
+      "uid": "sandbox-namespace",
+      "info": "namespace+cgroups+capabilities+seccomps+encoders",
       "prefix": "admin",
       "privilege": "global privilege",
       "verbose":1,
