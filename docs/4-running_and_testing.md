@@ -6,13 +6,13 @@ is to define ```AFB_SPAWN_CONFIG``` environnement variable with a full or relati
 ### Requirements
 
 * you should have a valid afb-binder install.
-* you should write or copie an sample spawn-config.json
+* you should write or copie a sample spawn-config.json
 * you should known the path to 'afb-spawn.so' binding
 * you need a test client 
     * afb-client for testing command line interface 
     * afb-ui-devtools for html5 test with a web-browser (chomium, firefox, ...)
 
-If you run redpesk simply install the package with ```dns install spawn-binding``` for other platform check redpesk [developer guide](https://docs.redpesk.bzh/docs/en/master/developer-guides/host-configuration/docs/1-Setup-your-build-host.html)
+If you run redpesk simply install the package with ```dnf install spawn-binding``` for other platform check redpesk [developer guide](https://docs.redpesk.bzh/docs/en/master/developer-guides/host-configuration/docs/1-Setup-your-build-host.html)
 
 ## Selection and verify your config
 ``` bash

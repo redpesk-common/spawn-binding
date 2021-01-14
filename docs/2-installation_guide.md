@@ -12,9 +12,9 @@ sudo dnf install spawn-binding afb-ui-devtools
 **Prerequisite**: activate redpesk developer repository: [(see doc)](../../developer-guides/host-configuration/docs/1-Setup-your-build-host.html)
 
 ```
-- Fedora: sudo dnf install spawn-binding afb-ui-devtools bwrap libcap-progs
-- OpenSuse: sudo zypper install spawn-binding bubblewrap libcap-progs afb-ui-devtools bubblewrap libcap-progs afb-ui-devtools
-- Ubuntu: sudo apt-get install spawn-binding afb-ui-devtools bubblewrap libcap-progs
+- Fedora: sudo dnf install spawn-binding afb-ui-devtools bwrap libcap
+- OpenSuse: sudo zypper install spawn-binding bubblewrap libcap-progs afb-ui-devtools
+- Ubuntu: sudo apt-get install spawn-binding-bin afb-ui-devtools bubblewrap libcap2-bin
 ```
 
 * Optionally:
