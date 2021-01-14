@@ -16,7 +16,7 @@ If you run redpesk simply install the package with ```dnf install spawn-binding`
 
 ## Selection and verify your config
 ``` bash
-export AFB_SPAWN_CONFIG=/path-samples-config/spawn-simple-config.json
+export AFB_SPAWN_CONFIG=/path-samples-config/spawn-sandbox-config.json
 ```
 
 ## Verify json config validity
