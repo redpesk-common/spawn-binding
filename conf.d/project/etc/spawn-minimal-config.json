@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "uid": "spawn-svc",
+    "api": "simple",
+    "version": "1.0"
+  },
+  "sandboxes": {
+      "uid": "sandbox-simple",
+      "commands": [
+        {
+          "uid": "distro",
+          "info" : "return server Linux version",
+          "exec": {"cmdpath": "/usr/bin/lsb_release", "args": ["-a"]}
+        }
+      ]
+    }
+}

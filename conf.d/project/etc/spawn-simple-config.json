@@ -10,6 +10,7 @@
       "uid": "sandbox-simple",
       "info": "Shell simple demo",
       "prefix": "admin",
+      "verbose": 0,
       "commands": [
         {
           "uid": "home",

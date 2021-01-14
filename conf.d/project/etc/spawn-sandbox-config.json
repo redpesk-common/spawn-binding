@@ -19,7 +19,7 @@
       "info": "Shell admin commands",
       "prefix": "admin",
       "privilege": "global privilege",
-      "verbose":2,
+      "verbose":1,
       "envs" : [
           {"name": "HOME", "value": "/home"},
           {"name": "HOSTNAME", "value":"sandbox"},
@@ -143,8 +143,8 @@
           ]
         },
         {
-          "uid": "list",
-          "info" : "custom encoder sample outputs json_array of 'blkcount' lines",
+          "uid": "dir",
+          "info" : "list file from a directory",
           "usage": {"dirname": "xxxxx"},
           "exec": {"cmdpath": "/bin/ls", "args": ["-l", "%dirname%"]},
           "sample": [

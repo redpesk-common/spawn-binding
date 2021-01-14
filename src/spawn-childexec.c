@@ -107,7 +107,8 @@ static int spawnPipeFdCB (sd_event_source* source, int fd, uint32_t events, void
 static void childDumpArgv (shellCmdT *cmd, const char **params) {
     int argcount;
 
-    fprintf (stderr, "bwrap ");
+    if (cmd->sandbox->namespace) fprintf(stderr, "child(%s)=> bwrap ", cmd->uid);
+    else fprintf(stderr, "command(%s)=> %s ", cmd->uid, cmd->cli);
 
     for (argcount=1; params[argcount]; argcount++) {
         fprintf (stderr, "%s ", params[argcount]);
@@ -127,10 +128,13 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
     } else {
 
         // total arguments list is namespace+cmd argv
-        if (!cmd->sandbox->namespace->argc) argsize= cmd->argc+2;
-        else argsize= cmd->argc + cmd->sandbox->namespace->argc+2;
-
-        if (verbose >4) fprintf (stderr, "childBuildArgv: arguments size=%d cmd=%d sandbox=%d\n",argsize,  cmd->argc , cmd->sandbox->namespace->argc);
+        if (cmd->sandbox->namespace) {
+            argsize= cmd->argc + cmd->sandbox->namespace->argc + 2;
+            if (verbose >4) fprintf (stderr, "childBuildArgv: arguments size=%d cmd=%d sandbox=%d\n",argsize,  cmd->argc , cmd->sandbox->namespace->argc);
+        } else {
+            argsize= cmd->argc+2;
+            if (verbose >4) fprintf (stderr, "childBuildArgv: arguments size=%d cmd=%d\n",argsize,  cmd->argc);
+        }
 
         // allocate execv arguments value
         params= calloc (argsize, sizeof (char*));  // add NULL terminator and command line name
@@ -203,9 +207,9 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         if (cmd->sandbox->filefds) {
             int *filefds=cmd->sandbox->filefds;
             for (int idx=0; filefds[idx]; idx++) {
-                int offset= lseek (filefds[idx], 0, SEEK_SET);
+                off_t offset= lseek (filefds[idx], 0, SEEK_SET);
                 if (offset <0) {
-                    fprintf (stderr, "spawnTaskStart: [fail lseek execfd=%d error=%s\n",filefds[idx], strerror(errno));  
+                    fprintf (stderr, "spawnTaskStart: [fail lseek execfd=%d error=%s\n",filefds[idx], strerror(errno));
                     exit(1);
                 }
             }
@@ -213,6 +217,8 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
 
         // redirect stdout/stderr on binding pipes
         err= dup2(stdoutP[1], STDOUT_FILENO);
+
+        // if verbose greater then 2 then stderr is display on server side and not send back to HTML5 UI
         if (verbose < 3) err=+dup2(stderrP[1], STDERR_FILENO);
         if (err < 0) {
             fprintf (stderr, "spawnTaskStart: [fail to dup stdout/err] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);

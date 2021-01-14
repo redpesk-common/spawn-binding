@@ -423,7 +423,7 @@ static int CtrlLoadOneApi(void* vcbdata, afb_api_t api) {
 
 int afbBindingEntry (afb_api_t api) {
     int status = 0;
-    char *searchPath=NULL, *envConfig, *configFile, *prefix;
+    char *searchPath=NULL, *envConfig, *configFiles, *prefix;
     afb_api_t handle;
 
     AFB_API_NOTICE(api, "Spawn Controller in afbBindingEntry");
@@ -431,8 +431,8 @@ int afbBindingEntry (afb_api_t api) {
     // register builtin encoders before plugin get load
     (void)encoderInit();
 
-    configFile= getenv("AFB_SPAWN_CONFIG");
-    if (!configFile) {
+    configFiles= getenv("AFB_SPAWN_CONFIG");
+    if (!configFiles) {
 
         envConfig= getenv("AFB_SPAWN_PATH");
         if (!envConfig) envConfig = CONTROL_CONFIG_PATH;
@@ -441,24 +441,29 @@ int afbBindingEntry (afb_api_t api) {
         AFB_API_DEBUG(api, "spawn-binding: json config directory : %s", searchPath);
 
         prefix = "control";
-        configFile= CtlConfigSearch(api, searchPath, prefix);
-        if (!configFile) {
+        configFiles= CtlConfigSearch(api, searchPath, prefix);
+        if (!configFiles) {
             AFB_API_ERROR(api, "spawn-binding: No %s-%s* config found in %s ", prefix, GetBinderName(), searchPath);
             status = ERROR;
             goto _exit_afbBindingEntry;
         }
     }
-    // load config file and create API
-    CtlConfigT* ctlConfig = CtlLoadMetaData(api, configFile);
-    if (!ctlConfig) {
-        AFB_API_ERROR(api, "### spawn-binding invalid json config -- check with 'jq <%s' ###", configFile);
-        status = ERROR;
-        goto _exit_afbBindingEntry;
-    }
 
-    // create one API per config file (Pre-V3 return code ToBeChanged)
-    handle = afb_api_new_api(api, ctlConfig->api, ctlConfig->info, 1, CtrlLoadOneApi, ctlConfig);
-    status = (handle) ? 0 : -1;
+    for (char* config=strtok(configFiles, ":"); config; config=strtok(NULL, ":")) {
+        // load config file and create API
+        const char *pathfile= utilsExpandKey(config);
+        CtlConfigT* ctlConfig = CtlLoadMetaData(api, pathfile);
+        if (!ctlConfig) {
+            AFB_API_ERROR(api, "### spawn-binding invalid json config -- check with 'jq <%s' ###", pathfile);
+            status = ERROR;
+            goto _exit_afbBindingEntry;
+        }
+
+        // create one API per config file (Pre-V3 return code ToBeChanged)
+        handle = afb_api_new_api(api, ctlConfig->api, ctlConfig->info, 1, CtrlLoadOneApi, ctlConfig);
+        status = (handle) ? 0 : -1;
+        if (status < 0) goto _exit_afbBindingEntry;
+    }
 
 _exit_afbBindingEntry:
     if (searchPath) free(searchPath);

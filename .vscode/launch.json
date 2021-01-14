@@ -6,7 +6,7 @@
     "configurations": [
         {
           // AFB_SPAWN_CONFIG=../../conf.d/project/etc/spawn-sandbox-config.json afb-binder --name=afb-spawn --binding=./lib/afb-spawn.so --verbose
-          "name": "spawn-sandbox-config.json (vscode)",
+          "name": "sandbox config",
           "type": "cppdbg",
           "request": "launch",
           "program": "/usr/bin/afb-binder",
@@ -34,7 +34,7 @@
         },
         {
           // AFB_SPAWN_CONFIG=../../conf.d/project/etc/spawn-simple-config.json afb-binder --name=afb-spawn --binding=./lib/afb-spawn.so --verbose
-          "name": "spawn-simple-config.json (vscode)",
+          "name": "simple config",
           "type": "cppdbg",
           "request": "launch",
           "program": "/usr/bin/afb-binder",
@@ -59,7 +59,36 @@
             }
           ],
           "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+          // AFB_SPAWN_CONFIG=../../conf.d/project/etc/spawn-simple-config.json afb-binder --name=afb-spawn --binding=./lib/afb-spawn.so --verbose
+          "name": "simple+minimal config",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "/usr/bin/afb-binder",
+          "args": [
+            "--name=afb-spawn",
+            "--binding=./lib/afb-spawn.so",
+            "--verbose",
+            "--verbose",
+            "--verbose",
+            "--trap-faults=no"
+          ],
+          "stopAtEntry": false,
+          "cwd": "${workspaceFolder}/build/package",
+          "environment": [{"name":"AFB_SPAWN_CONFIG", "value":"${workspaceFolder}/conf.d/project/etc/spawn-simple-config.json:${workspaceFolder}/conf.d/project/etc/spawn-minimal-config.json"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
         }
+
 
     ]
 }

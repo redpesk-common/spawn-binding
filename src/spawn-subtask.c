@@ -232,7 +232,8 @@ void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ) {
     }
 
     // default is not null but cmd->verbose and query can not set verbosity to more than 4
-    if (verbose < 0 || verbose >4) verbose=cmd->verbose;
+    if (verbose < 0 || verbose >4) verbose=cmd->sandbox->verbose;
+
     if (!strcasecmp (action, "start")) {
         err = spawnTaskStart (request, cmd, argsJ, verbose);
         if (err) goto OnErrorExit;
