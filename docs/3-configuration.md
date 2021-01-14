@@ -68,8 +68,8 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
 * **acl**: basic Linux [DAC](https://en.wikipedia.org/wiki/Discretionary_access_control)
 * **caps**: Linux [capabilities](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html). Note:  to gain privileges binder should run in privileged mode.
 * **cgoups**: create a cgroup-v2 in */sys/fs/cgroup/sandbox-uid* and attach every children spawn to the corresponding cgroup (binder need to be privileged to activate cgroups)
-* **seccom**: restict kernel syscall with [SECure COMPuting with filters](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html)
-* **namespace**: create an unprivilege rootless container based on [unshare](https://www.kernel.org/doc/html/v4.16/userspace-api/unshare.html?highlight=unshare#benefits) kernel call.
+* **seccom**: restrict kernel syscall with [SECure COMPuting with filters](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html)
+* **namespace**: create an unprivileged rootless container based on [unshare](https://www.kernel.org/doc/html/v4.16/userspace-api/unshare.html?highlight=unshare#benefits) kernel call.
 * **commands**: the list of commands use wish to expose as HTML5 api/verb.
 
 #### acls (basic access control)
@@ -127,14 +127,14 @@ Linux [capabilities](https://www.openshift.com/blog/linux-capabilities-in-opensh
       ]
   }
 ```
-[Seccomp](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html) allows to restrict the syscall a given may acces. Seccomp rules may either be provided within a json_array or in a file of compiled BPF rules [BPF/XDP-doc](https://docs.cilium.io/en/v1.9/). While *seccomp* is a very powerful tool to secure a container wirtting a complex set of security rules is not a simple task. Redhat has nevertheless a good introduction paper that may help people to start writting there own rules [here](https://www.openshift.com/blog/seccomp-for-fun-and-profit and Yadutaf some nice basic sample on his blob [here](https://blog.yadutaf.fr/2014/05/29/introduction-to-seccomp-bpf-linux-syscall-filter/).
+[Seccomp](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html) allows to restrict the syscall a given may access. Seccomp rules may either be provided within a json_array or in a file of compiled BPF rules [BPF/XDP-doc](https://docs.cilium.io/en/v1.9/). While *seccomp* is a very powerful tool to secure a container writing a complex set of security rules is not a simple task. Redhat has nevertheless a good introduction paper that may help people to start writing there own rules [here](https://www.openshift.com/blog/seccomp-for-fun-and-profit and Yadutaf some nice basic sample on his blob [here](https://blog.yadutaf.fr/2014/05/29/introduction-to-seccomp-bpf-linux-syscall-filter/).
 
 * **default**: defines default seccomp action for any non defined rules. Options are: SCMP_ACT_ALLOW, SCMP_ACT_KILL_PROCESS, SMP_ACT_KILL_THREAD, SCMP_ACT_KILL, SCMP_ACT_TRAP, SCMP_ACT_LOG, SCMP_ACT_ALLOW, SCMP_ACT_NOTIFY depending on your system some option as SCMP_ACT_NOTIFY might not be available. ***Warning**: setting default to SCMP_ACT_KILL will impose you to declare every 'syscall' you authorize.*
 * **locked**: when true this flash will set two extra options:
   * PR_SET_NO_NEW_PRIVS prevent children to request or inherit from from file sticky bit or capabilities extra permissions
   * PR_SET_DUMPABLE prevent children from activating ptrace escape
 * **rules**: a json array defining basic *seccomp* rules with the form   {"syscall": "syscall_name", "action": "SCMP_ACT_XXX"}
-* **rulespath**: path top your BPF compiled rules. Notr than when using a sandbox this file is apply only after unshare namespace are established, when previous rules applies before.
+* **rulespath**: path top your BPF compiled rules. Note than when using a sandbox this file is apply only after unshare namespace are established, when previous rules applies before.
 
 #### Namespace (unprivileged rootless container)
 ```json
@@ -166,16 +166,16 @@ Namespace allows to restrict children visibility to the filesystem by executing 
 
 * **shares**: defines what existing namespace you import from spawn-binding to forked children.  Shares support 'default','disable','enable' tags. Default depend on the hosting environment but generally match with 'enable'.
   * **all**: set all following namespaces.
-  * **users**: allow or not access to core userspace. When 'disable' children visible UID/GID do not match with hosting environnement. *Note that in order to simplify developer live spawn-binding will set a 'fake' uid/gid matching with the one define with namespace->acls.*
+  * **users**: allow or not access to core userspace. When 'disable' children visible UID/GID do not match with hosting environment. *Note that in order to simplify developer live spawn-binding will set a 'fake' uid/gid matching with the one define with namespace->acls.*
   * **cgroup**: when 'disable' children see a new empty cgroup. This even if previously defined cgroups still apply.
-  * **net**: remove network visibility. When 'disable' the only remaining available network is 'localhost'. This mode allows the children to exchange with the hosting environnement, while preventing them from accessing the Internet.
+  * **net**: remove network visibility. When 'disable' the only remaining available network is 'localhost'. This mode allows the children to exchange with the hosting environment, while preventing them from accessing the Internet.
   * **ipc**: equivalent to 'net' restriction but for Linux 'ipc' mgsset/get system call.
 
 * **mounts**: define mounted entry points to add into children containers. The goal is to provide the minimal set of resources necessary for the execution of a given children. ***Warning**: too many restrictions may prevent children from starting. This scenario might be harder than expected to debug.*
 
 
   * **target**: this label is mandatory it define the mount point inside your container namespace as view by children processes.
-  * **source**: this is an optional entry point that defines the path within your hosting environnement that you wish to import. When undefined source==target, which repond to the situation whre you want the same path inside and outside of the container : /usr,/lib64,... When used source path is check at configuration time. If source does not exist and 'autocreate' is set, the spawn-binding will try to create the mounting point on the hosting environnement. When source does not exist or cannot be created spawn-binding refuses to start.
+  * **source**: this is an optional entry point that defines the path within your hosting environment that you wish to import. When undefined source==target, which repond to the situation whre you want the same path inside and outside of the container : /usr,/lib64,... When used source path is check at configuration time. If source does not exist and 'autocreate' is set, the spawn-binding will try to create the mounting point on the hosting environment. When source does not exist or cannot be created spawn-binding refuses to start.
 
   * **mode**: specify the type of mount to use:
     * **rw/ro** or 'read'/'write' is used to mount directory in either read-only or read-write.
@@ -211,15 +211,15 @@ This section exposes for a given sandbox children commands. Command only require
 * **exec**
 
   * **cmdpath**: full command file path to execute (no search path allowed). Spawn-binding check at startup time that exec file is executable by the hosting environnement. Nevertheless it cannot assert that it will still be executable after applying sandbox restrictions.
-  * **args** : a unique or array of arguments. Arguments can be expandable either at config time with '$NAME' or at query time with '%patern%'. ***Warning**: argument expansion at query time is case sensitive.*
-    * **$NAME** : config time expansion. On top of traditional environnement variables spawn-binding support few extra builtin expansion: $SANDBOX, $COMMAND, $APINAME, $PID, $UID, $GID, $TODAY, $UUID.
+  * **args** : a unique or array of arguments. Arguments can be expandable either at config time with '$NAME' or at query time with '%pattern%'. ***Warning**: argument expansion at query time is case sensitive.*
+    * **$NAME** : config time expansion. On top of traditional environment variables spawn-binding support few extra builtin expansion: $SANDBOX, $COMMAND, $APINAME, $PID, $UID, $GID, $TODAY, $UUID.
     * **%name%***  those patterns are expanded at command launching time. By searching within query args json_object corresponding key. For example if your command line used '"exec": {"cmdpath": "/bin/sleep", "args": ["%timeout%"]}' then a query with '{"action":"start", "args": {"timeout": "180"}}' will fork/exec 'sleep 180'.
 
 * **verbose**: overload sandbox verbosity level. ***Warning** verbosity [5-9] are reserve to internal code debugging. With verbosity=5, query arguments expansion happen in main process and not in child to help 'gdb' debugging, nevertheless in this case any expansion error may kill the server.*
 * **timeout**: overload sandbox timeout. (note zero == no-timeout)
 * **info**: describes command function. Is return as part of 'api/info' introspection.
 * **usage**: is used to populate HTML5 help query area.
-* **encoder**: specify with output encoder should be used. When not used default 'document' encoder is used. spawn-binding privides 3 buildin encoders, nevertheless developer may add custom output formatting with encoder plugins. *Note: check plugin directory on github for a custom encoder sample.*
+* **encoder**: specify with output encoder should be used. When not used default 'document' encoder is used. spawn-binding provides 3 builtin encoders, nevertheless developer may add custom output formatting with encoder plugins. *Note: check plugin directory on github for a custom encoder sample.*
 
   * **document**: returns a json_array for both stdout/stderr at the end of command execution. Supports 'maxlen' & 'maxline' options.
   * **line**: returns a json_string even each time a new line appear on stdout. Stderr keeps 'document' behavior.
@@ -302,10 +302,10 @@ Each command may define its own required privileges (Linux SeLinux/Smack & Cynar
     query={"args":{"filename":"/etc/passwd"}}
 ```
 
-  Dynamic argument provided by the client to be used at childen launching time. Args is a json-array that SHOULD match with config command exec/args definition. Each argument contain within this array is check agains %patern% used within command definition. If a label is missing then command is not started. 'verbose' is an extra builtin label that allows to over load command or sandbox verbosity level.
+  Dynamic argument provided by the client to be used at children launching time. Args is a json-array that SHOULD match with config command exec/args definition. Each argument contain within this array is check again %pattern% used within command definition. If a label is missing then command is not started. 'verbose' is an extra builtin label that allows to over load command or sandbox verbosity level.
 
  ```
- Example: {"args":{"filename":"/etc/passwd", "verbosity":1}}
+ Example: {"args":{"filename":"/etc/passwd"}, "verbose":1}
  ```
 ### Api Response
 

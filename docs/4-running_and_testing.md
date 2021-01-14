@@ -1,7 +1,7 @@
 ## Running/Testing
 
 Spawn-binding implements *afb-libcontroller* and requires a valid afb-controller-config.json to operate. For testing purpose the simplest way
-is to define ```AFB_SPAWN_CONFIG``` environnement variable with a full or relative path to binder *rootdir*.
+is to define ```AFB_SPAWN_CONFIG``` environment variable with a full or relative path to binder *rootdir*.
 
 ### Requirements
 
@@ -46,7 +46,7 @@ You should see a page as the one below fitting your configuration. To activate a
 ``` bash
 afb-client --human ws://localhost:1234/api
 ```
-***note:** depending on afb-client version you may have no prompt. Use ```spawn ping``` to assert spwan binding is alive !!!*
+***note:** depending on afb-client version you may have no prompt. Use ```spawn ping``` to assert spawn binding is alive !!!*
 
 ### Test your API with afb-client
 
