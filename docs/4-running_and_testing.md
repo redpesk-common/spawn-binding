@@ -86,8 +86,8 @@ Note: depending if you start spawn-binding in a privilege mode or not, some beha
 You may activate all config in one shot by using placing sample config name within AFB_SPAWN_CONFIG or by providing a suite of config.json filenames.
 ```bash
     SPAWN_SAMPLE_DIR=xxxxxx
-    AFB_SPAWN_CONFIG= $SPAWN_SAMPLE_DIR
-    AFB_SPAWN_CONFIG= $SPAWN_SAMPLE_DIR/spawn-simple-config.json:$SPAWN_SAMPLE_DIR/spawn-minimal-config.json
+    AFB_SPAWN_CONFIG= $SPAWN_SAMPLE_DIR  # will load every spawn-*.json config for diven directory
+    AFB_SPAWN_CONFIG= $SPAWN_SAMPLE_DIR/spawn-simple-config.json:$SPAWN_SAMPLE_DIR/spawn-minimal-config.json # load corresponding configs
 
     afb-binder --name=afb-spawn --binding=xxxxxx/afb-spawn.so
 ```
@@ -107,3 +107,10 @@ Namespace can a tricky to debug. In case of doubt add {"verbose":1} to query arg
 ## Testing formatting
 
 spawn-binding support 3 builtin formatting options. Encoder formatting is enforced for each command within config.json. Default encoder is "DOCUMENT" and it cannot not be change at query time. Check *spawn-sample-encoders.json* for example. If you need the same command with multiple formatting, then your config should duplicate the entry with different uid.
+
+## Exposing spawn API as AFB micro-service
+
+In order to make spawn-binding api accessible from other AFB micro-service you simply export the API with *--ws-server=unix:/path/apiname* as you would do for any other AFB micro-service. The exposed API may later be imported with *--ws-client==unix:/path/apiname* by any afb-binder that get corresponding privileges. *Note: when exposing an API locally it is a good practice to remove TCP/IP visibility with --no-httpd*
+```json
+AFB_SPAWN_CONFIG=$SPAWN_SAMPLE_DIR/spawn-namespace-config.json afb-binder --no-httpd --ws-server=unix:/run/user/$UID/spawn --name=afb-spawn --binding=package/lib/afb-spawn.so -vvv --ws-server=unix:/run/user/$UID/spawn
+```
