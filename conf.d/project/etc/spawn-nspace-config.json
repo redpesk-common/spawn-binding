@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "uid": "spawn-sandbox",
+    "uid": "spawn-namespace",
     "version": "1.0",
     "api": "spawn",
     "info": "Generic shell binding API demo default Test Config"
@@ -91,7 +91,7 @@
           "uid": "mycap",
           "info" : "return sandbox capabilities",
           "privilege": "special privilege",
-          "exec": {"cmdpath": "$SBIN/capsh", "args": ["--print"]}
+          "exec": {"cmdpath": "$SBINDIR/capsh", "args": ["--print"]}
         },
         {
           "uid": "sleep",

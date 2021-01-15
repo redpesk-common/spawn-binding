@@ -6,7 +6,7 @@
     "configurations": [
         {
           // AFB_SPAWN_CONFIG=../../conf.d/project/etc/spawn-sandbox-config.json afb-binder --name=afb-spawn --binding=./lib/afb-spawn.so --verbose
-          "name": "sandbox config",
+          "name": "namespace config",
           "type": "cppdbg",
           "request": "launch",
           "program": "/usr/bin/afb-binder",
@@ -20,7 +20,7 @@
           ],
           "stopAtEntry": false,
           "cwd": "${workspaceFolder}/build/package",
-          "environment": [{"name":"AFB_SPAWN_CONFIG", "value":"${workspaceFolder}/conf.d/project/etc/spawn-sandbox-config.json"}],
+          "environment": [{"name":"AFB_SPAWN_CONFIG", "value":"${workspaceFolder}/conf.d/project/etc/spawn-nspace-config.json"}],
           "externalConsole": false,
           "MIMode": "gdb",
           "setupCommands": [

@@ -47,6 +47,8 @@ static char*GetEnviron(const char *label, void *dflt, void *userdata) {
     const char*key= dflt;
     const char*value;
 
+    if (!label) return NULL;
+
     value= getenv(label);
     if (!value) {
         if (key) {
@@ -150,31 +152,31 @@ static char*GetObjectUid(const char *label, void *ctx, void *userdata) {
     return NULL;
 }
 
-// check if system file exit in /sbin otherwise prefix '/sbin' with '/usr'
-static char*SelectSbinPath(const char *label, void *dflt, void *userdata) {
-    const char *filepath = (const char*) userdata;
-    struct stat statbuf;
-    int err = stat(filepath, &statbuf);
-
-    // if file does not exist or is a symbolic link then system uses /usr/sbin
-    if (err < 0 || !(statbuf.st_mode & S_IFREG)) {
-        return "/usr/sbin";
-    }
-
-    // filepath exist and is not a symlink /sbin is not is /usr/sbin
-    return "/sbin";
-}
 
 // return user id as defined within sandbox
 static char*GetSandBoxUser(const char *label, void *dflt, void *userdata) {
     sandBoxT *sandbox= (sandBoxT*) userdata;
-    if (sandbox->magic != MAGIC_SPAWN_SBOX || !sandbox->acls) return NULL; 
+    if (sandbox->magic != MAGIC_SPAWN_SBOX || !sandbox->acls) return NULL;
 
     char string[10];
     snprintf (string, sizeof(string), "%d", sandbox->acls->uid);
     return strdup(string);
 }
 
+// check if system file exit in /sbin otherwise prefix '/sbin' with '/usr'
+static char*SelectSbinPath(const char *label, void *dflt, void *userdata) {
+    const char *filepath = (const char*) dflt;
+    struct stat statbuf;
+    int err = lstat(filepath, &statbuf);
+
+    // if file does not exist or is a symbolic link then system uses /usr/sbin
+    if (err < 0 || (statbuf.st_mode & S_IFMT)==S_IFLNK) {
+        return "/usr/sbin";
+    }
+
+    // filepath exist and is not a symlink /sbin is not is /usr/sbin
+    return "/sbin";
+}
 
 // Warning: REDDEFLT_CB will get its return free
 spawnDefaultsT spawnVarDefaults[]= {
@@ -190,7 +192,7 @@ spawnDefaultsT spawnVarDefaults[]= {
     {"COMMAND"        , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_CMD},
     {"API"            , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_BDING},
 
-    {"SBIN"           , SelectSbinPath, SPAWN_MEM_STATIC, "/sbin/service"}, 
+    {"SBINDIR"        , SelectSbinPath, SPAWN_MEM_STATIC, "/sbin/mkfs"},
 
     {"SBOXUSER"       , GetSandBoxUser, SPAWN_MEM_DYNAMIC, NULL},
     {"PID"            , GetPid, SPAWN_MEM_DYNAMIC, NULL},

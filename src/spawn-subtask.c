@@ -275,7 +275,7 @@ int spawnParse (shellCmdT *cmd, json_object *execJ) {
 
     cmd->cli= utilsExpandKeyCtx(cmd->cli, (void*)cmd);  // expand env $keys
     if (!utilsFileModeIs(cmd->cli, S_IXUSR)) {
-       AFB_API_ERROR(cmd->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(execJ));
+       AFB_API_ERROR(cmd->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
        goto OnErrorExit;
     }
 
