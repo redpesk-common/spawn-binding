@@ -92,7 +92,7 @@ You may activate all config in one shot by using placing sample config name with
     afb-binder --name=afb-spawn --binding=xxxxxx/afb-spawn.so
 ```
 **Warning** if you load multiple file double-check that they register different APIs name. Your HTML5 interface should reflect
-![spawn-biding-html5](docs/assets/spawn-binding-dualconf.jpg)
+![spawn-biding-html5](assets/spawn-binding-dualconf.jpg)
 
 ## Testing namespace
 
