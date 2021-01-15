@@ -5,10 +5,12 @@
 spawn-binding config depends on afb-controller and people used to redpesk or agl AFB controllers should feel home. For the other one config.json as described below remains pretty simple.
 
 *It is nevertheless highly recommended to check your config.json with a json linter after any modification.*
-```
+
+```bash
 # check config.json validity with JQ
 jq < config.json
 ```
+
 Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-binder. Config can either be a simple filename, a suite of filename separated by ':' or a directory, in which case spawn-binding will take every spawn-*.json file from concerned directory.
 
 ### top hierarchy
@@ -17,8 +19,8 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
 * plugins: optional encoder plugin path and names
 * sandbox: access control and command list
 
+**Minimal configuration sample**
 
-# Minimal configuration sample
 ```json
 {
   "metadata": {
@@ -41,13 +43,11 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
 
 ### sandbox definition
 
-
 * **uid**: sandbox name, is used to build children taskid
 * **info**: optional field describing sandbox
 * **prefix**: will be added to every command API. When not defined sandbox->uid is used. Note that using prefix="" fully removes prefix from commands API, providing a flat namespace to every commands independently of their umbrella sandbox.
 * **verbose**: [0-9] value. Turn on/off some debug/log capabilities
-* **privilege**: required corresponding [Cynagora](https://docs.redpesk.bzh/docs/en/master/developer-guides/afb-overview.html) privilege.
-
+* **privilege**: required corresponding [Cynagora](../../developer-guides/afb-overview.html) privilege.
 ```json
   "sandboxes": {
       "uid": "sandbox-demo",
@@ -57,6 +57,7 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
       "verbose":2
   }
 ```
+
 * **envs**: environment variable inherited or not by child at fork/execv time
 ```json
   "envs" : [
@@ -65,14 +66,16 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
       {"name": "LD_LIBRAY_PATH", "value":"/usr/lib64"}
     ]
 ```
+
 * **acl**: basic Linux [DAC](https://en.wikipedia.org/wiki/Discretionary_access_control)
 * **caps**: Linux [capabilities](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html). Note:  to gain privileges binder should run in privileged mode.
-* **cgoups**: create a cgroup-v2 in */sys/fs/cgroup/sandbox-uid* and attach every children spawn to the corresponding cgroup (binder need to be privileged to activate cgroups)
-* **seccom**: restrict kernel syscall with [SECure COMPuting with filters](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html)
+* **cgroups**: create a cgroup-v2 in */sys/fs/cgroup/sandbox-uid* and attach every children spawn to the corresponding cgroup (binder need to be privileged to activate cgroups)
+* **seccomp**: restrict kernel syscall with [SECure COMPuting with filters](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html)
 * **namespace**: create an unprivileged rootless container based on [unshare](https://www.kernel.org/doc/html/v4.16/userspace-api/unshare.html?highlight=unshare#benefits) kernel call.
 * **commands**: the list of commands use wish to expose as HTML5 api/verb.
 
 #### acls (basic access control)
+
 ```json
   "acls": {
         "umask": "027",
@@ -90,12 +93,14 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
 * **timeout**: default execution timeout for every sandbox command. Overload possible at cmd config level.
 
 #### caps (linux capabilities)
+
 ```json
   "caps": [
       {"cap": "NET_BROADCAST", "mode": "unset"},
       {"cap": "KILL", "mode":"set"}
   ]
 ```
+
 Linux [capabilities](https://www.openshift.com/blog/linux-capabilities-in-openshift) allow a process to gain a subset of traditional "super admin" privileges. For example it may give the "chown" or "kill" authorization without giving full "sudo" rights. . When running non-privileged spawn-binding may only drop capabilities. If order to give extra capabilities to non-privileged user spawn-binding must run in privileged mode.
 
 #### groups (control groups-v2)
@@ -110,13 +115,13 @@ Linux [capabilities](https://www.openshift.com/blog/linux-capabilities-in-opensh
 
 [Cgroups](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html) allow to control/limit resources as CPU,RAM,IO,... Spawn-binding enforces 'cgroup-v2' which is default for Redpesk or latest Fedora. Unfortunately cgroup V1-V2 have a incompatible APIs and even if some compatibility mode exist in practice it is better not to use them.  The good news is that any recent Linux distribution as Ubuntu-20.4 or OpenSuse-15.2, ... have a builtin option to run cgroups-v2, the bad news is that by default they still activate V1. On those distro user should edit corresponding boot flag to activate V2. See [activating cgroup-v2] at the end of this page.
 
-
 * **cset**: provides CPU affinity. As example "3-5" will limit child process to CPU:3,4,5. [kernel-doc](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/cpusets.html?highlight=cset)
 * **mem**: limit the amount of RAM support "max","hight","min" label. [kernel-doc](https://www.kernel.org/doc/html/v4.19/admin-guide/cgroup-v2.html#memory)
 * **cpu**: restrict CPU usage support "weight" and "max" label. [kernel-doc](https://www.kernel.org/doc/html/v4.19/admin-guide/cgroup-v2.html#cpu)
 * **io**: restrict per devices (major/minor) usage. [kernel-doc](https://www.kernel.org/doc/html/v4.19/admin-guide/cgroup-v2.html#io)
 
 #### seccomp secure computing filters
+
 ```json
   "seccomp": {
       "default": "SCMP_ACT_ALLOW",
@@ -127,6 +132,7 @@ Linux [capabilities](https://www.openshift.com/blog/linux-capabilities-in-opensh
       ]
   }
 ```
+
 [Seccomp](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html) allows to restrict the syscall a given may access. Seccomp rules may either be provided within a json_array or in a file of compiled BPF rules [BPF/XDP-doc](https://docs.cilium.io/en/v1.9/). While *seccomp* is a very powerful tool to secure a container writing a complex set of security rules is not a simple task. Redhat has nevertheless a good introduction paper that may help people to start writing there own rules [here](https://www.openshift.com/blog/seccomp-for-fun-and-profit and Yadutaf some nice basic sample on his blob [here](https://blog.yadutaf.fr/2014/05/29/introduction-to-seccomp-bpf-linux-syscall-filter/).
 
 * **default**: defines default seccomp action for any non defined rules. Options are: SCMP_ACT_ALLOW, SCMP_ACT_KILL_PROCESS, SMP_ACT_KILL_THREAD, SCMP_ACT_KILL, SCMP_ACT_TRAP, SCMP_ACT_LOG, SCMP_ACT_ALLOW, SCMP_ACT_NOTIFY depending on your system some option as SCMP_ACT_NOTIFY might not be available. ***Warning**: setting default to SCMP_ACT_KILL will impose you to declare every 'syscall' you authorize.*
@@ -137,6 +143,7 @@ Linux [capabilities](https://www.openshift.com/blog/linux-capabilities-in-opensh
 * **rulespath**: path top your BPF compiled rules. Note than when using a sandbox this file is apply only after unshare namespace are established, when previous rules applies before.
 
 #### Namespace (unprivileged rootless container)
+
 ```json
   "namespace" : {
     "opts": {
@@ -173,9 +180,8 @@ Namespace allows to restrict children visibility to the filesystem by executing 
 
 * **mounts**: define mounted entry points to add into children containers. The goal is to provide the minimal set of resources necessary for the execution of a given children. ***Warning**: too many restrictions may prevent children from starting. This scenario might be harder than expected to debug.*
 
-
   * **target**: this label is mandatory it define the mount point inside your container namespace as view by children processes.
-  * **source**: this is an optional entry point that defines the path within your hosting environment that you wish to import. When undefined source==target, which repond to the situation whre you want the same path inside and outside of the container : /usr,/lib64,... When used source path is check at configuration time. If source does not exist and 'autocreate' is set, the spawn-binding will try to create the mounting point on the hosting environment. When source does not exist or cannot be created spawn-binding refuses to start.
+  * **source**: this is an optional entry point that defines the path within your hosting environment that you wish to import. When undefined source==target, which respond to the situation where you want the same path inside and outside of the container : /usr,/lib64,... When used source path is check at configuration time. If source does not exist and 'autocreate' is set, the spawn-binding will try to create the mounting point on the hosting environment. When source does not exist or cannot be created spawn-binding refuses to start.
 
   * **mode**: specify the type of mount to use:
     * **rw/ro** or 'read'/'write' is used to mount directory in either read-only or read-write.
@@ -188,6 +194,7 @@ Namespace allows to restrict children visibility to the filesystem by executing 
     * **devfs** : idem 'dev' but for '/dev'
 
 ## Commands
+
 ```json
   commands": [
     {
@@ -202,7 +209,6 @@ Namespace allows to restrict children visibility to the filesystem by executing 
       ]
     }
 ```
-
 
 This section exposes for a given sandbox children commands. Command only requires 'uid' and 'exec' label any other one are optionals.
 
@@ -228,13 +234,13 @@ This section exposes for a given sandbox children commands. Command only require
 
   *Example of json encoder accepting a maximum of 1KB object.*
 
-```
+```json
 "encoder": {"output": "json", "opts": {"maxlen":1024}},
 ```
 
 * **samples**: this is an optional label used return when 'api/info' verb is called to automatically built HTML5 testing page. No check is done on 'sample' which allow to provision test that should fail.
 
-```
+```json
           "samples": [
             {"args": {"dirname": "/etc"}},
             {"args": {"dirname": "/etc/udev"}},
@@ -242,18 +248,18 @@ This section exposes for a given sandbox children commands. Command only require
           ]
 ```
 
-
-
 ## API usage
 
 each command create a standard api/verb that can be requested by all AFB transport by default: REST/WebSocket/UnixDomain
 
 **Websocket Query**
-```
+
+```bash
 ws://localhost:1234/api/simple/sandbox-simple/distro?query={"action":"start"}
 ```
 
 **Event Response**
+
 ```json
 {
   "jtype": "afb-event",
@@ -277,7 +283,6 @@ ws://localhost:1234/api/simple/sandbox-simple/distro?query={"action":"start"}
 
 ### Two builtin api/verb
 
-
 * api://spawn/ping // assert binder is alive
 * api://spawn/info // return parsed config to automatically build HTML5 debug/test page [binder-devtool](../../ci-cd/monitoring.html)
 
@@ -288,7 +293,7 @@ ws://localhost:1234/api/simple/sandbox-simple/distro?query={"action":"start"}
 Each command may define its own required privileges (Linux SeLinux/Smack & Cynara privileges). Optional arguments depend on chosen action.
 
 * **action**:
-```
+```json
     query={"action":"start"}
 ```
   default (action: 'start')
@@ -298,18 +303,20 @@ Each command may define its own required privileges (Linux SeLinux/Smack & Cynar
   * **unsubscribe**: force unsubscribe to output events of a given command.
 
 * **args**:
-```
+```json
     query={"args":{"filename":"/etc/passwd"}}
 ```
 
   Dynamic argument provided by the client to be used at children launching time. Args is a json-array that SHOULD match with config command exec/args definition. Each argument contain within this array is check again %pattern% used within command definition. If a label is missing then command is not started. 'verbose' is an extra builtin label that allows to over load command or sandbox verbosity level.
 
- ```
+ ```json
  Example: {"args":{"filename":"/etc/passwd"}, "verbose":1}
  ```
+
 ### Api Response
 
-spawn-binding send an OK/FX response when launching the command *(equivalent to '&' background launch in bash)*. Response returns task pid and other misc informations.
+spawn-binding send an OK/FX response when launching the command *(equivalent to '&' background launch in bash)*. Response returns task pid and other misc information.
+
 ```json
 {
   "jtype": "afb-reply",
@@ -326,6 +333,7 @@ spawn-binding send an OK/FX response when launching the command *(equivalent to 
 ```
 
 Children spawn task output always come back as events. The model depend on chosen encoder. Default one returns stdout+stderr with closing status at the end of children execution.
+
 ```json
 {
   "jtype": "afb-event",
@@ -356,13 +364,14 @@ While recent OpenSuse, Ubuntu or Debian support cgroups-v2 by default they only 
 ### OpenSuse
 
 * add to /etc/default/grub the two following parameters
-```
+```bash
   sudo vi /etc/default/grub
   - systemd.unified_cgroup_hierarchy=1
   - cgroup=no_v1=all
 ```
+
 * update grub & reboot
-```
+```bash
 sudo grub2-mkconfig -o /boot/grub2/grub.cfg
 sudo reboot
 ```

@@ -3,7 +3,7 @@ books:
 -
     id: spawn_binding
     title: spawn-binding
-    description: spwan-binding binding documentation
+    description: spawn-binding binding documentation
     keywords:
     chapters:
     - url: 1-architecture_presentation.md

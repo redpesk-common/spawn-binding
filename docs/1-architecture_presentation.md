@@ -18,6 +18,7 @@ Spawn-binding only requirer a custom config.json to expose a new set of scripts/
 * [Configuration](./4-running_and_testing.html)
 
 ## Support/sources
+
 Spawn-binding is part of redpesk-common and relies on [redpesk-core](https://docs.redpesk.bzh/docs/en/master/redpesk-core/docs/services-list.html)
 
 * Community support [#redpesk-core:matrix.org]( https://docs.redpesk.bzh/docs/en/master/misc/community/docs/support.html)
