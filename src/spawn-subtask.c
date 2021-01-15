@@ -65,20 +65,20 @@ typedef enum {
 
 
 void taskPushResponse (taskIdT *taskId) {
-    //AFB_API_DEBUG(taskId->cmd->api, "taskPushResponse: uid='%s' responseJ=%s",  taskId->uid, json_object_get_string(taskId->responseJ));
-    int count;
+    int count=0;
 
     // push event if not one listen just stop pushing
     if (taskId->responseJ) {
         count= afb_event_push(taskId->event, taskId->responseJ);
         taskId->responseJ=NULL;
-        if (!count) AFB_API_DEBUG(taskId->cmd->api, "taskPushResponse: uid='%s' no listener",  taskId->uid);
+        taskId->statusJ=NULL;
+        taskId->errorJ=NULL;
+        if (!count && taskId->verbose >4) AFB_API_NOTICE(taskId->cmd->api, "uid='%s' no client listening",  taskId->uid);
     }
 }
 
 void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
     assert (taskId->magic == MAGIC_SPAWN_TASKID);
-    if (taskId->verbose >2) AFB_API_INFO (api, "spawnFreeTaskId: uid=%s pid=%d", taskId->uid, taskId->pid);
 
     // mark taskId as invalid
     taskId->pid=0;
@@ -113,10 +113,10 @@ static void taskPushFinalResponse (taskIdT *taskId) {
     if (taskId->verbose >2) AFB_API_INFO (taskId->cmd->api, "taskPushFinalResponse: uid=%s pid=%d [step-1: collect remaining data]", taskId->uid, taskId->pid);
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDERR, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
+
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STOP, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
     if (taskId->verbose >2) AFB_API_INFO (taskId->cmd->api, "taskPushFinalResponse: uid=%s pid=%d [step-2: collect child status=%s]", taskId->uid, taskId->pid, json_object_get_string(taskId->statusJ));
 
-    // push final response if any and clear taskId
     taskPushResponse (taskId);
     spawnFreeTaskId(cmd->api, taskId);
 }
@@ -269,13 +269,13 @@ int spawnParse (shellCmdT *cmd, json_object *execJ) {
 
     err= wrap_json_unpack(execJ, "{ss s?o !}", "cmdpath", &cmd->cli, "args", &argsJ);
     if (err) {
-        AFB_API_ERROR(cmd->api, "spawnParse: fail parse cmdpath sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
+        AFB_API_ERROR(cmd->api, "[fail-parsing] cmdpath sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
         goto OnErrorExit;
     }
 
     cmd->cli= utilsExpandKeyCtx(cmd->cli, (void*)cmd);  // expand env $keys
     if (!utilsFileModeIs(cmd->cli, S_IXUSR)) {
-       AFB_API_ERROR(cmd->api, "spawnParse: file not executable sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(execJ));
+       AFB_API_ERROR(cmd->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(execJ));
        goto OnErrorExit;
     }
 
@@ -285,7 +285,7 @@ int spawnParse (shellCmdT *cmd, json_object *execJ) {
         cmd->argv=calloc (cmd->argc, sizeof (char*));
         cmd->argv[0]=  utilsExpandKeyCtx(cmd->cli, (void*)cmd);
         if (!cmd->argv[0]) {
-            AFB_API_ERROR(cmd->api, "spawnParse: [unknow $ENV key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
+            AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
             goto OnErrorExit;
         }
     } else {
@@ -299,7 +299,7 @@ int spawnParse (shellCmdT *cmd, json_object *execJ) {
                     param= json_object_get_string (json_object_array_get_idx(argsJ, idx-1));
                     cmd->argv[idx] = utilsExpandKeyCtx(param, (void*)cmd);
                     if (!cmd->argv[idx]) {
-                        AFB_API_ERROR(cmd->api, "spawnParse: [unknow $ENV key] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, param);
+                        AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, param);
                         goto OnErrorExit;
                     }
                 }
@@ -312,7 +312,7 @@ int spawnParse (shellCmdT *cmd, json_object *execJ) {
                 cmd->argv[0]= cmd->uid;
                 cmd->argv[1] = utilsExpandKeyCtx(param, (void*)cmd);
                 if (!cmd->argv[1]) {
-                    AFB_API_ERROR(cmd->api, "spawnParse: [unknow $ENV key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->cli, param);
+                    AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->cli, param);
                     goto OnErrorExit;
                 }
                break;
@@ -358,7 +358,7 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnBindingT *binding, taskIdT *ta
         if (!taskId) taskId= spawnChildGetTaskId (binding, childPid);
 
         if (!taskId) {
-            AFB_API_NOTICE(api, "[sigchild unknown] igoring childPid=%d exit status=%d (spawnChildUpdateStatus)", childPid, childStatus);
+            AFB_API_NOTICE(api, "[sigchild-unknown] igoring childPid=%d exit status=%d (spawnChildUpdateStatus)", childPid, childStatus);
             continue;
         }
         // remove task from both global & cmd tids
@@ -394,7 +394,7 @@ int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* 
     assert(binding->magic == MAGIC_SPAWN_BDING);
 
     // Ignore termination child signal outside of stdout pipe handup
-    /* if (binding->verbose >2) */ AFB_API_NOTICE(binding->api, "[child gtids signal] (spawnChildSignalCB)");
+    /* if (binding->verbose >2) */ AFB_API_NOTICE(binding->api, "[child-gtids-signal] (spawnChildSignalCB)");
     spawnChildUpdateStatus (binding->api, binding, NULL);
 
     return 0;
@@ -410,13 +410,13 @@ int spawnChildMonitor (afb_api_t api, sd_event_io_handler_t callback, spawnBindi
 
     // create global hashtable semaphore
     if (pthread_rwlock_init (&binding->sem, NULL)) {
-        AFB_API_NOTICE(api, "[semaphore init fail] error=%s (spawnChildMonitor)", strerror(errno));
+        AFB_API_NOTICE(api, "[semaphore-init-fail] error=%s (spawnChildMonitor)", strerror(errno));
         goto OnErrorExit;
     }
 
     int sigFd = signalfd (-1, &sigMask, SFD_CLOEXEC | SFD_NONBLOCK);
     if (sigFd < 0) {
-        AFB_API_NOTICE(api, "[signalfd SIGCHLD fail] error=%s (spawnChildMonitor)", strerror(errno));
+        AFB_API_NOTICE(api, "[signalfd-SIGCHLD-fail] error=%s (spawnChildMonitor)", strerror(errno));
         goto OnErrorExit;
     }
     (void)sd_event_add_io(afb_api_get_event_loop(api), NULL, sigFd, EPOLLIN, callback, (void*)binding);

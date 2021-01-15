@@ -52,7 +52,7 @@ static int spawnTimerCB (TimerHandleT *handle) {
 
     // if process still run terminate it
     if (getpgid(taskId->pid) >= 0) {
-        AFB_NOTICE("spawnTimerCB: Terminating task uid=%s", taskId->uid);
+        AFB_NOTICE("Terminating task uid=%s", taskId->uid);
         taskId->cmd->encoder->actionsCB (taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, taskId->cmd->encoder->fmtctx);
         kill(taskId->pid, SIGKILL);
     }
@@ -69,7 +69,7 @@ static int spawnPipeFdCB (sd_event_source* source, int fd, uint32_t events, void
     if (taskId->pid) {
 
         if (fd == taskId->outfd && events & EPOLLIN) {
-            if (taskId->verbose >2) AFB_API_INFO (cmd->api, "spawnPipeFdCB: uid=%s pid=%d [EPOLLIN stdout=%d]", taskId->uid, taskId->pid, taskId->outfd );
+            if (taskId->verbose >2) AFB_API_INFO (cmd->api, "uid=%s pid=%d [EPOLLIN stdout=%d]", taskId->uid, taskId->pid, taskId->outfd );
             err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_STD, cmd->encoder->fmtctx);
             if (err) {
                 wrap_json_pack (&taskId->responseJ, "{ss so* so*}"
@@ -83,7 +83,7 @@ static int spawnPipeFdCB (sd_event_source* source, int fd, uint32_t events, void
             }
 
         } else if (fd == taskId->errfd && events & EPOLLIN) {
-            if (taskId->verbose >2) AFB_API_INFO (cmd->api, "spawnPipeFdCB: uid=%s pid=%d [EPOLLIN stderr=%d]", taskId->uid, taskId->pid, taskId->outfd );
+            if (taskId->verbose >2) AFB_API_INFO (cmd->api, "uid=%s pid=%d [EPOLLIN stderr=%d]", taskId->uid, taskId->pid, taskId->outfd );
             err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDERR, ENCODER_OPS_STD, cmd->encoder->fmtctx);
             if (err) {
                 wrap_json_pack (&taskId->responseJ, "{ss so* so*}"
@@ -130,10 +130,10 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
         // total arguments list is namespace+cmd argv
         if (cmd->sandbox->namespace) {
             argsize= cmd->argc + cmd->sandbox->namespace->argc + 2;
-            if (verbose >4) fprintf (stderr, "childBuildArgv: arguments size=%d cmd=%d sandbox=%d\n",argsize,  cmd->argc , cmd->sandbox->namespace->argc);
+            if (verbose >4) fprintf (stderr, "arguments size=%d cmd=%d sandbox=%d\n",argsize,  cmd->argc , cmd->sandbox->namespace->argc);
         } else {
             argsize= cmd->argc+2;
-            if (verbose >4) fprintf (stderr, "childBuildArgv: arguments size=%d cmd=%d\n",argsize,  cmd->argc);
+            if (verbose >4) fprintf (stderr, "arguments size=%d cmd=%d\n",argsize,  cmd->argc);
         }
 
         // allocate execv arguments value
@@ -195,6 +195,10 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
     if (sonPid < 0) goto OnErrorExit;
 
     if (sonPid == 0) {
+
+        // detach from afb_binder signal handler
+        utilsResetSigals();
+
         // forked son process attach stdout/stderr to father pipes
         close (STDIN_FILENO);
         close (stdoutP[0]);
@@ -203,17 +207,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         confAclT *acls= cmd->sandbox->acls;
         confCapT *caps= cmd->sandbox->caps;
 
-        // if we have some fileexec reset them to start
-        if (cmd->sandbox->filefds) {
-            int *filefds=cmd->sandbox->filefds;
-            for (int idx=0; filefds[idx]; idx++) {
-                off_t offset= lseek (filefds[idx], 0, SEEK_SET);
-                if (offset <0) {
-                    fprintf (stderr, "spawnTaskStart: [fail lseek execfd=%d error=%s\n",filefds[idx], strerror(errno));
-                    exit(1);
-                }
-            }
-        }
+        if (verbose > 8) fprintf (stderr, "**** [child start] sandbox=%s cmd=%s pid=%d\n", cmd->sandbox->uid, cmd->uid, getpid());
 
         // redirect stdout/stderr on binding pipes
         err= dup2(stdoutP[1], STDOUT_FILENO);
@@ -221,20 +215,27 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         // if verbose greater then 2 then stderr is display on server side and not send back to HTML5 UI
         if (verbose < 3) err=+dup2(stderrP[1], STDERR_FILENO);
         if (err < 0) {
-            fprintf (stderr, "spawnTaskStart: [fail to dup stdout/err] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
+            fprintf (stderr, "[fail to dup stdout/err] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
             exit (1);
         }
 
-        // when privileged set cgroup
-        if (isPrivileged) {
-            setenv("LD_LIBRARY_PATH", "/xxx", 0);
-            setenv("PATH", "/xxx", 0);
+        // if we have some fileexec reset them to start
+        if (cmd->sandbox->filefds) {
+            int *filefds=cmd->sandbox->filefds;
+            for (int idx=0; filefds[idx]; idx++) {
+                off_t offset= lseek (filefds[idx], 0, SEEK_SET);
+                if (offset <0) {
+                    fprintf (stderr, "[fail lseek execfd=%d error=%s\n",filefds[idx], strerror(errno));
+                    exit(1);
+                }
+            }
+        }
 
-            // char pidstr[32];
-            // snprintf (pidstr, sizeof (pidstr), "%d", sonPid);
+        // when privileged set cgroup
+        if (isPrivileged  && cmd->sandbox->cgroups) {
             err= utilsFileAddControl (NULL, cmd->sandbox->uid, cmd->sandbox->cgroups->pidgroupFd, "cgroup.procs", "0");
             if (err) {
-                fprintf (stderr, "spawnTaskStart: [capabilities is privileged]\n");
+                fprintf (stderr, "[capabilities is privileged]\n");
                 exit(1);
             }
         }
@@ -251,11 +252,11 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
                         case NS_CAP_SET:
                             err= capng_update(CAPNG_ADD, CAPNG_INHERITABLE, cap->value);
                             if (err < 0) {
-                                fprintf (stderr, "spawnTaskStart: [capabilities set fail] sandbox=%s cmd=%s caps=%s error=%s\n", cmd->sandbox->uid, cmd->uid, capng_capability_to_name(cap->value),strerror(errno));
+                                fprintf (stderr, "[capabilities set fail] sandbox=%s cmd=%s caps=%s error=%s\n", cmd->sandbox->uid, cmd->uid, capng_capability_to_name(cap->value),strerror(errno));
                             }
                             break;
                         default:
-                            fprintf (stderr, "spawnTaskStart: [capabilities ignored unset=%s]\n", capng_capability_to_name(cap->value));
+                            fprintf (stderr, "[capabilities ignored unset=%s]\n", capng_capability_to_name(cap->value));
                             // all capacities where previously removed
                             break;
                     }
@@ -264,7 +265,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
                 // change uid/gid while keeping capabilities
                 err = capng_change_id(acls->uid, acls->gid, CAPNG_DROP_SUPP_GRP | CAPNG_CLEAR_BOUNDING);
                 if (err) {
-                    fprintf (stderr, "spawnTaskStart: [capabilities set fail] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
+                    fprintf (stderr, "[capabilities set fail] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
                     exit (1);
                 }
                 isPrivileged=0;
@@ -345,13 +346,13 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         taskId->magic = MAGIC_SPAWN_TASKID;
         taskId->pid= sonPid;
         taskId->cmd= cmd;
-        taskId->verbose= verbose + cmd->verbose;
+        taskId->verbose= verbose;
         taskId->outfd= stdoutP[0];
         taskId->errfd= stderrP[0];
         if(asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid)<0){
             goto OnErrorExit;
         }
-        if (verbose) AFB_API_NOTICE (api, "[taskid created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
+        if (verbose) AFB_API_NOTICE (api, "[taskid-created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
 
         // create task event
         taskId->event = afb_api_make_event(api, taskId->uid);
@@ -406,14 +407,15 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         }
 
         // build responseJ & update call tid
-        wrap_json_pack (&responseJ, "{ss ss ss si}", "api", api->apiname, "sandbox", taskId->cmd->sandbox->uid, "command", taskId->cmd->uid, "pid", taskId->pid);
+        wrap_json_pack (&responseJ, "{ss ss* ss si}", "api", api->apiname, "sandbox", taskId->cmd->sandbox->uid, "command", taskId->cmd->uid, "pid", taskId->pid);
         afb_req_success_f(request, responseJ, NULL);
+
         return 0;
 
     OnErrorExit:
         spawnFreeTaskId (api, taskId);
-        AFB_API_ERROR (api, "spawnTaskStart [Fail to launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
-        afb_req_fail_f (request, "start-error", "spawnTaskStart: fail to start sandbox=%s cmd=%s", cmd->sandbox->uid, cmd->uid);
+        AFB_API_ERROR (api, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
+        afb_req_fail_f (request, "start-error", "fail to start sandbox=%s cmd=%s", cmd->sandbox->uid, cmd->uid);
 
         if (sonPid>0) kill(sonPid, SIGTERM);
         return 1;

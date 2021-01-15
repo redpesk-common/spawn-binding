@@ -64,7 +64,7 @@ int sandboxApplyAcls(confAclT *acls, int isPrivileged) {
     if (isPrivileged) {
         err= setgid(acls->gid);
         if (err) {
-            fprintf (stderr, "spawnTaskStart: [fail to setgid] error=%s\n", strerror(errno));
+            fprintf (stderr, "spawnTaskStart: [fail-to-setgid] error=%s\n", strerror(errno));
             goto OnErrorExit;
         }
     }
@@ -72,7 +72,7 @@ int sandboxApplyAcls(confAclT *acls, int isPrivileged) {
     if (isPrivileged) {
         err= setuid(acls->uid);
         if (err) {
-            fprintf (stderr, "spawnTaskStart: [fail to setuid] error=%s\n", strerror(errno));
+            fprintf (stderr, "spawnTaskStart: [fail-to-setuid] error=%s\n", strerror(errno));
             goto OnErrorExit;
         }
     }
@@ -80,7 +80,7 @@ int sandboxApplyAcls(confAclT *acls, int isPrivileged) {
     if (acls->chdir) {
         err= chdir(acls->chdir);
         if (err) {
-            fprintf (stderr, "spawnTaskStart: [fail to chdir] error=%s\n", strerror(errno));
+            fprintf (stderr, "spawnTaskStart: [fail-to-chdir] error=%s\n", strerror(errno));
             goto OnErrorExit;
         }
     }
@@ -162,25 +162,25 @@ static int nsParseOneCap (afb_api_t api, sandBoxT *sandbox, json_object *capJ, c
     ,"mode", &capflag
     );
     if (err) {
-        AFB_API_ERROR(api, "sandboxParseOneCap: [parsing error] sandbox='%s' cap='%s'", sandbox->uid, json_object_to_json_string(capJ));
+        AFB_API_ERROR(api, "[parsing-error] sandbox='%s' cap='%s'", sandbox->uid, json_object_to_json_string(capJ));
         goto OnErrorExit;
     }
 
     cap->mode= enumMapValue(capMode, capflag);
     if (cap->mode <0) {
-        AFB_API_ERROR(api, "sandboxParseOneCap: [capability invalid mode] sandbox='%s' cap='%s[%s]'", sandbox->uid, caplabel, capflag);
+        AFB_API_ERROR(api, "[capability-invalid-mode] sandbox='%s' cap='%s[%s]'", sandbox->uid, caplabel, capflag);
         goto OnErrorExit;
     }
 
     cap->value = capng_name_to_capability(caplabel);
     if (cap->value < 0) {
-        AFB_API_ERROR(api, "sandboxParseOneCap: [capability value unknown] sandbox='%s' cap='%s[%s]'", sandbox->uid,  caplabel, capflag);
+        AFB_API_ERROR(api, "[capability-value-unknown] sandbox='%s' cap='%s[%s]'", sandbox->uid,  caplabel, capflag);
         goto OnErrorExit;
     }
 
     // check if capability is avaliable for current process
     if (cap->mode == NS_CAP_SET && !capng_have_capability (CAPNG_PERMITTED, cap->value)  && !utilsTaskPrivileged()) {
-        AFB_API_NOTICE(api, "[capability ignored] sandbox='%s' capability='%s[%s]' (sandboxParseOneCap)", sandbox->uid, caplabel, capflag);
+        AFB_API_NOTICE(api, "[capability-ignored] sandbox='%s' capability='%s[%s]' (sandboxParseOneCap)", sandbox->uid, caplabel, capflag);
         cap->mode= NS_CAP_UNKNOWN;
     }
 
@@ -200,19 +200,19 @@ static int nsParseOneSecRule (afb_api_t api, sandBoxT *sandbox, json_object *rul
     ,"syscall",&syscall
     );
     if (err) {
-        AFB_API_ERROR(api, "sandboxParseOneSecRule: [parsing error] sandbox='%s' rule='%s'", sandbox->uid, json_object_to_json_string(ruleJ));
+        AFB_API_ERROR(api, "[parsing-error] sandbox='%s' rule='%s'", sandbox->uid, json_object_to_json_string(ruleJ));
         goto OnErrorExit;
     }
 
     rule->syscall= seccomp_syscall_resolve_name(syscall);
     if (rule->syscall <0) {
-        AFB_API_ERROR(api, "sandboxParseOneSecRule: [scmp rule invalid syscall] sandbox='%s' rule='%s[%s]'", sandbox->uid, action, syscall);
+        AFB_API_ERROR(api, "[scmp-invalid-syscall] sandbox='%s' rule='%s[%s]'", sandbox->uid, action, syscall);
         goto OnErrorExit;
     }
 
     rule->action = enumMapValue(nsScmpAction, action);
     if (rule->action < 0) {
-        AFB_API_ERROR(api, "sandboxParseOneSecRule: [scmp rule value unknown] sandbox='%s' rule='%s[%s]'", sandbox->uid,  action, syscall);
+        AFB_API_ERROR(api, "[scmp-value-unknown] sandbox='%s' rule='%s[%s]'", sandbox->uid,  action, syscall);
         goto OnErrorExit;
     }
 
@@ -239,14 +239,14 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, sandBoxT *sandbox, json_object 
     ,"io" , &cgIoJ
     );
     if (err) {
-        AFB_API_ERROR(api, "sandboxParseCgroups: [cgroups parsing fail] sandbox='%s' cgroups='%s'", sandbox->uid, json_object_to_json_string(cgroupsJ));
+        AFB_API_ERROR(api, "[cgroups-parsing-fail] sandbox='%s' cgroups='%s'", sandbox->uid, json_object_to_json_string(cgroupsJ));
         goto OnErrorExit;
     }
 
     // try to create a cgroup node
     cgRootFd= open(mntpath, O_DIRECTORY);
     if (cgRootFd <= 0) {
-        AFB_API_ERROR(api, "sandboxParseCgroups: [cgroups not found] sandbox='%s' cgroups='%s' error=%s", sandbox->uid, CGROUPS_MOUNT_POINT, strerror(errno));
+        AFB_API_ERROR(api, "[cgroups-not-found] sandbox='%s' cgroups='%s' error=%s", sandbox->uid, CGROUPS_MOUNT_POINT, strerror(errno));
         goto OnErrorExit;
     }
 
@@ -255,14 +255,14 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, sandBoxT *sandbox, json_object 
     if (subgroupFd <0) {
         err = mkdirat(cgRootFd, sandbox->uid, 0);
         if (err) {
-            AFB_API_ERROR(api, "sandboxParseCgroups: [cgroups create fail] sandbox='%s' cgroups='%s/%s' error=%s", sandbox->uid, CGROUPS_MOUNT_POINT, sandbox->uid, strerror(errno));
+            AFB_API_ERROR(api, "[cgroups-create-fail] sandbox='%s' cgroups='%s/%s' error=%s", sandbox->uid, CGROUPS_MOUNT_POINT, sandbox->uid, strerror(errno));
             goto OnErrorExit;
         }
 
         // open newly create subgroup to activate group values
         subgroupFd= openat(cgRootFd, sandbox->uid, O_DIRECTORY);
         if (subgroupFd <0) {
-            AFB_API_ERROR(api, "sandboxParseCgroups: [cgroups open fail] sandbox='%s' cgroups='%s/%s' error=%s", sandbox->uid, CGROUPS_MOUNT_POINT, sandbox->uid, strerror(errno));
+            AFB_API_ERROR(api, "[cgroups-open-fail] sandbox='%s' cgroups='%s/%s' error=%s", sandbox->uid, CGROUPS_MOUNT_POINT, sandbox->uid, strerror(errno));
             goto OnErrorExit;
         }
     }
@@ -282,7 +282,7 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, sandBoxT *sandbox, json_object 
             ,"max"   , &cpuMax
         );
         if (err) {
-            AFB_API_ERROR(api, "sandboxParseCgroups: [cgroups cpu parsing fail] sandbox='%s' cgroup.cpu='%s'", sandbox->uid, json_object_to_json_string(cgCpuJ));
+            AFB_API_ERROR(api, "[cgroups-cpu-parsing-fail] sandbox='%s' cgroup.cpu='%s'", sandbox->uid, json_object_to_json_string(cgCpuJ));
             goto OnErrorExit;
         }
 
@@ -304,7 +304,7 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, sandBoxT *sandbox, json_object 
             ,"swap", &memSwap
         );
         if (err) {
-            AFB_API_ERROR(api, "sandboxParseCgroups: [cgroups mem parsing fail] sandbox='%s' cgroup.mem='%s'", sandbox->uid, json_object_to_json_string(cgMemJ));
+            AFB_API_ERROR(api, "[cgroups-mem-parsing-fail] sandbox='%s' cgroup.mem='%s'", sandbox->uid, json_object_to_json_string(cgMemJ));
             goto OnErrorExit;
         }
         // https://facebookmicrosites.github.io/cgroup2/docs/cpu-controller.html
@@ -319,7 +319,7 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, sandBoxT *sandbox, json_object 
 
     if (cgIoJ) {
         if (! json_object_is_type (cgIoJ, json_type_string)) {
-            AFB_API_ERROR(api, "sandboxParseCgroups: [cgroups io parsing fail] sandbox='%s' cgroup.io='%s'", sandbox->uid, json_object_to_json_string(cgIoJ));
+            AFB_API_ERROR(api, "[cgroups-io-parsing-fail] sandbox='%s' cgroup.io='%s'", sandbox->uid, json_object_to_json_string(cgIoJ));
             goto OnErrorExit;
         }
 
@@ -336,14 +336,14 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, sandBoxT *sandbox, json_object 
     if (cgroups->pidgroupFd <0) {
         err = mkdirat(subgroupFd, "taskid", 0);
         if (err) {
-            AFB_API_ERROR(api, "sandboxParseCgroups: [cgroups create fail] sandbox='%s' cgroups='%s/%s/taskid' error=%s", sandbox->uid, CGROUPS_MOUNT_POINT, sandbox->uid, strerror(errno));
+            AFB_API_ERROR(api, "[cgroups-create-fail] sandbox='%s' cgroups='%s/%s/taskid' error=%s", sandbox->uid, CGROUPS_MOUNT_POINT, sandbox->uid, strerror(errno));
             goto OnErrorExit;
         }
 
         // open newly create subgroup to activate group values
         cgroups->pidgroupFd= openat(subgroupFd, "taskid", O_DIRECTORY);
         if (cgroups->pidgroupFd <0) {
-            AFB_API_ERROR(api, "sandboxParseCgroups: [cgroups open fail] sandbox='%s' cgroups='%s/%s/taskid' error=%s", sandbox->uid, CGROUPS_MOUNT_POINT, sandbox->uid, strerror(errno));
+            AFB_API_ERROR(api, "[cgroups-open-fail] sandbox='%s' cgroups='%s/%s/taskid' error=%s", sandbox->uid, CGROUPS_MOUNT_POINT, sandbox->uid, strerror(errno));
             goto OnErrorExit;
         }
     }
@@ -382,7 +382,7 @@ confCapT *sandboxParseCaps (afb_api_t api, sandBoxT *sandbox, json_object *capsJ
             break;
 
         default:
-            AFB_API_ERROR(api, "sandboxParseCaps: [parsing error] group sandbox='%s' cap='%s'", sandbox->uid, json_object_to_json_string(capsJ));
+            AFB_API_ERROR(api, "[parsing-error] group sandbox='%s' cap='%s'", sandbox->uid, json_object_to_json_string(capsJ));
             goto OnErrorExit;
     }
 
@@ -405,7 +405,7 @@ confEnvT *sandboxParseEnvs (afb_api_t api, sandBoxT *sandbox, json_object *envsJ
                 json_object *envJ= json_object_array_get_idx(envsJ, idx);
                 err= nsParseOneEnv (api, envJ, &envs[idx]);
                 if (err) {
-                    AFB_API_ERROR(api, "sandboxParseEnvs: [parsing error] sandbox='%s' setenv='%s'", sandbox->uid, json_object_to_json_string(envJ));
+                    AFB_API_ERROR(api, "[parsing-error] sandbox='%s' setenv='%s'", sandbox->uid, json_object_to_json_string(envJ));
                     goto OnErrorExit;
                 }
             }
@@ -415,13 +415,13 @@ confEnvT *sandboxParseEnvs (afb_api_t api, sandBoxT *sandbox, json_object *envsJ
             envs = calloc (2, sizeof(confEnvT));
             err= nsParseOneEnv (api, envsJ, &envs[0]);
             if (err) {
-                AFB_API_ERROR(api, "sandboxParseEnvs: [parsing error] sandbox='%s' setenv='%s'", sandbox->uid, json_object_to_json_string(envsJ));
+                AFB_API_ERROR(api, "[parsing-error] sandbox='%s' setenv='%s'", sandbox->uid, json_object_to_json_string(envsJ));
                 goto OnErrorExit;
             }
             break;
 
         default:
-            AFB_API_ERROR(api, "sandboxParseEnvs: [parsing error] group sandbox='%s' setenv='%s'", sandbox->uid, json_object_to_json_string(envsJ));
+            AFB_API_ERROR(api, "[parsing-error] group sandbox='%s' setenv='%s'", sandbox->uid, json_object_to_json_string(envsJ));
             goto OnErrorExit;
     }
     return envs;
@@ -447,7 +447,7 @@ confAclT *sandboxParseAcls(afb_api_t api, sandBoxT *sandbox, json_object *aclsJ)
         ,"chdir" , &acls->chdir
         );
     if (err) {
-        AFB_API_ERROR(api, "sandboxParseAcls: [parsing error] sandbox='%s' acls='%s'", sandbox->uid, json_object_to_json_string(aclsJ));
+        AFB_API_ERROR(api, "[parsing-error] sandbox='%s' acls='%s'", sandbox->uid, json_object_to_json_string(aclsJ));
         goto OnErrorExit;
     }
 
@@ -463,16 +463,19 @@ confAclT *sandboxParseAcls(afb_api_t api, sandBoxT *sandbox, json_object *aclsJ)
             case json_type_string:
                 user= getpwnam(json_object_get_string(uidJ));
                 if (!user) {
-                    AFB_API_ERROR(api, "sandboxParseAcls: [user not found] sandbox='%s' user='%s' missing", sandbox->uid, json_object_get_string(uidJ));
+                    AFB_API_ERROR(api, "[user-not-found] sandbox='%s' user='%s' missing", sandbox->uid, json_object_get_string(uidJ));
                     goto OnErrorExit;
                 }
                 acls->uid= user->pw_uid;
                 break;
         default:
-            AFB_API_ERROR(api, "sandboxParseAcls: [invalid format] sandbox='%s' user='%s' should be string|integer", sandbox->uid, json_object_get_string(uidJ));
+            AFB_API_ERROR(api, "[invalid-format] sandbox='%s' user='%s' should be string|integer", sandbox->uid, json_object_get_string(uidJ));
             goto OnErrorExit;
 
         }
+    } else {
+        AFB_API_ERROR(api, "[security-error] ### privileged mode sandbox='%s' requirer users=xxx ### acls='%s'", sandbox->uid, json_object_to_json_string(aclsJ));
+        goto OnErrorExit;
     }
 
     if (gidJ) {
@@ -487,13 +490,13 @@ confAclT *sandboxParseAcls(afb_api_t api, sandBoxT *sandbox, json_object *aclsJ)
             case json_type_string:
                 group= getgrnam(json_object_get_string(gidJ));
                 if (!group) {
-                    AFB_API_ERROR(api, "sandboxParseAcls: [group not found] sandbox='%s' group='%s' missing", sandbox->uid, json_object_get_string(uidJ));
+                    AFB_API_ERROR(api, "[group-not-found] sandbox='%s' group='%s' missing", sandbox->uid, json_object_get_string(uidJ));
                     goto OnErrorExit;
                 }
                 acls->gid= group->gr_gid;
                 break;
         default:
-            AFB_API_ERROR(api, "sandboxParseAcls: [invalid format] sandbox='%s' should be string|integer group='%s'", sandbox->uid, json_object_get_string(gidJ));
+            AFB_API_ERROR(api, "[invalid-format] sandbox='%s' should be string|integer group='%s'", sandbox->uid, json_object_get_string(gidJ));
             goto OnErrorExit;
 
         }
@@ -502,12 +505,12 @@ confAclT *sandboxParseAcls(afb_api_t api, sandBoxT *sandbox, json_object *aclsJ)
         // check seteuid privilege with capabilities
     if (utilsTaskPrivileged()) {
         if (!uidJ || !gidJ) {
-            AFB_API_ERROR(api, "sandboxParseAcls: [require user/group acls] sandbox='%s' running with privileges require acls with user=xxx group=xxx acls=%s", sandbox->uid, json_object_to_json_string(aclsJ));
+            AFB_API_ERROR(api, "[require-user/group-acls] sandbox='%s' running with privileges require acls with user=xxx group=xxx acls=%s", sandbox->uid, json_object_to_json_string(aclsJ));
             goto OnErrorExit;
         }
     } else {
         if (uidJ || gidJ) {
-            AFB_API_WARNING(api, "sandboxParseAcls: [ignoring user/group acls] sandbox='%s' no uid/gid privileges ignoring user='%s' group='%s'", sandbox->uid, json_object_to_json_string(uidJ),  json_object_to_json_string(gidJ));
+            AFB_API_NOTICE(api, "[ignoring-user/group-acls] sandbox='%s' no uid/gid privileges ignoring user='%s' group='%s'", sandbox->uid, json_object_to_json_string(uidJ),  json_object_to_json_string(gidJ));
             acls->uid=0;
             acls->gid=0;
         }
@@ -534,12 +537,12 @@ confSeccompT *sandboxParseSecRules(afb_api_t api, sandBoxT *sandbox, json_object
         ,"rules", rulesJ
         );
     if (err) {
-        AFB_API_ERROR(api, "sandboxParseSecRules: [parsing error] sandbox='%s' seccomp='%s'", sandbox->uid, json_object_to_json_string(seccompJ));
+        AFB_API_ERROR(api, "[parsing-error] sandbox='%s' seccomp='%s'", sandbox->uid, json_object_to_json_string(seccompJ));
         goto OnErrorExit;
     }
 
     if (seccomp->rulespath && rulesJ) {
-        AFB_API_ERROR(api, "sandboxParseSecRules: [rulepath/rules exclusive] sandbox='%s' seccomp='%s'", sandbox->uid, json_object_to_json_string(seccompJ));
+        AFB_API_ERROR(api, "[rulepath/rules-exclusive] sandbox='%s' seccomp='%s'", sandbox->uid, json_object_to_json_string(seccompJ));
         goto OnErrorExit;
 
     }
@@ -548,7 +551,7 @@ confSeccompT *sandboxParseSecRules(afb_api_t api, sandBoxT *sandbox, json_object
     else {
         seccomp->dflt= enumMapValue(nsScmpAction, dfltAction);
         if (seccomp->dflt <0) {
-            AFB_API_ERROR(api, "sandboxParseSecRules: [unknown default action] sandbox='%s' action='%s'", sandbox->uid, dfltAction);
+            AFB_API_ERROR(api, "[unknown-default-action] sandbox='%s' action='%s'", sandbox->uid, dfltAction);
             goto OnErrorExit;
         }
     }
@@ -556,7 +559,7 @@ confSeccompT *sandboxParseSecRules(afb_api_t api, sandBoxT *sandbox, json_object
     if (seccomp->rulespath) {
         const char*rulespath= utilsExpandKeyCtx(seccomp->rulespath, (void*)sandbox); // expand keys
         if (!rulespath) {
-            AFB_API_ERROR(api, "sandboxParseSecRules: [expand fail $ENV key] sandbox='%s' rulepath='%s'", sandbox->uid, seccomp->rulespath);
+            AFB_API_ERROR(api, "[expand-fail-$ENV-key] sandbox='%s' rulepath='%s'", sandbox->uid, seccomp->rulespath);
             goto OnErrorExit;
         }
         struct sock_fprog *fsock=calloc(1, sizeof(struct sock_fprog));
@@ -578,7 +581,7 @@ confSeccompT *sandboxParseSecRules(afb_api_t api, sandBoxT *sandbox, json_object
                     json_object *ruleJ= json_object_array_get_idx(rulesJ, idx);
                     err= nsParseOneSecRule (api, sandbox, ruleJ, &seccomp->rules[idx]);
                     if (err) {
-                        AFB_API_ERROR(api, "sandboxParseEnvs: [parsing error] sandbox='%s' rules='%s'", sandbox->uid, json_object_to_json_string(ruleJ));
+                        AFB_API_ERROR(api, "[parsing-error] sandbox='%s' rules='%s'", sandbox->uid, json_object_to_json_string(ruleJ));
                         goto OnErrorExit;
                     }
                 }
@@ -588,13 +591,13 @@ confSeccompT *sandboxParseSecRules(afb_api_t api, sandBoxT *sandbox, json_object
                 seccomp->rules = calloc (2, sizeof(confEnvT));
                 err= nsParseOneSecRule (api, sandbox, rulesJ, &seccomp->rules[0]);
                 if (err) {
-                    AFB_API_ERROR(api, "sandboxParseEnvs: [parsing error] sandbox='%s' rules='%s'", sandbox->uid, json_object_to_json_string(rulesJ));
+                    AFB_API_ERROR(api, "[parsing-error] sandbox='%s' rules='%s'", sandbox->uid, json_object_to_json_string(rulesJ));
                     goto OnErrorExit;
                 }
                 break;
 
             default:
-                AFB_API_ERROR(api, "sandboxParseEnvs: [parsing error] group sandbox='%s' rules='%s'", sandbox->uid, json_object_to_json_string(rulesJ));
+                AFB_API_ERROR(api, "[parsing-error] group sandbox='%s' rules='%s'", sandbox->uid, json_object_to_json_string(rulesJ));
                 goto OnErrorExit;
         }
     }
@@ -619,7 +622,7 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
         ,"shares" , &sharesJ
         );
     if (err) {
-        AFB_API_ERROR(api, "sandboxParseNamespace: [parsing error] sandbox='%s' namespace='%s'", sandbox->uid, json_object_to_json_string(namespaceJ));
+        AFB_API_ERROR(api, "[parsing-error] sandbox='%s' namespace='%s'", sandbox->uid, json_object_to_json_string(namespaceJ));
         goto OnErrorExit;
     }
 
@@ -631,7 +634,7 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
             ,"autocreate", &namespace->opts.autocreate
         );
         if (err) {
-            AFB_API_ERROR(api, "sandboxParseNamespace: [parsing error] sandbox='%s' opts='%s'", sandbox->uid, json_object_to_json_string(optsJ));
+            AFB_API_ERROR(api, "[parsing-error] sandbox='%s' opts='%s'", sandbox->uid, json_object_to_json_string(optsJ));
             goto OnErrorExit;
         }
     } // end optsJ
@@ -639,7 +642,7 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
     // provide default value for bwrap cli and assert it is executable
     if (!namespace->opts.bwrap) namespace->opts.bwrap= BWRAP_EXE_PATH;
     if (!utilsFileModeIs(namespace->opts.bwrap, S_IXUSR)) {
-        AFB_API_ERROR(api, "sandboxParseNamespace: [bwrap not executable] sandbox='%s' bwrap='%s'", sandbox->uid, namespace->opts.bwrap);
+        AFB_API_ERROR(api, "[bwrap not executable] sandbox='%s' bwrap='%s'", sandbox->uid, namespace->opts.bwrap);
         goto OnErrorExit;
     }
 
@@ -653,7 +656,7 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
                     json_object *mountJ= json_object_array_get_idx(mountsJ, idx);
                     err= nsParseOneMount (api, sandbox, mountJ, &namespace->mounts[idx]);
                     if (err) {
-                        AFB_API_ERROR(api, "sandboxParseNamespace: [parsing error] sandbox='%s' mounts='%s'", sandbox->uid, json_object_to_json_string(mountJ));
+                        AFB_API_ERROR(api, "[parsing-error] sandbox='%s' mounts='%s'", sandbox->uid, json_object_to_json_string(mountJ));
                         goto OnErrorExit;
                     }
                 }
@@ -663,13 +666,13 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
                 namespace->mounts = calloc (2, sizeof(confMountT));
                 err= nsParseOneMount (api, sandbox, mountsJ, &namespace->mounts[0]);
                 if (err) {
-                    AFB_API_ERROR(api, "sandboxParseNamespace: [parsing error] sandbox='%s' mounts='%s'", sandbox->uid, json_object_to_json_string(mountsJ));
+                    AFB_API_ERROR(api, "[parsing-error] sandbox='%s' mounts='%s'", sandbox->uid, json_object_to_json_string(mountsJ));
                     goto OnErrorExit;
                 }
                 break;
 
             default:
-                AFB_API_ERROR(api, "sandboxParseNamespace: [parsing error] sandbox='%s' mounts='%s'", sandbox->uid, json_object_to_json_string(mountsJ));
+                AFB_API_ERROR(api, "[parsing-error] sandbox='%s' mounts='%s'", sandbox->uid, json_object_to_json_string(mountsJ));
                 goto OnErrorExit;
         }
     } // end mountJ
@@ -686,40 +689,40 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
             ,"ipc" , &shareipc
             );
         if (err) {
-            AFB_API_ERROR(api, "sandboxParseNamespace: [parsing share] sandbox=%s share='%s' invalid json", sandbox->uid, json_object_to_json_string(sharesJ));
+            AFB_API_ERROR(api, "[parsing-share] sandbox=%s share='%s' invalid json", sandbox->uid, json_object_to_json_string(sharesJ));
             goto OnErrorExit;
         }
 
         namespace->shares->all = enumMapValue(nsShareMode, shareall);
         if (namespace->shares->all < 0) {
-            AFB_API_ERROR(api, "sandboxParseNamespace: [share flag unknow] sandbox=%s shareall='%s'", sandbox->uid, shareall);
+            AFB_API_ERROR(api, "[share-flag-unknow] sandbox=%s shareall='%s'", sandbox->uid, shareall);
             goto OnErrorExit;
         }
         namespace->shares->user= enumMapValue(nsShareMode, shareuser);
         if (namespace->shares->user < 0) {
-            AFB_API_ERROR(api, "sandboxParseNamespace: [share flag unknow] sandbox=%s shareuser='%s'", sandbox->uid, shareuser);
+            AFB_API_ERROR(api, "[share-flag-unknow] sandbox=%s shareuser='%s'", sandbox->uid, shareuser);
             goto OnErrorExit;
         }
         namespace->shares->cgroup = enumMapValue(nsShareMode, sharecgroup);
         if (namespace->shares->cgroup < 0) {
-            AFB_API_ERROR(api, "sandboxParseNamespace: [share flag unknow] sandbox=%s sharecgroup='%s'", sandbox->uid, sharecgroup);
+            AFB_API_ERROR(api, "[share-flag-unknow] sandbox=%s sharecgroup='%s'", sandbox->uid, sharecgroup);
             goto OnErrorExit;
         }
         namespace->shares->net = enumMapValue(nsShareMode, sharenet);
         if (namespace->shares->net < 0) {
-            AFB_API_ERROR(api, "sandboxParseNamespace: [share flag unknow] sandbox=%s sharenet='%s'", sandbox->uid, sharenet);
+            AFB_API_ERROR(api, "[share-flag-unknow] sandbox=%s sharenet='%s'", sandbox->uid, sharenet);
             goto OnErrorExit;
         }
         namespace->shares->ipc = enumMapValue(nsShareMode, shareipc);
         if (namespace->shares->ipc < 0) {
-            AFB_API_ERROR(api, "sandboxParseNamespace: [share flag unknow] sandbox=%s shareipc='%s'", sandbox->uid, shareipc);
+            AFB_API_ERROR(api, "[share-flag-unknow] sandbox=%s shareipc='%s'", sandbox->uid, shareipc);
             goto OnErrorExit;
         }
 
         // pretest namespace config and retreive number of used arguments.
         namespace->argv = sandboxBwrapArg(api, sandbox, namespace);
         if (!namespace->argv) {
-            AFB_API_ERROR(api, "sandboxParseNamespace: [parsing mounts] sandbox=%s namespace='%s' invalid config", sandbox->uid, json_object_to_json_string(mountsJ));
+            AFB_API_ERROR(api, "[parsing-mounts] sandbox=%s namespace='%s' invalid config", sandbox->uid, json_object_to_json_string(mountsJ));
             goto OnErrorExit;
         }
 
@@ -810,7 +813,7 @@ const char **sandboxBwrapArg (afb_api_t api, sandBoxT *sandbox, confNamespaceT *
                     err = stat(source, &status);
                 }
                 if (err < 0) {
-                    AFB_API_ERROR(api, "sandboxBuildArgv: [mount path invalid] sandbox=%s source=%s not accessible", sandbox->uid, source);
+                    AFB_API_ERROR(api, "[mount-path-invalid] sandbox=%s source=%s not accessible", sandbox->uid, source);
                     goto OnErrorExit;
                 }
                 break;
@@ -841,7 +844,7 @@ const char **sandboxBwrapArg (afb_api_t api, sandBoxT *sandbox, confNamespaceT *
         case NS_MOUNT_EXECFD:
             if (!filefds) filefds= calloc (BWRAP_ARGC_MAX, sizeof(int));
             if (fdcount == BWRAP_ARGC_MAX) {
-                AFB_API_ERROR(api, "sandboxBuildArgv: [execfd too-many] sandbox=%s source=%s execfd count >%d", sandbox->uid, source, BWRAP_ARGC_MAX);
+                AFB_API_ERROR(api, "[execfd-too-many] sandbox=%s source=%s execfd count >%d", sandbox->uid, source, BWRAP_ARGC_MAX);
                 goto OnErrorExit;
             }
             argval[argcount++]="--file";

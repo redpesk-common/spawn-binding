@@ -10,7 +10,7 @@
       "uid": "sandbox-simple",
       "info": "simple demo [basic acls, no namespace]",
       "prefix": "admin",
-      "verbose": 0,
+      "verbose": 1,
       "acls": {
         "umask": "027",
         "user": "daemon",
@@ -18,11 +18,6 @@
         "chdir": "/var/tmp"
       },
       "commands": [
-        {
-          "uid": "home",
-          "info" : "expand $home on server side",
-          "exec": {"cmdpath": "/bin/ls", "args": ["-l", "$HOME"]}
-        },
         {
           "uid": "afbroot",
           "info" : "expand afb_binder root directory",
@@ -56,6 +51,16 @@
           "exec": {"cmdpath": "/usr/bin/env"}
         },
         {
+          "uid": "json",
+          "info" : "test json encoder take json from stdout",
+          "encoder": {"output": "json", "opts": {"maxlen":1024}},
+          "exec": {"cmdpath": "/bin/echo", "args": "%query%"},
+          "sample": [
+            {"args": {"query": "{'message':'simple'}"}},
+            {"args": {"query": "{'message':'complex'} {'test_1':1} {'test_2':0} {'complex':1, 'array':['elem1','elem2','elem3']}"}}
+          ]
+        },
+        {
           "uid": "display",
           "info": "(format text) return one event per line",
           "usage": {"filename":"xxxx"},
@@ -66,15 +71,20 @@
           ]
         },
         {
-          "uid": "list",
-          "info" : "custom encoder sample outputs json_array of 'blkcount' lines",
+          "uid": "dir",
+          "info" : "list a directory",
           "usage": {"dirname": "xxxxx"},
           "exec": {"cmdpath": "/bin/ls", "args": ["-l", "%dirname%"]},
           "sample": [
+            {"args": {"dirname": "/"}},
             {"args": {"dirname": "/etc"}},
-            {"args": {"dirname": "/etc/udev"}},
-            {"args": {"dirname": "/var/cache/"}}
+            {"args": {"dirname": "/var"}}
           ]
+        },
+        {
+          "uid": "home",
+          "info" : "list $HOME (may fail depending on acls->user)",
+          "exec": {"cmdpath": "/bin/ls", "args": ["-l", "$HOME"]}
         }
       ]
     }

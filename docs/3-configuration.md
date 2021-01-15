@@ -39,13 +39,17 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
       ]
     }
 }
+
+// resulting API
+// ws://localhost:1234/api/minimal/distro?query={"action":"start"}
 ```
 
 ### sandbox definition
 
 * **uid**: sandbox name, is used to build children taskid
 * **info**: optional field describing sandbox
-* **prefix**: will be added to every command API. When not defined sandbox->uid is used. Note that using prefix="" fully removes prefix from commands API, providing a flat namespace to every commands independently of their umbrella sandbox.
+* **prefix**: is added to every command 'api/verb==api-name/prefix/cmd-uid'.  When prefix="" it is fully removed from commands API, providing a flat namespace to every commands independently of their umbrella sandbox.
+Default when prefix is not defined. If config.json declare more than one 'sandbox' by default *prefix==sandbox->uid*, on the other hand if config.json declare only one sandbox (no json-array) then no-prefix is added and api/ver==api-name/cmd-uid.
 * **verbose**: [0-9] value. Turn on/off some debug/log capabilities
 * **privilege**: required corresponding [Cynagora](../../developer-guides/afb-overview.html) privilege.
 ```json

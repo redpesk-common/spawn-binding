@@ -31,7 +31,11 @@ jq < $AFB_SPAWN_CONFIG
 ## Start spawn-binding
 
 ``` bash
+# running without privileged
 afb-binder --name=afb-spawn --binding=./package/lib/afb-spawn.so --verbose
+
+# running with privileges
+sudo afb-binder --name=afb-spawn --binding=./package/lib/afb-spawn.so --verbose
 ```
 
 >Note: --binding should point on where ever your *afb-spawn.so* is installed, and AFB_SPAWN_CONFIG should point on a valid json config
@@ -110,6 +114,13 @@ You may activate all config in one shot by using placing sample config name with
 
 **Warning** if you load multiple file double-check that they register different APIs name. Your HTML5 interface should reflect
 ![spawn-biding-html5](assets/spawn-binding-dualconf.jpg)
+
+## Testing with GDB
+
+When testing with GDB you should add *--trap-faults=no* in order to prevent afb-binder from trapping errors.
+```bash
+AFB_SPAWN_CONFIG=../conf.d/project/etc/spawn-simple-config.json gdb --args afb-binder --name=afb-spawn --binding=package/lib/afb-spawn.so -vvv --ws-server=unix:/run/user/$UID/simple --trap-faults=no
+```
 
 ## Testing namespace
 

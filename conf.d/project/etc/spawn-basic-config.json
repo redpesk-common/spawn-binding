@@ -1,11 +1,11 @@
 {
   "metadata": {
     "uid": "spawn-minimal",
-    "api": "minimal",
+    "api": "basic",
     "version": "1.0"
   },
   "sandboxes": {
-      "uid": "sandbox",
+      "uid": "sandbox-basic",
       "info": "minimal demo [no acls, no namespace]",
       "commands": [
         {

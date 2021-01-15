@@ -116,8 +116,7 @@
           "encoder": {"output": "json", "opts": {"maxlen":1024}},
           "exec": {"cmdpath": "/bin/echo", "args": "%query%"},
           "sample": [
-            {"args": {"query": "{'message':'simple'"}},
-            {"args": {"query": "-- ignore prefix --- {'message':'simple'} --- ignore tail ---"}},
+            {"args": {"query": "{'message':'simple'}"}},
             {"args": {"query": "{'message':'complex'} {'test_1':1} {'test_2':0} {'complex':1, 'array':['elem1','elem2','elem3']}"}}
           ]
         },
@@ -148,9 +147,9 @@
           "usage": {"dirname": "xxxxx"},
           "exec": {"cmdpath": "/bin/ls", "args": ["-l", "%dirname%"]},
           "sample": [
+            {"args": {"dirname": "/"}},
             {"args": {"dirname": "/etc"}},
-            {"args": {"dirname": "/etc/udev"}},
-            {"args": {"dirname": "/var/cache/"}}
+            {"args": {"dirname": "/var"}}
           ]
         },
         {
@@ -160,7 +159,7 @@
           "encoder":{"plugin": "format-demo", "output":"my-custom-encoder", "opts":{"blkcount":10, "maxlen":256}},
           "exec": {"cmdpath": "/bin/ls", "args": ["-l", "%dirname%"]},
           "sample": [
-            {"args": {"dirname": "/etc"}}
+            {"args": {"dirname": "/"}}
           ]
         }
       ]

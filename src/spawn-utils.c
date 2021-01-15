@@ -201,6 +201,11 @@ int utilsTaskPrivileged(void) {
     return status;
 }
 
+// restore default signal handler behaviour
+void utilsResetSigals(void) {
+    signal(SIGSEGV, SIG_DFL);
+}
+
 // return file inode (use to check if two path are pointing on the same file)
 long unsigned int utilsGetPathInod (const char* path) {
     struct stat fstat;
@@ -222,9 +227,9 @@ int utilsFileAddControl (afb_api_t api, const char *uid, int dirFd, const char *
     ctrlfd = openat (dirFd, ctrlname, O_WRONLY);
     if (ctrlfd < 0) {
         if (api)
-            AFB_API_NOTICE(api, "[cgroup ctrl not found] sandbox='%s' ctrlname='%s' error=%s (nsCgroupSetControl)", uid, ctrlname, strerror(errno));
+            AFB_API_NOTICE(api, "[cgroup-ctrl-not-found] sandbox='%s' ctrlname='%s' error=%s (nsCgroupSetControl)", uid, ctrlname, strerror(errno));
         else
-            fprintf(stderr, "[cgroup ctrl not found] sandbox='%s' ctrlname='%s' error=%s (nsCgroupSetControl)\n", uid, ctrlname, strerror(errno));
+            fprintf(stderr, "[cgroup-ctrl-not-found] sandbox='%s' ctrlname='%s' error=%s (nsCgroupSetControl)\n", uid, ctrlname, strerror(errno));
         goto OnErrorExit;
     }
 
@@ -236,9 +241,9 @@ int utilsFileAddControl (afb_api_t api, const char *uid, int dirFd, const char *
         struct stat statfd;
         fstat (ctrlfd, &statfd);
         if (api)
-            AFB_API_NOTICE(api, "[cgroup control refused] sandbox='%s' ctrlname='%s' inode=%ld value=%s error=%s (nsCgroupSetControl)", uid, ctrlname, statfd.st_ino, ctrlval, strerror(errno));
+            AFB_API_NOTICE(api, "[cgroup-control-refused] sandbox='%s' ctrlname='%s' inode=%ld value=%s error=%s (nsCgroupSetControl)", uid, ctrlname, statfd.st_ino, ctrlval, strerror(errno));
         else
-            fprintf(stderr, "[cgroup control sandbox='%s' ctrlname='%s' inode=%ld value=%s error=%s (nsCgroupSetControl)\n", uid, ctrlname, statfd.st_ino, ctrlval, strerror(errno));
+            fprintf(stderr, "[cgroup-control-refused] sandbox='%s' ctrlname='%s' inode=%ld value=%s error=%s (nsCgroupSetControl)\n", uid, ctrlname, statfd.st_ino, ctrlval, strerror(errno));
         close (ctrlfd);
         goto OnErrorExit;
     }
