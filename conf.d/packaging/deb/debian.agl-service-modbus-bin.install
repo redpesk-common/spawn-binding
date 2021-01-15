@@ -1,9 +1,0 @@
-opt/AGL/agl-service-shell
-opt/AGL/agl-service-shell/lib
-opt/AGL/agl-service-shell/lib/plugins
-opt/AGL/agl-service-shell/lib/afb-shell.so
-opt/AGL/agl-service-shell/bin
-opt/AGL/agl-service-shell/etc
-opt/AGL/agl-service-shell/var
-opt/AGL/agl-service-shell/htdocs
-opt/AGL/agl-service-shell/htdocs/*
