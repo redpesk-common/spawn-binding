@@ -36,6 +36,7 @@
 typedef struct {
     uid_t uid;
     gid_t gid;
+    nsRunmodFlagE runmod;
     const int timeout;
     const char *umask;
     const char *path;
@@ -129,12 +130,12 @@ struct shellCmdS {
   const char *uid;
   const char *info;
   const char *cli;
+  const char *apiverb;
   int verbose;
   json_object *usageJ;
   json_object *sampleJ;
   const char **argv;
   int  argc;
-  const char *apiverb;
   encoderCbT *encoder;
   struct sandBoxS *sandbox;
   int timeout;

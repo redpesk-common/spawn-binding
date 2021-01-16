@@ -223,13 +223,9 @@ void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ) {
     json_object *argsJ=NULL;
     int err, verbose=-1;
 
-    if (json_object_is_type (queryJ, json_type_object)) {
-        err= wrap_json_unpack(queryJ, "{s?s s?o s?i !}", "action", &action, "args", &argsJ, "verbose", &verbose);
-        if (err) {
-            afb_req_fail_f(request, "query-error", "spawnTaskVerb: invalid 'json' sandbox=%s cmd=%s query=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(queryJ));
-            goto OnErrorExit;
-        }
-    }
+    // if not a valid formating then everything is args and action==start
+    err= wrap_json_unpack(queryJ, "{s?s s?o s?i !}", "action", &action, "args", &argsJ, "verbose", &verbose);
+    if (err) argsJ=queryJ;
 
     // default is not null but cmd->verbose and query can not set verbosity to more than 4
     if (verbose < 0 || verbose >4) verbose=cmd->sandbox->verbose;

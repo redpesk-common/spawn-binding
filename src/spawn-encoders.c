@@ -77,12 +77,13 @@ static int jsonEventCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_
     blobJ =json_tokener_parse(&docId->data[start]);
 
     if (blobJ) {
+        wrap_json_pack(&lineJ, "{si ss}", "pid", taskId->pid, "output", &docId->data[start]);
         afb_event_push(taskId->event, blobJ);
 
     } else {
         // push error event
         if (!errorJ) errorJ= json_object_new_string("[parsing fail] invalid json");
-        wrap_json_pack(&lineJ, "{ss so*}", "data", &docId->data[start], "warning", errorJ);
+        wrap_json_pack(&lineJ, "{si ss so*}", "pid", taskId->pid, "output", &docId->data[start], "warning", errorJ);
         afb_event_push(taskId->event, lineJ);
         goto OnErrorExit;
     }
@@ -180,7 +181,7 @@ static int lineEventCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_
     int err;
     json_object *lineJ;
 
-    err = wrap_json_pack(&lineJ, "{ss* so*}", "data", &docId->data[start], "warning", errorJ);
+    err = wrap_json_pack(&lineJ, "{si ss* so*}", "pid", taskId->pid, "output", &docId->data[start], "warning", errorJ);
     if (err) goto OnErrorExit;
 
     afb_event_push(taskId->event, lineJ);

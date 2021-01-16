@@ -52,6 +52,12 @@ typedef enum {
 } nsEnvFlagE;
 
 typedef enum {
+    RUNM_DEFAULT=0,
+    RUNM_USER,
+    RUNM_ADMIN,
+} nsRunmodFlagE;
+
+typedef enum {
     NS_SHARE_DEFAULT=0,
     NS_SHARE_ENABLE,
     NS_SHARE_DISABLE,
@@ -72,9 +78,11 @@ typedef struct {
 extern const nsKeyEnumT mountMode[];
 extern const nsKeyEnumT envMode[];
 extern const nsKeyEnumT capMode[];
+extern const nsKeyEnumT capLabel[];
 extern const nsKeyEnumT nsScmpFilter[];
 extern const nsKeyEnumT nsScmpAction[];
 extern const nsKeyEnumT nsShareMode[];
+extern const nsKeyEnumT nsRunmodMode[];
 
 int enumMapValue (const nsKeyEnumT *keyvals, const char *label);
 

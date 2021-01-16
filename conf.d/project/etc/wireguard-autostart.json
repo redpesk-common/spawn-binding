@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "uid": "spawn-basic",
+    "info": "autostart VPN with 'wireguard-tools' at afb-binder startup time",
+    "api": "autostart",
+    "version": "1.0"
+  },
+  "onload": [
+    {
+      "uid": "vpn-autostart",
+      "info": "create VPN interface (reference https://www.wireguard.com/quickstart)",
+      "action": "api://autostart#vpn-start"
+    }
+  ],
+  "sandboxes": {
+      "uid": "sandbox-autostart",
+      "info": "start a daemon as daemon user network capabilities",
+
+      "acls": {
+        "runmod": "admin",
+        "user": "root",
+        "group":"dialout"
+      },
+
+      "caps": [
+        {"cap": "NET_ADMIN", "mode":"set"}
+      ],
+
+      "commands": [
+        {
+          "uid": "vpn-start",
+          "info" : "start autostart-vpn.config",
+          "exec": {
+            "cmdpath": "/usr/bin/wg-quick",
+            "args": ["up", "spawn-binding"]
+          }
+        },
+        {
+          "uid": "vpn-stop",
+          "info" : "Stop VPN (cannot be stop with default kill action)",
+          "exec": {
+            "cmdpath": "/usr/bin/wg-quick",
+            "args": ["down", "spawn-binding"]
+          }
+        },
+        {
+          "uid": "vpn-info",
+          "info" : "Stop VPN (cannot be stop with default kill action)",
+          "exec": {
+            "cmdpath": "/usr/bin/wg",
+            "args": ["show", "spawn-binding"]
+          }
+        }
+      ]
+  }
+}

@@ -355,12 +355,12 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         if (verbose) AFB_API_NOTICE (api, "[taskid-created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
 
         // create task event
-        taskId->event = afb_api_make_event(api, taskId->uid);
+        taskId->event = afb_api_make_event(api, taskId->cmd->apiverb);
         if (!taskId->event) goto OnErrorExit;
 
         err=afb_req_subscribe(request, taskId->event);
         if (err) {
-            afb_req_fail_f (request, "subscribe-error","spawnTaskVerb: fail to subscribe sandbox=%s cmd=%s", cmd->sandbox->uid, cmd->uid);
+            afb_req_fail_f (request, "subscribe-error","spawnTaskStart: fail to subscribe sandbox=%s cmd=%s", cmd->sandbox->uid, cmd->uid);
             goto OnErrorExit;
         }
 

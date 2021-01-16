@@ -365,17 +365,28 @@ Children spawn task output always come back as events. The model depend on chose
 
 While recent OpenSuse, Ubuntu or Debian support cgroups-v2 by default they only activate compatibility mode. In this mode cgroup controller use in V1 cannot be use in V2 and vice versa. As spawn-binding request all controller in V2, compatibility mode is not really useful and you should move all control to V2. The good news is that when rebooting systemd, lxc, docker,... notice the change and commute automatically to full V2 mode. Except is you have custom applications that support only V1 mode the shift to V2 should be fully transparent.
 
+### Fedora & Redpesk
+
+Cgroup-v2 activated by default for all controllers.
+
 ### OpenSuse
 
 * add to /etc/default/grub the two following parameters
 ```bash
   sudo vi /etc/default/grub
-  - systemd.unified_cgroup_hierarchy=1
-  - cgroup=no_v1=all
+    - change => GRUB_CMDLINE_LINUX_DEFAULT="resume=/dev/disk/by-label/swap splash=silent quiet showopts"
+    - to => GRUB_CMDLINE_LINUX_DEFAULT="resume=/dev/disk/by-label/swap splash=silent quiet showopts systemd.unified_cgroup_hierarchy=1 cgroup=no_v1=all"
+
+  sudo grub2-mkconfig -o /boot/grub2/grub.cfg
 ```
+
+### Ubuntu
 
 * update grub & reboot
 ```bash
-sudo grub2-mkconfig -o /boot/grub2/grub.cfg
-sudo reboot
+  sudo vi /etc/default/grub
+    - change => GRUB_CMDLINE_LINUX_DEFAULT=""
+    - to => GRUB_CMDLINE_LINUX_DEFAULT="systemd.unified_cgroup_hierarchy=1 cgroup=no_v1=all"
+
+  sudo update-grub
 ```

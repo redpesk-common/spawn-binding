@@ -155,10 +155,10 @@ OnErrorExit:
 static int nsParseOneCap (afb_api_t api, sandBoxT *sandbox, json_object *capJ, confCapT *cap)  {
     int err;
     const char *capflag= NULL;
-    const char *caplabel= NULL;
+    const char *capName= NULL;
 
     err= wrap_json_unpack (capJ, "{ss ss !}"
-    ,"cap",  &caplabel
+    ,"cap",  &capName
     ,"mode", &capflag
     );
     if (err) {
@@ -168,19 +168,19 @@ static int nsParseOneCap (afb_api_t api, sandBoxT *sandbox, json_object *capJ, c
 
     cap->mode= enumMapValue(capMode, capflag);
     if (cap->mode <0) {
-        AFB_API_ERROR(api, "[capability-invalid-mode] sandbox='%s' cap='%s[%s]'", sandbox->uid, caplabel, capflag);
+        AFB_API_ERROR(api, "[capability-invalid-mode] sandbox='%s' cap='%s[%s]'", sandbox->uid, capName, capflag);
         goto OnErrorExit;
     }
 
-    cap->value = capng_name_to_capability(caplabel);
+    cap->value = enumMapValue(capLabel, capName);
     if (cap->value < 0) {
-        AFB_API_ERROR(api, "[capability-value-unknown] sandbox='%s' cap='%s[%s]'", sandbox->uid,  caplabel, capflag);
+        AFB_API_ERROR(api, "[capability-value-unknown] sandbox='%s' cap='%s[%s]'", sandbox->uid,  capName, capflag);
         goto OnErrorExit;
     }
 
     // check if capability is avaliable for current process
     if (cap->mode == NS_CAP_SET && !capng_have_capability (CAPNG_PERMITTED, cap->value)  && !utilsTaskPrivileged()) {
-        AFB_API_NOTICE(api, "[capability-ignored] sandbox='%s' capability='%s[%s]' (sandboxParseOneCap)", sandbox->uid, caplabel, capflag);
+        AFB_API_NOTICE(api, "[capability-ignored] sandbox='%s' capability='%s[%s]' (sandboxParseOneCap)", sandbox->uid, capName, capflag);
         cap->mode= NS_CAP_UNKNOWN;
     }
 
@@ -434,14 +434,16 @@ OnErrorExit:
 confAclT *sandboxParseAcls(afb_api_t api, sandBoxT *sandbox, json_object *aclsJ) {
     confAclT *acls= calloc (1, sizeof(confAclT));
     json_object *uidJ=NULL, *gidJ=NULL;
+    const char *runMod=NULL;
     int err;
     json_object_get(aclsJ);
 
-    err = wrap_json_unpack(aclsJ, "{s?s s?o s?o s?i s?s s?s s?s !}"
+    err = wrap_json_unpack(aclsJ, "{s?s s?o s?o s?i s?s s?s s?s s?s !}"
         ,"umask" , &acls->umask
         ,"user", &uidJ
         ,"group" , &gidJ
         ,"timeout", &acls->timeout
+        ,"runmod", &runMod
         ,"path" , &acls->path
         ,"ldpath" , &acls->ldpath
         ,"chdir" , &acls->chdir
@@ -449,6 +451,14 @@ confAclT *sandboxParseAcls(afb_api_t api, sandBoxT *sandbox, json_object *aclsJ)
     if (err) {
         AFB_API_ERROR(api, "[parsing-error] sandbox='%s' acls='%s'", sandbox->uid, json_object_to_json_string(aclsJ));
         goto OnErrorExit;
+    }
+
+    if (runMod) {
+        acls->runmod= enumMapValue(nsRunmodMode,runMod);
+        if (acls->runmod < 0) {
+            AFB_API_ERROR(api, "[runmod-error] sandbox='%s' should be [default,admin,user] acls->runmod='%s'", sandbox->uid, runMod);
+            goto OnErrorExit;
+        }
     }
 
     if (uidJ) {
@@ -504,11 +514,19 @@ confAclT *sandboxParseAcls(afb_api_t api, sandBoxT *sandbox, json_object *aclsJ)
 
         // check seteuid privilege with capabilities
     if (utilsTaskPrivileged()) {
+        if (acls->runmod == RUNM_USER) {
+            AFB_API_ERROR(api, "[privilege-mode-forbiden] sandbox='%s' should be 'admin' acls->mod=%s euid=%d", sandbox->uid, runMod, geteuid());
+            goto OnErrorExit;
+        }
         if (!uidJ || !gidJ) {
             AFB_API_ERROR(api, "[require-user/group-acls] sandbox='%s' running with privileges require acls with user=xxx group=xxx acls=%s", sandbox->uid, json_object_to_json_string(aclsJ));
             goto OnErrorExit;
         }
     } else {
+        if (acls->runmod == RUNM_ADMIN) {
+            AFB_API_ERROR(api, "[user-mode-forbiden] sandbox='%s' should be 'admin' acls->mod=%s euid=%d", sandbox->uid, runMod, geteuid());
+            goto OnErrorExit;
+        }
         if (uidJ || gidJ) {
             AFB_API_NOTICE(api, "[ignoring-user/group-acls] sandbox='%s' no uid/gid privileges ignoring user='%s' group='%s'", sandbox->uid, json_object_to_json_string(uidJ),  json_object_to_json_string(gidJ));
             acls->uid=0;

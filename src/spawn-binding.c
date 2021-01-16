@@ -35,14 +35,19 @@
 #include <sys/stat.h>
 
 
-static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandboxesJ);
+static int SandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandboxesJ);
+static int AutostartConfig(afb_api_t api, CtlSectionT *section, json_object *sandboxesJ);
+
+// keep autostart to run ot after init
+static CtlSectionT *autostartSection=NULL;
 
 // Config Section definition (note: controls section index should match handle
 // retrieval in HalConfigExec)
 static CtlSectionT ctrlSections[] = {
     { .key = "plugins",.loadCB = PluginConfig, .handle= (void*) &encoderPluginCb},
-    // { .key = "onload", .loadCB = OnloadConfig },
-    { .key = "sandboxes", .loadCB = sandboxConfig },
+    { .key = "onload", .loadCB    = AutostartConfig },
+    { .key = "sandboxes", .loadCB = SandboxConfig },
+    { .key = "events", .loadCB    = EventConfig },
     { .key = NULL }
 };
 
@@ -336,7 +341,20 @@ static int sandboxLoadOne(afb_api_t api, sandBoxT *sandbox, json_object *sandbox
     return 1;
 }
 
-static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandboxesJ) {
+static int AutostartConfig(afb_api_t api, CtlSectionT *section, json_object *onloadJ) {
+
+    // run autostart section after everything is loaded
+    if (!onloadJ) return 0;
+
+    // save autostart to run it after sealing API
+    autostartSection= section;
+
+
+    // delagate autostart parsing to controller builtin OnloadConfig
+    return (OnloadConfig (api, section, onloadJ));
+}
+
+static int SandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandboxesJ) {
     sandBoxT *sandboxes;
     spawnBindingT *binding= calloc(1, sizeof(spawnBindingT));
     binding->magic= MAGIC_SPAWN_BDING;
@@ -345,8 +363,6 @@ static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandb
 
     // config is processed nothing more to be done
     if (!sandboxesJ) {
-        // Fulup do not monitor non taskId childrens int err= spawnChildMonitor(api, spawnChildSignalCB, binding);
-        // if (err) goto OnErrorExit;
         return 0;
     }
 
@@ -359,22 +375,20 @@ static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandb
             json_object *sandboxJ = json_object_array_get_idx(sandboxesJ, idx);
             err = sandboxLoadOne(api, &sandboxes[idx], sandboxJ);
             if (err) {
-                AFB_API_ERROR(api, "[sandboxLoadOne fail] to load sandbox=%s (sandboxConfig)", sandboxes[idx].uid);
+                AFB_API_ERROR(api, "[sandboxLoadOne fail] to load sandbox=%s (SandboxConfig)", sandboxes[idx].uid);
                 goto OnErrorExit;
             }
             // attach binding to newly created sandbox
             sandboxes[idx].binding= binding;
             // when having more than one sandboxes default prefix is sandbox->uid
             if (!sandboxes[idx].prefix) sandboxes[idx].prefix= sandboxes[idx].uid;
-
-
         }
 
     } else {
         sandboxes = (sandBoxT*)calloc(2, sizeof (sandBoxT));
         err = sandboxLoadOne(api, &sandboxes[0], sandboxesJ);
         if (err) {
-            AFB_API_ERROR(api, "[sandboxLoadOne fail] to load sandbox=%s (sandboxConfig)", sandboxes[0].uid);
+            AFB_API_ERROR(api, "[sandboxLoadOne fail] to load sandbox=%s (SandboxConfig)", sandboxes[0].uid);
             goto OnErrorExit;
         }
         // attach binding to newly created sandbox
@@ -384,7 +398,7 @@ static int sandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandb
     // add static controls verbsmake
     err = CtrlLoadStaticVerbs (api, CtrlApiVerbs, (void*)sandboxes);
     if (err) {
-        AFB_API_ERROR(api, "[CtrlLoadStaticVerbs fail] to Registry static API verbs (sandboxConfig)");
+        AFB_API_ERROR(api, "[CtrlLoadStaticVerbs fail] to Registry static API verbs (SandboxConfig)");
         goto OnErrorExit;
     }
     return 0;
@@ -421,6 +435,9 @@ static int CtrlLoadOneApi(void* vcbdata, afb_api_t api) {
     // init and seal API function
     afb_api_on_init(api, CtrlInitOneApi);
     afb_api_seal(api);
+
+    // call autoload now that API is active
+    if (!error && autostartSection) OnloadConfig (api, autostartSection, NULL);
 
     return error;
 }
@@ -502,6 +519,7 @@ int afbBindingEntry (afb_api_t api) {
             AFB_API_ERROR(api, "### spawn-binding fail to register api='%s' File='%s' ###", ctlConfig->api, pathfile);
             goto OnErrorExit;
         }
+
         free (configs[idx]);
     }
     return status;
