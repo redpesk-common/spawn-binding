@@ -145,3 +145,28 @@ In order to make spawn-binding api accessible from other AFB micro-service you s
 ```bash
 AFB_SPAWN_CONFIG=$SPAWN_SAMPLE_DIR/spawn-namespace-config.json afb-binder --no-httpd --ws-server=unix:/run/user/$UID/spawn --name=afb-spawn --binding=package/lib/afb-spawn.so -vvv --ws-server=unix:/run/user/$UID/spawn
 ```
+
+## Autoload/Autostart
+
+spawn-binding support an 'autoload', any action in this sections will be tried at binding starup time.
+```json
+  "onload": [
+    {
+      "uid": "vpn-autostart",
+      "info": "create VPN interface (reference https://www.wireguard.com/quickstart)",
+      "action": "api://autostart#vpn-start"
+    }
+  ],
+```
+*wireguard-autostart.json* provide a small example to start a wireguard VPN.
+
+To run the test.
+
+- Install 'wireguard-tools' to get 'wg-quick' helper.
+- Start 'wireguard-autoconfig.sh' to create a test config into /etc/wireguard/spawn-binding.conf
+- Check with ```sudo wg-quick up spawn-binding``` that your config works.
+- Start 'spawn-binding' in privileged mode with
+```bash
+sudo AFB_SPAWN_CONFIG=../conf.d/project/etc/wireguard-autostart.json afb-binder --name=afb-spawn --binding=package/lib/afb-spawn.so --verbose
+
+```
