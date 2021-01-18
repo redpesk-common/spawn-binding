@@ -466,7 +466,7 @@ int afbBindingEntry (afb_api_t api) {
         prefix = "control";
         configpath= CtlConfigSearch(api, searchPath, prefix);
         if (!configpath) {
-            AFB_API_ERROR(api, "[config-not-found] No %s-%s* config found in %s ", prefix, GetBinderName(), searchPath);
+            AFB_API_ERROR(api, "### [config-not-found] No %s-%s* found in %s \n### [should set] AFB_SPAWN_CONFIG) ###", prefix, GetBinderName(), searchPath);
             status = ERROR;
             goto OnErrorExit;
         }
@@ -485,7 +485,7 @@ int afbBindingEntry (afb_api_t api) {
                 const char*fullpath, *filename;
                 int err=wrap_json_unpack(slotJ, "{ss ss}", "fullpath", &fullpath, "filename", &filename);
                 if (err) {
-                    AFB_API_ERROR(api, "### spawn-binding config not found directory='%s' (set ### AFB_SPAWN_CONFIG)", configpath);
+                    AFB_API_ERROR(api, "### spawn-binding config not found directory='%s'", configpath);
                     status = ERROR;
                     goto OnErrorExit;
                 }
