@@ -14,31 +14,33 @@ is to define `AFB_SPAWN_CONFIG` environment variable with a full or relative pat
 
 If you run redpesk simply install the package with `dnf install spawn-binding` for other platform check redpesk [developer guide](../../developer-guides/host-configuration/docs/1-Setup-your-build-host.html)
 
-## Selection and verify your config
+
+
+## Run spawn-binding samples
 
 ``` bash
-export AFB_SPAWN_CONFIG=/var/local/lib/afm/applications/spawn-binding/etc/spawn-nspace-config.json
-```
+# move to default install directory
+export AFB_SPAWN_INSTALL="/var/local/lib/afm/applications/spawn-binding"
 
-## Verify json config validity
+# select your config
+export AFB_SPAWN_CONFIG="$AFB_SPAWN_INSTALL/etc/spawn-nspace-config.json"
 
-``` bash
-jq < $AFB_SPAWN_CONFIG
-```
-
->Note: JQ package should be available within your standard Linux repository
-
-## Start spawn-binding
-
-``` bash
 # running without privileged
-afb-binder --name=afb-spawn --binding=./package/lib/afb-spawn.so --verbose
+afb-binder --name=afb-spawn --workdir=$AFB_SPAWN_INSTALL --binding=./lib/afb-spawn.so --verbose
 
 # running with privileges
 sudo afb-binder --name=afb-spawn --binding=./package/lib/afb-spawn.so --verbose
 ```
 
 >Note: --binding should point on where ever your *afb-spawn.so* is installed, and AFB_SPAWN_CONFIG should point on a valid json config
+
+## Verify json config validity
+
+``` bash
+jq < $AFB_SPAWN_CONFIG
+```
+>Note: JQ package should be available within your standard Linux repository
+
 
 ## HTML5 test
 
