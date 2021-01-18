@@ -23,7 +23,7 @@ sudo zypper install spawn-binding bubblewrap libcap-progs afb-ui-devtools
 sudo apt-get install spawn-binding-bin afb-ui-devtools bubblewrap libcap2-bin
 ```
 
-# quick test
+# Quick test
 
 ## start spawn-binding samples
 ```
