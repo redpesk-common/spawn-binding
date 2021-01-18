@@ -22,14 +22,11 @@ If you run redpesk simply install the package with `dnf install spawn-binding` f
 # move to default install directory
 export AFB_SPAWN_INSTALL="/var/local/lib/afm/applications/spawn-binding"
 
-# select your config
-export AFB_SPAWN_CONFIG="$AFB_SPAWN_INSTALL/etc/spawn-nspace-config.json"
-
 # running without privileged
-afb-binder --name=afb-spawn --workdir=$AFB_SPAWN_INSTALL --binding=./lib/afb-spawn.so --verbose
+AFB_SPAWN_CONFIG="$AFB_SPAWN_INSTALL/etc/spawn-nspace-config.json" afb-binder --name=afb-spawn --workdir=$AFB_SPAWN_INSTALL --binding=./lib/afb-spawn.so --verbose
 
 # running with privileges
-sudo afb-binder --name=afb-spawn --binding=./package/lib/afb-spawn.so --verbose
+sudo AFB_SPAWN_CONFIG="$AFB_SPAWN_INSTALL/etc/spawn-nspace-config.json" afb-binder --name=afb-spawn --workdir=$AFB_SPAWN_INSTALL --binding=./lib/afb-spawn.so --verbose
 ```
 
 >Note: --binding should point on where ever your *afb-spawn.so* is installed, and AFB_SPAWN_CONFIG should point on a valid json config
