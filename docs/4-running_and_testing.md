@@ -34,7 +34,7 @@ sudo AFB_SPAWN_CONFIG="$AFB_SPAWN_INSTALL/etc/spawn-nspace-config.json" afb-bind
 ## Verify json config validity
 
 ``` bash
-jq < $AFB_SPAWN_CONFIG
+jq < /xxxx/yyy/my-spawn-config.json
 ```
 >Note: JQ package should be available within your standard Linux repository
 
