@@ -21,8 +21,6 @@ Spawn-binding only requirer a custom config.json to expose a new set of scripts/
 * performance cost: isolating the amount of extra resources due to spawn-binding sandbox containerization is not a simple task. Nevertheless previous experimentations IoT.bzh did showed that processing sandboxes configurations usually cost more than the effective launch of the container itself. In order to reduce config processing, spawn-binding compiles configurations at startup time, as a result outside of dynamic argument processing the extra cost should remains around 10ms on a typical embedded board as Renesas-M3/H3 .*
 
 
-![spawn-binding-html5](assets/spawn-binding-exec.jpg)
-
 ## Documentation
 
 * [Installation Guide](./2-installation_guide.html)
@@ -35,3 +33,6 @@ Spawn-binding is part of redpesk-common and relies on [redpesk-core](https://doc
 
 * Community support [#redpesk-core:matrix.org]( https://docs.redpesk.bzh/docs/en/master/misc/community/docs/support.html)
 * source code: [github/redpesk-common](https://github.com/redpesk-common)
+
+## HTML5 test page
+![spawn-binding-html5](assets/spawn-binding-exec.jpg)
