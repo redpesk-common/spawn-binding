@@ -23,6 +23,17 @@ sudo zypper install spawn-binding bubblewrap libcap-progs afb-ui-devtools
 sudo apt-get install spawn-binding-bin afb-ui-devtools bubblewrap libcap2-bin
 ```
 
+# quick test
+
+## start spawn-binding samples
+```
+AFB_SPAWN_CONFIG=/var/local/lib/afm/applications/spawn-binding/etc \
+afb-binder --name=afb-spawn --binding=/var/local/lib/afm/applications/spawn-binding/lib/afb-spawn.so --verbose
+```
+## Connect to HTML5 test page
+
+[localhost:1234/devtools/](localhost:1234/devtools/index.html)
+
 *Optionally:*
 
 * if you rather CLI interface to HTML5, feel free to replace 'afb-ui-devtools' with 'afb-client'.
