@@ -464,12 +464,13 @@ int afbBindingEntry (afb_api_t api) {
         AFB_API_DEBUG(api, "json config directory : %s", searchPath);
 
         prefix = "control";
-        configs[confcount++]= strdup(CtlConfigSearch(api, searchPath, prefix));
-        if (!configs[confcount-1]) {
+        configpath= CtlConfigSearch(api, searchPath, prefix);
+        if (!configpath) {
             AFB_API_ERROR(api, "[config-not-found] No %s-%s* config found in %s ", prefix, GetBinderName(), searchPath);
             status = ERROR;
             goto OnErrorExit;
         }
+        configs[confcount++]= configpath;
     } else {
         if (utilsFileModeIs (configpath, S_IFDIR)) {
             json_object *confdirJ= ScanForConfig(configpath ,false, GetBinderName(), ".json");
@@ -484,7 +485,7 @@ int afbBindingEntry (afb_api_t api) {
                 const char*fullpath, *filename;
                 int err=wrap_json_unpack(slotJ, "{ss ss}", "fullpath", &fullpath, "filename", &filename);
                 if (err) {
-                    AFB_API_ERROR(api, "### spawn-binding incompatible config directory='%s' ###", configpath);
+                    AFB_API_ERROR(api, "### spawn-binding config not found directory='%s' (set ### AFB_SPAWN_CONFIG)", configpath);
                     status = ERROR;
                     goto OnErrorExit;
                 }
