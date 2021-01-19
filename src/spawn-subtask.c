@@ -95,7 +95,6 @@ void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
 
     if (taskId->timer) {
         TimerEvtStop(taskId->timer);
-        free (taskId->timer);
     }
 
     if (taskId->errfd) close (taskId->errfd);
