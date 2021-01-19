@@ -164,6 +164,8 @@ static int encoderJsonParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len,
                 if (remaining > 0) {
                     memmove (&docId->data[0], &docId->data[dataIdx], remaining);
                     docId->index= remaining-1;
+                } else {
+                    docId->index=0;
                 }
             }
         }
