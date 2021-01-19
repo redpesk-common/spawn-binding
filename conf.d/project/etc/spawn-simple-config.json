@@ -19,11 +19,6 @@
       },
       "commands": [
         {
-            "uid": "loop",
-            "info" : "test multiline stderr",
-            "exec": {"cmdpath": "/tmp/toto.sh"}
-        },
-        {
           "uid": "afbroot",
           "info" : "expand afb_binder root directory",
           "exec": {"cmdpath": "/bin/echo", "args": ["$AFB_ROOTDIR"]}
