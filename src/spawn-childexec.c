@@ -214,6 +214,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
 
         // if verbose greater then 2 then stderr is display on server side and not send back to HTML5 UI
         if (verbose < 3) err=+dup2(stderrP[1], STDERR_FILENO);
+        else fprintf (stderr, "**** [child-stderr] sandbox=%s cmd=%s not redirected to client (verbose >3)\n", cmd->sandbox->uid, cmd->uid);
         if (err < 0) {
             fprintf (stderr, "[fail to dup stdout/err] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
             exit (1);

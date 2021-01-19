@@ -93,9 +93,8 @@ void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
         sd_event_source_unref (taskId->srcerr);
     }
 
-    if (taskId->timer) {
-        TimerEvtStop(taskId->timer);
-    }
+    // TimerEvtStop stop+free timer handle
+    if (taskId->timer) TimerEvtStop(taskId->timer);
 
     if (taskId->errfd) close (taskId->errfd);
     if (taskId->outfd) close (taskId->outfd);

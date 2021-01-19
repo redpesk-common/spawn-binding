@@ -194,21 +194,21 @@ OnErrorExit:
 
 // document encoder callback add one line into document json array
 static int DefaultArrayCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
-    streamCtxT *taskctx = (streamCtxT*) context;
+    streamCtxT *streamctx = (streamCtxT*) context;
 
     // create output array only when needed
-    if (!taskctx->arrayJ) taskctx->arrayJ= json_object_new_array();
+    if (!streamctx->arrayJ) streamctx->arrayJ= json_object_new_array();
     // update error message from buffer
     if (errorJ) {
-        if (!taskctx->errorJ) taskctx->errorJ=errorJ;
+        if (!streamctx->errorJ) streamctx->errorJ=errorJ;
         else json_object_put (errorJ);
     }
     // docId index point C line start
-    json_object_array_add (taskctx->arrayJ, json_object_new_string(&docId->data[start]));
+    json_object_array_add (streamctx->arrayJ, json_object_new_string(&docId->data[start]));
 
     // make sure we do not not overload response array
-    if (!taskctx->lncount--) {
-        taskctx->errorJ= json_object_new_string("[too many lines] inscrease document 'linemax' option");
+    if (!streamctx->lncount--) {
+        streamctx->errorJ= json_object_new_string("[too many lines] inscrease document 'linemax' option");
         goto OnErrorExit;
     }
     return 0;
@@ -267,9 +267,9 @@ static int encoderLineParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len,
                 if (remaining > 0) {
                     memmove (&docId->data[0], &docId->data[dataIdx], remaining);
                     docId->index= remaining-1;
-                }
-            } else {
-                docId->index = 0; // reset docId
+                } else {
+                    docId->index = 0; // reset docId
+                }   
             }
         }
     }
@@ -334,6 +334,7 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
         case ENCODER_TASK_START:  {
 
             // prepare handles to store stdout/err stream
+            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_START uid=%s pid=%d\n", taskId->uid, taskId->pid);
             taskCtxT *taskctx = calloc (1, sizeof(taskCtxT));
             taskctx->stdout.buffer= encoderBufferSetCB(NULL, opts->lineSize);
             taskctx->stderr.buffer= encoderBufferSetCB(NULL, opts->lineSize);
@@ -342,36 +343,34 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
 
             // attach handle to taskId
             taskId->context= (void*)taskctx;
-            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_START taskId=0x%p pid=%d\n", taskId, taskId->pid);
 
             break;
         }
 
         case ENCODER_TASK_STDOUT: {
+            if (taskId->verbose >8)  fprintf (stderr, "**** ENCODER_DOC_STDOUT uid=%s pid=%d\n", taskId->uid, taskId->pid);
             err= encoderReadFd (taskId, taskId->outfd, taskctx->stdout.buffer, opts->lineSize, encoderLineParserCB, DefaultArrayCB, operation, &taskctx->stdout);
             if (err) {
                 AFB_API_ERROR(cmd->api, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
             }
-            if (taskId->verbose >8)  fprintf (stderr, "**** ENCODER_DOC_STDOUT taskId=0x%p pid=%d\n", taskId, taskId->pid);
             break;
         }
 
         case ENCODER_TASK_STDERR: {
+            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_STDERR uid=%spid=%d\n", taskId->uid, taskId->pid);
             err= encoderReadFd (taskId, taskId->errfd, taskctx->stderr.buffer, opts->lineSize, encoderLineParserCB, DefaultArrayCB, operation, &taskctx->stderr);
             if (err) {
                 AFB_API_ERROR(cmd->api, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
             }
-            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_STDERR taskId=0x%p pid=%d\n", taskId, taskId->pid);
             break;
         }
 
         case ENCODER_TASK_STOP: {
 
             json_object *errorJ=NULL;
-            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_STOP taskId=0x%p pid=%d\n", taskId, taskId->pid);
-
+            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_STOP uid=%s pid=%d\n", taskId->uid, taskId->pid);
             if (taskctx->stdout.errorJ || taskctx->stderr.errorJ) {
                 err= wrap_json_pack (&errorJ, "{so* so*}"
                     , "stdout", taskctx->stdout.errorJ
