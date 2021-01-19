@@ -399,6 +399,7 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
 
         case ENCODER_TASK_KILL: {
             // update error message before FMT_TASK_STOP take it
+            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_KILL taskId=0x%p pid=%d\n", taskId, taskId->pid);
             taskId->errorJ= json_object_new_string("[timeout] forced sigkill");
             break;
         }

@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "uid": "spawn-namespace",
+    "uid": "spawn-nspace",
     "version": "1.0",
     "api": "spawn",
     "info": "Generic shell binding API demo default Test Config"

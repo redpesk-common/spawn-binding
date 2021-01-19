@@ -89,6 +89,9 @@ start:  sleep 180;
 
 ```
 
+* mandatory argument: %argument% (abort the request when missing)
+* optional argument: ?argument? (silently replaced by "" when missing)
+
 ## Advanced tests
 
 Check for conf.d/project/etc for more advance samples.
@@ -142,7 +145,16 @@ spawn-binding support 3 builtin formatting options. Encoder formatting is enforc
 In order to make spawn-binding api accessible from other AFB micro-service you simply export the API with *--ws-server=unix:/path/apiname* as you would do for any other AFB micro-service. The exposed API may later be imported with *--ws-client==unix:/path/apiname* by any afb-binder that get corresponding privileges. *Note: when exposing an API locally it is a good practice to remove TCP/IP visibility with --no-httpd*
 
 ```bash
-AFB_SPAWN_CONFIG=$SPAWN_SAMPLE_DIR/spawn-namespace-config.json afb-binder --no-httpd --ws-server=unix:/run/user/$UID/spawn --name=afb-spawn --binding=package/lib/afb-spawn.so -vvv --ws-server=unix:/run/user/$UID/spawn
+# note than --ws-server=unix exported API should match with selected config.json
+AFB_SPAWN_CONFIG=$SPAWN_SAMPLE_DIR/spawn-simple-config.json afb-binder --no-httpd --ws-server=unix:/run/user/$UID/simple --name=afb-spawn --binding=package/lib/afb-spawn.so -vvv --ws-server=unix:/run/user/$UID/spawn
+```
+
+Direct unix socket API can be tested with *--direct* argument
+``` bash
+# note that when using direct api, apiname should not be added to the request
+afb-client --direct unix:/run/user/$UID/simple
+> ping
+> admin/env
 ```
 
 ## Autoload/Autostart

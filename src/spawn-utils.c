@@ -426,6 +426,7 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
     char dst[SPAWN_MAX_ARG_LEN], label[SPAWN_MAX_ARG_LABEL];
     const char *response;
     json_object *labelJ;
+    char separator;
 
     if (!keysJ) return (src);
     if (!src) goto OnErrorExit;
@@ -433,13 +434,16 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
     for (srcIdx=0; src[srcIdx]; srcIdx++) {
 
         // replace "%%" by '%'
-        if (src[srcIdx] == '%' && src[srcIdx+1] == '%') {
-            dst[destIdx++]= src[srcIdx];
-            srcIdx++;
-            continue;
+        if (src[srcIdx] == '%' || src[srcIdx] == '?') {
+            separator= src[srcIdx];
+            if (src[srcIdx+1] == separator) {
+                dst[destIdx++]= src[srcIdx];
+                srcIdx++;
+                continue;
+            }
         }
 
-        if (src[srcIdx] != '%') {
+        if (src[srcIdx] != separator) {
             dst[destIdx++]= src[srcIdx];
 
         } else {
@@ -447,7 +451,7 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
             labelIdx=0;
             // extract expansion label for source argument
             for (srcIdx=srcIdx+1; src[srcIdx]  ; srcIdx++) {
-                if (src[srcIdx] != '%' ) {
+                if (src[srcIdx] !=  separator) {
                     label[labelIdx++]= src[srcIdx];
                     if (labelIdx == SPAWN_MAX_ARG_LABEL) goto OnErrorExit;
                 } else break;
@@ -458,12 +462,14 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
 
             // search for expansion label within keysJ
             labelJ= json_object_object_get (keysJ, label);
-            if (!labelJ) goto OnErrorExit;
-
-            // add label value to destination argument
-            const char *labelVal= json_object_get_string(labelJ);
-            for (labelIdx=0; labelVal[labelIdx]; labelIdx++) {
-                dst[destIdx++] = labelVal[labelIdx];
+            if (!labelJ) {
+                if (separator == '%') goto OnErrorExit;
+            } else {
+                // add label value to destination argument
+                const char *labelVal= json_object_get_string(labelJ);
+                for (labelIdx=0; labelVal[labelIdx]; labelIdx++) {
+                    dst[destIdx++] = labelVal[labelIdx];
+                }
             }
         }
     }

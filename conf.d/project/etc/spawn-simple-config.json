@@ -71,6 +71,17 @@
           ]
         },
         {
+          "uid": "optional",
+          "info": "?argument? are optional %argument% are mandatory",
+          "usage": {"filename":"xxxx"},
+          "encoder":"text",
+          "exec": {"cmdpath": "/bin/cat", "args":["?dirname?%filename%"]},
+          "sample": [
+            {"args": {"dirname":"/etc/", "filename": "passwd"}},
+            {"args": {"filename": "/etc/fstab"}}
+          ]
+        },
+        {
           "uid": "dir",
           "info" : "list a directory",
           "usage": {"dirname": "xxxxx"},
