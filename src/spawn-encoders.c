@@ -250,12 +250,13 @@ static int encoderLineParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len,
         for (idx=docId->index; idx<=(docId->index + len-1); idx++) {
 
             // for every newline close 'C' string and push it to the stdoutJ array
-            if (docId->data[idx] == '\n') {
+            if (docId->data[idx] <= '\r') {  // CR ou NL are equivalent
                 docId->data[idx] = '\0';
                 err= callback (taskId, docId, dataIdx, NULL, context);
                 if (err) goto OnErrorExit;
 
-                dataIdx= idx+1; // next line start
+                for (idx=idx+1; docId->data[idx] <= '\r'; idx++); // remove any trailling cr/nl
+                dataIdx= idx; // next line start
             }
         }
 
