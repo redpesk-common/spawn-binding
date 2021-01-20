@@ -10,7 +10,7 @@ sudo dnf install spawn-binding afb-ui-devtools
 
 ## Other Linux Distributions
 
-**Prerequisite**: activate redpesk developer repository: [(see doc)](../../developer-guides/host-configuration/docs/1-Setup-your-build-host.html)
+**Prerequisite**: should declare redpesk repository: [[instructions-here]](../../developer-guides/host-configuration/docs/1-Setup-your-build-host.html)
 
 ```bash
 # Fedora
