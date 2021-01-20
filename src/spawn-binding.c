@@ -226,7 +226,7 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
 
     // if prefix not empty add it to verb api
     if (!sandbox->prefix) cmd->apiverb = cmd->uid;
-    else asprintf ((char**) &cmd->apiverb, "%s/%s", sandbox->prefix, cmd->uid);
+    else {if (asprintf ((char**) &cmd->apiverb, "%s/%s", sandbox->prefix, cmd->uid)<0) goto OnErrorExit;}
 
     err = afb_api_add_verb(api, cmd->apiverb, cmd->info, cmdApiRequest, cmd, authent, 0, 0);
     if (err) {
@@ -461,6 +461,7 @@ int afbBindingEntry (afb_api_t api) {
         if (!envConfig) envConfig = CONTROL_CONFIG_PATH;
 
         status=asprintf (&searchPath,"%s:%s/etc", envConfig, GetBindingDirPath(api));
+        if (status < 0) goto OnErrorExit;
         AFB_API_DEBUG(api, "json config directory : %s", searchPath);
 
         prefix = "control";
@@ -489,7 +490,9 @@ int afbBindingEntry (afb_api_t api) {
                     status = ERROR;
                     goto OnErrorExit;
                 }
-                asprintf (&configs[confcount++], "%s/%s", fullpath, filename);
+                if(asprintf (&configs[confcount++], "%s/%s", fullpath, filename)<0){
+                    goto OnErrorExit;
+                }
             }
 
         } else {

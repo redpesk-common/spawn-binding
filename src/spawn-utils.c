@@ -83,7 +83,8 @@ const char* utilsExecCmd (afb_api_t api, const char* target, const char* command
 	// argv require string
     *filefd=fd;
     char *response;
-    asprintf (&response, "%d", fd);
+    if(asprintf (&response, "%d", fd)<0){
+        goto OnErrorExit;}
 	return response;
 
 OnErrorExit:
@@ -426,7 +427,7 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
     char dst[SPAWN_MAX_ARG_LEN], label[SPAWN_MAX_ARG_LABEL];
     const char *response;
     json_object *labelJ;
-    char separator;
+    char separator = -1;
 
     if (!keysJ) return (src);
     if (!src) goto OnErrorExit;
