@@ -12,7 +12,7 @@ is to define `AFB_SPAWN_CONFIG` environment variable with a full or relative pat
   * afb-client for testing command line interface
   * afb-ui-devtools for html5 test with a web-browser (chromium, firefox, ...)
 
-If you run redpesk simply install the package with `dnf install spawn-binding` for other platform check redpesk [developer guide](../../developer-guides/host-configuration/docs/1-Setup-your-build-host.html)
+If you run redpesk simply install the package with `dnf install spawn-binding` for other platform check redpesk [developer guide]({% chapter_link host-configuration-doc.setup-your-build-host %})
 
 
 

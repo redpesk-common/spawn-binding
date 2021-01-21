@@ -10,7 +10,7 @@ sudo dnf install spawn-binding afb-ui-devtools
 
 ## Other Linux Distributions
 
-**Prerequisite**: should declare redpesk repository: [[instructions-here]](../../developer-guides/host-configuration/docs/1-Setup-your-build-host.html)
+**Prerequisite**: should declare redpesk repository: [[instructions-here]]({% chapter_link host-configuration-doc.setup-your-build-host %})
 
 ```bash
 # Fedora
@@ -61,7 +61,7 @@ Copy `localhost:1234/devtools/index.html`in your browser address bar to connect 
 * cmake template 'afb-cmake-modules'
 * ui-devel html5 'afb-ui-devtools'
 
->Note: For Ubuntu/OpenSuse/Fedora specific instructions check [redpesk-developer-guide](../../developer-guides/host-configuration/docs/1-Setup-your-build-host.html#install-the-application-framework-1)
+>Note: For Ubuntu/OpenSuse/Fedora specific instructions check [redpesk-developer-guide]({% chapter_link host-configuration-doc.setup-your-build-host#install-the-application-framework-1 %})
 
 #### Install spawn-binding specific dependencies
 

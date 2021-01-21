@@ -51,7 +51,7 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
 * **prefix**: is added to every command 'api/verb==api-name/prefix/cmd-uid'.  When prefix="" it is fully removed from commands API, providing a flat namespace to every commands independently of their umbrella sandbox.
 Default when prefix is not defined. If config.json declare more than one 'sandbox' by default *prefix==sandbox->uid*, on the other hand if config.json declare only one sandbox (no json-array) then no-prefix is added and api/ver==api-name/cmd-uid.
 * **verbose**: [0-9] value. Turn on/off some debug/log capabilities
-* **privilege**: required corresponding [Cynagora](../../developer-guides/afb-overview.html) privilege.
+* **privilege**: required corresponding [Cynagora]({% chapter_link afb_binder.overview %}) privilege.
 ```json
   "sandboxes": {
       "uid": "sandbox-demo",
@@ -288,7 +288,7 @@ ws://localhost:1234/api/simple/sandbox-simple/distro?query={"action":"start"}
 ### Two builtin api/verb
 
 * api://spawn/ping // assert binder is alive
-* api://spawn/info // return parsed config to automatically build HTML5 debug/test page [binder-devtool](../../ci-cd/monitoring.html)
+* api://spawn/info // return parsed config to automatically build HTML5 debug/test page [binder-devtool]({% chapter_link monitoring-doc.binder-devtool %})
 
 *Note: In following samples 'spawn' should be replaced by what ever you chose as API name in your config.json.*
 

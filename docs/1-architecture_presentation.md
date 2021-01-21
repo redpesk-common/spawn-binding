@@ -2,7 +2,7 @@
 
 spawn-binding exposes through a standard set of REST/Websocket APIs a simple mechanism to launch within secure sandbox containers any Linux native commands or script: bash, python, nodejs, lua, tcl, ...
 
-spawn-binding can launch any Linux executable command that support a non-interactive mode. Its security model scales from basic Linux access control with setuid/gid to advanced Linux security model based on cgroups,capability,seccomp and namespaces. Output generated during children execution on stdout/srderr are send back to HTML5 client interface through standard websocket as any other AFB events.
+spawn-binding can launch any Linux executable command that support a non-interactive mode. Its security model scales from basic Linux access control with setuid/gid to advanced Linux security model based on cgroups, capability, seccomp and namespaces. Output generated during children execution on stdout/srderr are send back to HTML5 client interface through standard websocket as any other AFB events.
 
 spawn-binding was initially designed to provide an HTML5 user interface to the 'redpesk' factory-reset service, this for end-user to easily restore their system when things get really bad (SOTA failure, hardware breakdown, ...). Nevertheless its implementation is very generic, and it may respond to many other scenarios requirements:
  * any operations where a controlled upscale of user privileges is required (enter sleep-mode, reboot, reformat a disk, on-demand service activation, ...),
@@ -11,7 +11,7 @@ spawn-binding was initially designed to provide an HTML5 user interface to the '
  * out-of-the-box exposure through HTML5 websocket of any set of scripts/commands
  * ...
 
-Spawn-binding only requirer a custom config.json to expose a new set of scripts/commands under an HTML5 form. It is not needed to change/recompile the source code to create a specific API or tune the security model to match your requirements.
+Spawn-binding only requires a custom config.json to expose a new set of scripts/commands under an HTML5 form. It is not needed to change/recompile the source code to create a specific API or tune the security model to match your requirements.
 
 * Define a config.json with 'script' commands he wishes to expose
 * User standard afb-devtools-ui or provide a custom HTML5 page.
@@ -24,14 +24,14 @@ Spawn-binding only requirer a custom config.json to expose a new set of scripts/
 ## Documentation
 
 * [Installation Guide](./2-installation_guide.html)
-* [Running and Testing](./3-configuration.html)
-* [Configuration](./4-running_and_testing.html)
+* [Configuration](./3-configuration.html)
+* [Running and Testing](./4-running_and_testing.html)
 
 ## Support/sources
 
-Spawn-binding is part of redpesk-common and relies on [redpesk-core](https://docs.redpesk.bzh/docs/en/master/redpesk-core/docs/services-list.html)
+Spawn-binding is part of redpesk-common and relies on [redpesk-core]({% chapter_link apis-services-doc.services-list %})
 
-* Community support [#redpesk-core:matrix.org]( https://docs.redpesk.bzh/docs/en/master/misc/community/docs/support.html)
+* Community support [#redpesk-core:matrix.org]( {% chapter_link community-doc.support %})
 * source code: [github/redpesk-common](https://github.com/redpesk-common)
 
 ## HTML5 test page
