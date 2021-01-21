@@ -27,6 +27,9 @@
 #include "spawn-sandbox.h"
 #include "spawn-encoders.h"
 #include "spawn-subtask.h"
+#include "spawn-utils.h"
+
+#include <errno.h>
 
 typedef struct encoderRegistryS {
    const char *uid;
@@ -49,12 +52,25 @@ typedef struct {
 typedef struct {
    streamCtxT stdout;
    streamCtxT stderr;
-} taskCtxT;
+} docTaskCtxT;
 
 typedef struct {
    ssize_t lineCount;
-   ssize_t lineSize;
+   ssize_t maxlen;
 } streamOptsT;
+
+typedef struct {
+   ssize_t maxlen;
+   FILE *fileout;
+   FILE *fileerr;
+} logOptsT;
+
+typedef struct {
+   streamBufT stdout;
+   streamBufT stderr;
+   logOptsT *opts;
+} logTaskCtxT;
+
 
 // return a new empty document stream
 static streamBufT *encoderBufferSetCB(streamBufT *buffer, ssize_t size) {
@@ -176,9 +192,18 @@ OnErrorExit:
     return 1;
 }
 
+// none encoder callback output line on server
+static int logEventCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
+    long output= (long)context;
+    logTaskCtxT *taskCtx= (logTaskCtxT*) taskId->context;
+
+    if (output == STDOUT_FILENO) fprintf (taskCtx->opts->fileout, "[%s] %s\n", taskId->uid, &docId->data[start]);
+    else fprintf (taskCtx->opts->fileerr, "[%s] %s\n", taskId->uid, &docId->data[start]);
+    return 0;
+}
 
 
-// document encoder callback add one line into document json array
+// line encoder callback send one event per new line
 static int lineEventCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
     int err;
     json_object *lineJ;
@@ -272,34 +297,13 @@ static int encoderLineParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len,
                     docId->index= remaining-1;
                 } else {
                     docId->index = 0; // reset docId
-                }   
+                }
             }
         }
     }
     return 0;
 
 OnErrorExit:
-    return 1;
-}
-
-// fmtParsing take config cmd option and parse them into something usefull for taskId start
-static int encoderInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
-    int err;
-
-    streamOptsT *opts = malloc(sizeof (streamOptsT));
-    opts->lineSize =  MAX_DOC_LINE_SIZE;
-    opts->lineCount = MAX_DOC_LINE_COUNT;
-    cmd->encoder->fmtctx = (void*)opts;
-    if (optsJ) {
-        err = wrap_json_unpack(optsJ, "{s?i s?i !}" ,"maxline", &opts->lineCount, "maxlen", &opts->lineSize);
-        if (err) {
-            AFB_API_ERROR(cmd->api, "[invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
-            goto OnErrorExit;
-        }
-    }
-    return 0;
-
- OnErrorExit:
     return 1;
 }
 
@@ -329,7 +333,7 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
     assert (taskId->magic == MAGIC_SPAWN_TASKID);
     shellCmdT *cmd= taskId->cmd;
     streamOptsT *opts=cmd->encoder->fmtctx;
-    taskCtxT *taskctx= taskId->context;
+    docTaskCtxT *taskCtx= taskId->context;
     int err;
 
     switch (action) {
@@ -338,21 +342,21 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
 
             // prepare handles to store stdout/err stream
             if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_START uid=%s pid=%d\n", taskId->uid, taskId->pid);
-            taskCtxT *taskctx = calloc (1, sizeof(taskCtxT));
-            taskctx->stdout.buffer= encoderBufferSetCB(NULL, opts->lineSize);
-            taskctx->stderr.buffer= encoderBufferSetCB(NULL, opts->lineSize);
-            taskctx->stdout.lncount = opts->lineCount;
-            taskctx->stderr.lncount = opts->lineCount;
+            taskCtx = calloc (1, sizeof(docTaskCtxT));
+            taskCtx->stdout.buffer= encoderBufferSetCB(NULL, opts->maxlen);
+            taskCtx->stderr.buffer= encoderBufferSetCB(NULL, opts->maxlen);
+            taskCtx->stdout.lncount = opts->lineCount;
+            taskCtx->stderr.lncount = opts->lineCount;
 
             // attach handle to taskId
-            taskId->context= (void*)taskctx;
+            taskId->context= (void*)taskCtx;
 
             break;
         }
 
         case ENCODER_TASK_STDOUT: {
             if (taskId->verbose >8)  fprintf (stderr, "**** ENCODER_DOC_STDOUT uid=%s pid=%d\n", taskId->uid, taskId->pid);
-            err= encoderReadFd (taskId, taskId->outfd, taskctx->stdout.buffer, opts->lineSize, encoderLineParserCB, DefaultArrayCB, operation, &taskctx->stdout);
+            err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderLineParserCB, DefaultArrayCB, operation, &taskCtx->stdout);
             if (err) {
                 AFB_API_ERROR(cmd->api, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
@@ -362,7 +366,7 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
 
         case ENCODER_TASK_STDERR: {
             if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_STDERR uid=%spid=%d\n", taskId->uid, taskId->pid);
-            err= encoderReadFd (taskId, taskId->errfd, taskctx->stderr.buffer, opts->lineSize, encoderLineParserCB, DefaultArrayCB, operation, &taskctx->stderr);
+            err= encoderReadFd (taskId, taskId->errfd, taskCtx->stderr.buffer, opts->maxlen, encoderLineParserCB, DefaultArrayCB, operation, &taskCtx->stderr);
             if (err) {
                 AFB_API_ERROR(cmd->api, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
@@ -374,10 +378,10 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
 
             json_object *errorJ=NULL;
             if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_STOP uid=%s pid=%d\n", taskId->uid, taskId->pid);
-            if (taskctx->stdout.errorJ || taskctx->stderr.errorJ) {
+            if (taskCtx->stdout.errorJ || taskCtx->stderr.errorJ) {
                 err= wrap_json_pack (&errorJ, "{so* so*}"
-                    , "stdout", taskctx->stdout.errorJ
-                    , "stderr", taskctx->stderr.errorJ
+                    , "stdout", taskCtx->stdout.errorJ
+                    , "stderr", taskCtx->stderr.errorJ
                 );
                 if (err) goto OnErrorExit;
             }
@@ -387,15 +391,15 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
                 , "pid", taskId->pid
                 , "status", taskId->statusJ
                 , "warning", errorJ
-                , "stdout", taskctx->stdout.arrayJ
-                , "stderr", taskctx->stderr.arrayJ
+                , "stdout", taskCtx->stdout.arrayJ
+                , "stderr", taskCtx->stderr.arrayJ
                 );
             if (err) goto OnErrorExit;
 
             // free private task encoder memory structure
-            free (taskctx->stdout.buffer);
-            free (taskctx->stderr.buffer);
-            free (taskctx);
+            free (taskCtx->stdout.buffer);
+            free (taskCtx->stderr.buffer);
+            free (taskCtx);
             break;
         }
 
@@ -421,14 +425,14 @@ static int encoderLineCB (taskIdT *taskId, encoderActionE action, encoderOpsE op
     assert (taskId->magic == MAGIC_SPAWN_TASKID);
     shellCmdT *cmd= taskId->cmd;
     streamOptsT *opts=cmd->encoder->fmtctx;
-    taskCtxT *taskctx= taskId->context;
+    docTaskCtxT *taskCtx= (docTaskCtxT*)taskId->context;
     int err;
 
     switch (action) {
 
         case ENCODER_TASK_STDOUT:
-            //fprintf (stderr, "**** ENCODER_LINE_STDOUT taskId=0x%p pid=%d\n", taskId, taskId->pid);
-            err= encoderReadFd (taskId, taskId->outfd, taskctx->stdout.buffer, opts->lineSize, encoderLineParserCB, lineEventCB, operation, &taskctx->stdout);
+            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_LINE_STDOUT taskId=0x%p pid=%d\n", taskId, taskId->pid);
+            err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderLineParserCB, lineEventCB, operation, &taskCtx->stdout);
             if (err) {
                 AFB_API_ERROR(cmd->api, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
@@ -447,19 +451,101 @@ OnErrorExit:
     return 1;
 }
 
+
+// for debug print both stdout & stderr directly on server
+static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
+    assert (taskId->magic == MAGIC_SPAWN_TASKID);
+    shellCmdT *cmd= taskId->cmd;
+    logOptsT *opts=cmd->encoder->fmtctx;
+    logTaskCtxT *taskCtx= (logTaskCtxT*)taskId->context;
+
+    int err;
+
+    switch (action) {
+        case ENCODER_TASK_START:  {
+            // prepare handles to store stdout/err stream
+            if (taskId->verbose >8) fprintf (stderr, "**** encoderLogCB uid=%s pid=%d\n", taskId->uid, taskId->pid);
+
+            taskCtx = calloc (1, sizeof(logTaskCtxT));
+            taskCtx->opts=opts;
+            taskCtx->stdout.data= malloc(opts->maxlen);
+            taskCtx->stderr.data= malloc(opts->maxlen);
+            taskId->context= taskCtx;
+
+            // write start entry into log
+            fprintf (opts->fileout, "[%s] --- start %s [%s]---\n", taskId->uid, taskId->cmd->cli, utilsExpandKey("$TODAY"));
+
+            break;
+        }
+
+        case ENCODER_TASK_STDOUT: {
+            if (taskId->verbose >8)  fprintf (stderr, "**** encoderLogCB uid=%s pid=%d\n", taskId->uid, taskId->pid);
+            err= encoderReadFd (taskId, taskId->outfd, &taskCtx->stdout, opts->maxlen, encoderLineParserCB, logEventCB, operation, (void*)STDOUT_FILENO);
+            if (err) {
+                AFB_API_ERROR(cmd->api, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                goto OnErrorExit;
+            }
+            break;
+        }
+
+        case ENCODER_TASK_STDERR: {
+            if (taskId->verbose >8) fprintf (stderr, "**** encoderLogCB uid=%spid=%d\n", taskId->uid, taskId->pid);
+            err= encoderReadFd (taskId, taskId->errfd, &taskCtx->stderr, opts->maxlen, encoderLineParserCB, logEventCB, operation, (void*)STDERR_FILENO);
+            if (err) {
+                AFB_API_ERROR(cmd->api, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                goto OnErrorExit;
+            }
+            break;
+        }
+
+        case ENCODER_TASK_STOP: {
+
+            // flush output files
+            fprintf (opts->fileout, "[%s] --- end ---\n", taskId->uid);
+            fflush(taskCtx->opts->fileout);
+            fflush(taskCtx->opts->fileerr);
+
+            if (taskId->verbose >8) fprintf (stderr, "**** encoderLogCB uid=%s pid=%d\n", taskId->uid, taskId->pid);
+            err=wrap_json_pack (&taskId->responseJ, "{ss si so* so*}"
+                , "cmd", taskId->cmd->uid
+                , "pid", taskId->pid
+                , "status", taskId->statusJ
+                , "warning",  taskId->errorJ
+                );
+            if (err) goto OnErrorExit;
+            break;
+        }
+
+        case ENCODER_TASK_KILL: {
+            // update error message before FMT_TASK_STOP take it
+            if (taskId->verbose >8) fprintf (stderr, "**** encoderLogCB taskId=0x%p pid=%d\n", taskId, taskId->pid);
+            taskId->errorJ= json_object_new_string("[timeout] forced sigkill");
+            break;
+        }
+
+        default:
+           AFB_API_ERROR(cmd->api, "[action-fail] sandbox=%s cmd=%s action=%d pid=%d", cmd->sandbox->uid, cmd->uid, action, taskId->pid);
+           goto OnErrorExit;
+    }
+    return 0;
+
+OnErrorExit:
+    return 1;
+}
+
 // Send one event json blog and stdout as array when task stop
 static int encoderJsonCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     assert (taskId->magic == MAGIC_SPAWN_TASKID);
     shellCmdT *cmd= taskId->cmd;
     streamOptsT *opts=cmd->encoder->fmtctx;
-    taskCtxT *taskctx= taskId->context;
+    docTaskCtxT *taskCtx= taskId->context;
     int err;
 
     switch (action) {
 
         case ENCODER_TASK_STDOUT:
             //fprintf (stderr, "**** ENCODER_JSON_STDOUT taskId=0x%p pid=%d\n", taskId, taskId->pid);
-            err= encoderReadFd (taskId, taskId->outfd, taskctx->stdout.buffer, opts->lineSize, encoderJsonParserCB, jsonEventCB, operation, &taskctx->stdout);
+            err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderJsonParserCB, jsonEventCB, operation, &taskCtx->stdout);
             if (err) {
                 AFB_API_ERROR(cmd->api, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
@@ -477,6 +563,59 @@ static int encoderJsonCB (taskIdT *taskId, encoderActionE action, encoderOpsE op
     return 0;
 
 OnErrorExit:
+    return 1;
+}
+
+// fmtParsing take config cmd option and parse them into something usefull for taskId start
+static int encoderInitLog (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
+    int err;
+    const char *fileerr, *fileout;
+
+    logOptsT *opts = malloc(sizeof (logOptsT));
+    opts->fileerr = stderr;
+    opts->fileout = stdout;
+    opts->maxlen = MAX_DOC_LINE_SIZE;
+
+    cmd->encoder->fmtctx = (void*)opts;
+    if (optsJ) {
+        err = wrap_json_unpack(optsJ, "{s?s s?s s?i !}" ,"stdout", &fileout, "stderr", &fileerr, "maxlen", &opts->maxlen);
+        if (err) {
+            AFB_API_ERROR(cmd->api, "[invalid format] sandbox=%s cmd=%s opts=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
+            goto OnErrorExit;
+        }
+
+        // if decicate log file are given open them now
+        if (fileout) opts->fileout= fopen (utilsExpandKeyCtx(fileout, cmd), "a");
+        if (fileerr) opts->fileerr= fopen (utilsExpandKeyCtx(fileerr,cmd), "a");
+        if (!opts->fileout || !opts->fileerr) {
+            AFB_API_ERROR(cmd->api, "[invalid logfile] sandbox=%s cmd=%s opts=%s err=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ), strerror(errno));
+            goto OnErrorExit;
+        }
+    }
+    return 0;
+
+ OnErrorExit:
+    return 1;
+}
+
+// fmtParsing take config cmd option and parse them into something usefull for taskId start
+static int encoderInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
+    int err;
+
+    streamOptsT *opts = malloc(sizeof (streamOptsT));
+    opts->maxlen =  MAX_DOC_LINE_SIZE;
+    opts->lineCount = MAX_DOC_LINE_COUNT;
+    cmd->encoder->fmtctx = (void*)opts;
+    if (optsJ) {
+        err = wrap_json_unpack(optsJ, "{s?i s?i !}" ,"maxline", &opts->lineCount, "maxlen", &opts->maxlen);
+        if (err) {
+            AFB_API_ERROR(cmd->api, "[invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
+            goto OnErrorExit;
+        }
+    }
+    return 0;
+
+ OnErrorExit:
     return 1;
 }
 
@@ -569,7 +708,8 @@ int encoderFind (shellCmdT *cmd, json_object *encoderJ) {
 
     // update command with coresponding format and all actionsCB to parse format option
     cmd->encoder= &encoders[index];
-    err= cmd->encoder->initCB (cmd, optsJ, cmd->encoder->fmtctx);
+    if (cmd->encoder->initCB) err= cmd->encoder->initCB (cmd, optsJ, cmd->encoder->fmtctx);
+    else err=0;
 
     if (err) goto OnErrorExit;
 
@@ -582,9 +722,10 @@ OnErrorExit:
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
 encoderCbT encoderBuiltin[] = {
-  {.uid="TEXT"  , .info="unique event at closure with all outputs", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB},
-  {.uid="LINE"  , .info="one event per line",  .initCB=encoderInitCB, .actionsCB=encoderLineCB},
-  {.uid="JSON"  , .info="one event per json blob",  .initCB=encoderInitCB, .actionsCB=encoderJsonCB},
+  {.uid="TEXT" , .info="unique event at closure with all outputs", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB},
+  {.uid="LINE" , .info="one event per line",  .initCB=encoderInitCB, .actionsCB=encoderLineCB},
+  {.uid="JSON" , .info="one event per json blob",  .initCB=encoderInitCB, .actionsCB=encoderJsonCB},
+  {.uid="LOG"  , .info="keep stdout/stderr on server",  .initCB=encoderInitLog, .actionsCB=encoderLogCB},
   {.uid= NULL} // must be null terminated
 };
 

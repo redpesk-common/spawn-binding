@@ -51,13 +51,13 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
 * **prefix**: is added to every command 'api/verb==api-name/prefix/cmd-uid'.  When prefix="" it is fully removed from commands API, providing a flat namespace to every commands independently of their umbrella sandbox.
 Default when prefix is not defined. If config.json declare more than one 'sandbox' by default *prefix==sandbox->uid*, on the other hand if config.json declare only one sandbox (no json-array) then no-prefix is added and api/ver==api-name/cmd-uid.
 * **verbose**: [0-9] value. Turn on/off some debug/log capabilities
-* **privilege**: required corresponding [Cynagora]({% chapter_link afb_binder.overview %}) privilege.
+* **privilege**: required corresponding sample privileges [here]({% chapter_link afb_binder.overview %}). For further explanation on AFB privileges check: [Cynagora](../../developer-guides/afb-overview.html). AFB/AGL privileges are based on Tizen privileges definitions [here](https://www.tizen.org/privilege)
 ```json
   "sandboxes": {
       "uid": "sandbox-demo",
       "info": "Shell admin commands",
       "prefix": "admin",
-      "privilege": "global privilege",
+      "privilege": "urn:redpesk:permission:system:syscall:shell",
       "verbose":2
   }
 ```
@@ -90,7 +90,7 @@ Default when prefix is not defined. If config.json declare more than one 'sandbo
 ```
 
 * **umask**: standard Linux umask, if not defined use system default.
-* **user**:  either 'fullname' or 'uid'. Note: when running under privileged mode, 'user' should be defined. If you want 'root' you should enforce 'user':'root' in your config.
+* **user**:  either 'fullname' or 'uid'. **WARNING**: when running 'root' privileged mode, 'acl->user' must be defined. When 'root' is requirer, you have to enforce it and explicitly add 'user:root' in your acls config. Note than running 'root' is a bad behavior. As much as possible you should run with a less privilege user and add only minimum requirer capabilities to run your command.
 * **group**: equivalent to user
 * **chdir**: change dir before child fork/exec.
 * **label**: set SeLinux/Smack security label for spawn children to either: LSM_LABEL_SBOX, LSM_LABEL_API, LSM_LABEL_CMD or LSM_LABEL_NO. Tagging children with a security label requirer either SMACK or SeLinux on the platform as well as running under privileged mode.
@@ -231,15 +231,16 @@ This section exposes for a given sandbox children commands. Command only require
 * **usage**: is used to populate HTML5 help query area.
 * **encoder**: specify with output encoder should be used. When not used default 'document' encoder is used. spawn-binding provides 3 builtin encoders, nevertheless developer may add custom output formatting with encoder plugins. *Note: check plugin directory on github for a custom encoder sample.*
 
-  * **document**: returns a json_array for both stdout/stderr at the end of command execution. Supports 'maxlen' & 'maxline' options.
+  * **text**: returns a json_array for both stdout/stderr at the end of command execution. Supports 'maxlen' & 'maxline' options.
   * **line**: returns a json_string even each time a new line appear on stdout. Stderr keeps 'document' behavior.
   * **json**: returns an event each time a new json blob is produce on stdout. Stderr keeps 'document' behavior.
-  * **xxxx**: where 'xxxx' is the 'uid' you gave to your plugin custom encoder.
+  * **log**: push log in corresponding file default server side sdtdout/err. When output not defined default afb-binder stdout/err is used.
+  * **xxxx**: where 'xxxx' is the 'uid' you gave to your plugin custom encoder options.
 
-  *Example of json encoder accepting a maximum of 1KB object.*
-
+  * Example of encoders accepting*
 ```json
-"encoder": {"output": "json", "opts": {"maxlen":1024}},
+        "encoder": {"output": "json", "opts": {"maxlen":1024}},
+        "encoder": {"output": "log", "opts":{"stdout":"/tmp/afb-$AFB_NAME-$SANDBOX_UID-$COMMAND_UID.out", "stderr":"/tmp/afb-$AFB_NAME-$SANDBOX_UID-$COMMAND_UID.err", "maxlen":1024}}.
 ```
 
 * **samples**: this is an optional label used return when 'api/info' verb is called to automatically built HTML5 testing page. No check is done on 'sample' which allow to provision test that should fail.

@@ -5,6 +5,7 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
           // AFB_SPAWN_CONFIG=../../conf.d/project/etc/spawn-sandbox-config.json afb-binder --name=afb-spawn --binding=./lib/afb-spawn.so --verbose
           "name": "namespace config",
@@ -162,6 +163,34 @@
           "stopAtEntry": false,
           "cwd": "${workspaceFolder}/build/package",
           "environment": [],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+          // AFB_SPAWN_CONFIG=../../conf.d/project/etc/spawn-xxx
+          "name": "fulup private config",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "/usr/bin/afb-binder",
+          "args": [
+            "--name=afb-spawn",
+            "--binding=./lib/afb-spawn.so",
+            "--verbose",
+            "--verbose",
+            "--verbose",
+            "--trap-faults=no"
+          ],
+          "stopAtEntry": false,
+          "cwd": "${workspaceFolder}/build/package",
+          "environment": [{"name":"AFB_SPAWN_CONFIG", "value":"${workspaceFolder}/../tmp/fulup-loop.json"}],
           "externalConsole": false,
           "MIMode": "gdb",
           "setupCommands": [

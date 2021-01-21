@@ -75,7 +75,7 @@ static char*GetDateString(const char *label, void *dflt, void *userdata) {
     char *date= malloc(MAX_DATE_LEN);
     struct tm *time= localtime(&now);
 
-    strftime (date, MAX_DATE_LEN, "%d-%b-%Y %h:%M (%Z)",time);
+    strftime (date, MAX_DATE_LEN, "%d-%b-%Y %T (%Z)",time);
     return date;
 }
 
@@ -114,6 +114,7 @@ static char*GetBindingSettings(const char *label, void *dflt, void *userdata) {
 static char*GetObjectUid(const char *label, void *ctx, void *userdata) {
     spawnMagicT request= (spawnMagicT)  ctx;
     spawnObjectT *data= (spawnObjectT*) userdata;
+    if (!data) return NULL;
     switch (data->magic) {
         case MAGIC_SPAWN_SBOX: {
             sandBoxT *sandbox= (sandBoxT*) userdata;
@@ -178,6 +179,10 @@ static char*SelectSbinPath(const char *label, void *dflt, void *userdata) {
     return "/sbin";
 }
 
+static char*GetBinderMidName(const char *label, void *dflt, void *userdata) {
+    return ((char*)GetBinderName());
+}
+
 // Warning: REDDEFLT_CB will get its return free
 spawnDefaultsT spawnVarDefaults[]= {
     // static strings
@@ -187,10 +192,11 @@ spawnDefaultsT spawnVarDefaults[]= {
 
     {"AFB_ROOTDIR"    , GetBindingRoot, SPAWN_MEM_STATIC, NULL},
     {"AFB_CONFIG"     , GetBindingSettings, SPAWN_MEM_STATIC, NULL},
+    {"AFB_NAME"       , GetBinderMidName, SPAWN_MEM_STATIC, NULL},
 
-    {"SANDBOX"        , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_SBOX},
-    {"COMMAND"        , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_CMD},
-    {"API"            , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_BDING},
+    {"SANDBOX_UID"    , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_SBOX},
+    {"COMMAND_UID"    , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_CMD},
+    {"API_NAME"       , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_BDING},
 
     {"SBINDIR"        , SelectSbinPath, SPAWN_MEM_STATIC, "/sbin/mkfs"},
 

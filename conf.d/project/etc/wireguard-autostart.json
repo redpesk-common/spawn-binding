@@ -7,14 +7,28 @@
   },
   "onload": [
     {
+      "uid": "vpn-monitor",
+      "info": "subscribe to internal monitoring events as client disconnected (reference )",
+      "action": "api://monitor#subscribe",
+      "args": "disconnected"
+    },
+    {
       "uid": "vpn-autostart",
       "info": "create VPN interface (reference https://www.wireguard.com/quickstart)",
       "action": "api://autostart#vpn-start"
     }
   ],
+  "events": [
+    {
+      "uid": "monitor/disconnected",
+      "info": "call login function when a client disconnect",
+      "action": "api://autostart#vpn-log"
+    }
+  ],
   "sandboxes": {
       "uid": "sandbox-autostart",
       "info": "start a daemon as daemon user network capabilities",
+      "privilege": "urn:redpesk:permission:system:syscall:vpn",
 
       "acls": {
         "runmod": "admin",
@@ -50,7 +64,17 @@
             "cmdpath": "/usr/bin/wg",
             "args": ["show", "spawn-binding"]
           }
+        },
+        {
+          "uid": "vpn-log",
+          "info" : "Do something intelligent to log events",
+          "encoder":{"output": "log", "opts":{"stdout":"/tmp/afb-$SANDBOX_UID.log"}},
+          "exec": {
+            "cmdpath": "/usr/bin/echo",
+            "args": "api=%data% client disconnected"
+          }
         }
+
       ]
   }
 }

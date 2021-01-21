@@ -108,8 +108,8 @@ You may activate all config in one shot by using placing sample config name with
 
 ```bash
     SPAWN_SAMPLE_DIR=xxxxxx
-    AFB_SPAWN_CONFIG= $SPAWN_SAMPLE_DIR  # will load every spawn-*.json config for given directory
-    AFB_SPAWN_CONFIG= $SPAWN_SAMPLE_DIR/spawn-simple-config.json:$SPAWN_SAMPLE_DIR/spawn-minimal-config.json # load corresponding configs
+    AFB_SPAWN_CONFIG=$SPAWN_SAMPLE_DIR  # will load every spawn-*.json config for given directory
+    AFB_SPAWN_CONFIG=$SPAWN_SAMPLE_DIR/spawn-simple-config.json:$SPAWN_SAMPLE_DIR/spawn-minimal-config.json # load corresponding configs
 
     afb-binder --name=afb-spawn --binding=xxxxxx/afb-spawn.so
 ```
@@ -180,4 +180,17 @@ To run the test.
 ```bash
 sudo AFB_SPAWN_CONFIG=../conf.d/project/etc/wireguard-autostart.json afb-binder --name=afb-spawn --binding=package/lib/afb-spawn.so --verbose
 
+```
+
+## caching events
+
+spawn-binding is an [afb-controller](/docs/en/master/developer-guides/controllerConfig.html) and may on event reception execute internal/external API. For external action you should use *--ws-client=xxx* to import the api within spawn-binding context. Note that to execute an external API you also need corresponding privileges.
+```json
+  "events": [
+    {
+      "uid": "monitor/disconnected",
+      "info": "call log function on monitor/disconnect event detection",
+      "action": "api://autostart#vpn-log"
+    }
+  ],
 ```

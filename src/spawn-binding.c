@@ -173,6 +173,7 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
     // set default values
     memset(cmd, 0, sizeof (shellCmdT));
     cmd->sandbox   = sandbox;
+    cmd->magic = MAGIC_SPAWN_CMD;
 
     // default verbose is sandbox->verbose
     cmd->verbose= -1;

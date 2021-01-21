@@ -51,6 +51,12 @@
           "exec": {"cmdpath": "/usr/bin/env"}
         },
         {
+          "uid": "log",
+          "encoder":{"output": "log", "opts":{"stdout":"/tmp/afb-$AFB_NAME-$SANDBOX_UID-$COMMAND_UID.out", "maxlen":1024}},
+          "info" : "return current namespace env",
+          "exec": {"cmdpath": "/usr/bin/env"}
+        },
+        {
           "uid": "json",
           "info" : "test json encoder take json from stdout",
           "encoder": {"output": "json", "opts": {"maxlen":1024}},

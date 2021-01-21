@@ -293,9 +293,11 @@ static int utilExpandEnvKey (spawnDefaultsT *defaults, int *idxIn, const char *i
     // if label was not found but default callback is defined Warning default should use static memory
     if (!envval && defaults[index].callback) {
         envval = (*(spawnGetDefaultCbT)defaults[index].callback) (defaults[index].label, defaults[index].ctx, userdata);
-        for (int jdx=0; envval[jdx]; jdx++) {
-            if (*idxOut >= maxlen) goto OnErrorExit;
-            outputS[(*idxOut)++]= envval[jdx];
+        if (envval) {
+            for (int jdx=0; envval[jdx]; jdx++) {
+                if (*idxOut >= maxlen) goto OnErrorExit;
+                outputS[(*idxOut)++]= envval[jdx];
+            }
         }
     }
     if (defaults[index].allocation == SPAWN_MEM_DYNAMIC) free (envval);
