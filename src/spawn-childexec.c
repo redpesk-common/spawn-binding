@@ -176,7 +176,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
     afb_api_t api= cmd->api;
     int   stdoutP[2];
     int   stderrP[2];
-    int   fdFlags, err;
+    int   err;
     taskIdT *taskId = NULL;
 
     // create pipes FD to retreive son stdout/stderr
@@ -376,14 +376,10 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         if (err) goto OnErrorExit;
 
         // set pipe fd into noblock mode
-        fdFlags = fcntl(taskId->outfd, F_GETFL);
-        fdFlags &= ~O_NONBLOCK;
-        err= fcntl (taskId->outfd, F_SETFL, fdFlags);
+        err= fcntl (taskId->outfd, F_SETFL, O_NONBLOCK);
         if (err) goto OnErrorExit;
 
-        fdFlags = fcntl(taskId->errfd, F_GETFL);
-        fdFlags &= ~O_NONBLOCK;
-        err= fcntl (taskId->errfd, F_SETFL, fdFlags);
+        err= fcntl (taskId->errfd, F_SETFL, O_NONBLOCK);
         if (err) goto OnErrorExit;
 
         // register stdout/err piped FD within mainloop
