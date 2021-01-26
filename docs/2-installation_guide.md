@@ -1,6 +1,6 @@
 # Installation
 
-## Redpesk
+## redpesk
 
 spawn-binding is part of redpesk-common and is available on any redpesk installation.
 
