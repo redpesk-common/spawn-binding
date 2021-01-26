@@ -117,7 +117,7 @@ Linux [capabilities](https://www.openshift.com/blog/linux-capabilities-in-opensh
   }
 ```
 
-[Cgroups](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html) allow to control/limit resources as CPU,RAM,IO,... Spawn-binding enforces 'cgroup-v2' which is default for Redpesk or latest Fedora. Unfortunately cgroup V1-V2 have a incompatible APIs and even if some compatibility mode exist in practice it is better not to use them.  The good news is that any recent Linux distribution as Ubuntu-20.4 or OpenSuse-15.2, ... have a builtin option to run cgroups-v2, the bad news is that by default they still activate V1. On those distro user should edit corresponding boot flag to activate V2. See [activating cgroup-v2] at the end of this page.
+[Cgroups](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html) allow to control/limit resources as CPU,RAM,IO,... Spawn-binding enforces 'cgroup-v2' which is default for redpesk or latest Fedora. Unfortunately cgroup V1-V2 have a incompatible APIs and even if some compatibility mode exist in practice it is better not to use them.  The good news is that any recent Linux distribution as Ubuntu-20.4 or OpenSuse-15.2, ... have a builtin option to run cgroups-v2, the bad news is that by default they still activate V1. On those distro user should edit corresponding boot flag to activate V2. See [activating cgroup-v2] at the end of this page.
 
 * **cset**: provides CPU affinity. As example "3-5" will limit child process to CPU:3,4,5. [kernel-doc](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/cpusets.html?highlight=cset)
 * **mem**: limit the amount of RAM support "max","hight","min" label. [kernel-doc](https://www.kernel.org/doc/html/v4.19/admin-guide/cgroup-v2.html#memory)
@@ -368,7 +368,7 @@ Children spawn task output always come back as events. The model depend on chose
 
 While recent OpenSuse, Ubuntu or Debian support cgroups-v2 by default they only activate compatibility mode. In this mode cgroup controller use in V1 cannot be use in V2 and vice versa. As spawn-binding request all controller in V2, compatibility mode is not really useful and you should move all control to V2. The good news is that when rebooting systemd, lxc, docker,... notice the change and commute automatically to full V2 mode. Except is you have custom applications that support only V1 mode the shift to V2 should be fully transparent.
 
-### Fedora & Redpesk
+### Fedora & redpesk
 
 Cgroup-v2 activated by default for all controllers.
 
