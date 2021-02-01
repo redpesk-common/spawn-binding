@@ -54,7 +54,7 @@ static int spawnTimerCB (TimerHandleT *handle) {
     if (getpgid(taskId->pid) >= 0) {
         AFB_NOTICE("Terminating task uid=%s", taskId->uid);
         taskId->cmd->encoder->actionsCB (taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, taskId->cmd->encoder->fmtctx);
-        kill(taskId->pid, SIGKILL);
+        kill(-taskId->pid, SIGKILL);
     }
     return 0; // OK count will stop timer
 }
@@ -195,6 +195,8 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
     if (sonPid < 0) goto OnErrorExit;
 
     if (sonPid == 0) {
+
+        setpgid(0,0);
 
         // detach from afb_binder signal handler
         utilsResetSigals();
@@ -411,7 +413,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         AFB_API_ERROR (api, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
         afb_req_fail_f (request, "start-error", "fail to start sandbox=%s cmd=%s", cmd->sandbox->uid, cmd->uid);
 
-        if (sonPid>0) kill(sonPid, SIGTERM);
+        if (sonPid>0) kill(-sonPid, SIGTERM);
         return 1;
     }
 } //end spawnTaskStart

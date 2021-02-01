@@ -127,7 +127,7 @@ static int taskCtrlOne (afb_req_t request, taskIdT *taskId, taskActionE action, 
     if (taskId->verbose>1) AFB_REQ_INFO (request, "taskCtrlOne: sandbox=%s cmd=%s pid=%d action=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid, action);
     switch (action) {
         case SPAWN_ACTION_STOP:
-            kill (taskId->pid, signal);
+            kill (-taskId->pid, signal);
             break;
         case SPAWN_ACTION_SUBSCRIBE:
             err=afb_req_subscribe(request, taskId->event);
