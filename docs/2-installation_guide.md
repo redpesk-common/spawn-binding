@@ -32,7 +32,7 @@ afb-binder --name=afb-spawn --binding=/var/local/lib/afm/applications/spawn-bind
 ```
 ## Connect to HTML5 test page
 
-Copy `localhost:1234/devtools/index.html`in your browser address bar to connect to HTML5 test page
+[localhost:1234/devtools/](http://localhost:1234/devtools/index.html)
 
 *Optionally:*
 
