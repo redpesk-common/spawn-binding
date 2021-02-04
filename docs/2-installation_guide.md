@@ -26,13 +26,15 @@ sudo apt-get install spawn-binding-bin afb-ui-devtools bubblewrap libcap2-bin
 # Quick test
 
 ## start spawn-binding samples
+
 ```
 AFB_SPAWN_CONFIG=/var/local/lib/afm/applications/spawn-binding/etc \
 afb-binder --name=afb-spawn --binding=/var/local/lib/afm/applications/spawn-binding/lib/afb-spawn.so --verbose
 ```
+
 ## Connect to HTML5 test page
 
-[localhost:1234/devtools/](http://localhost:1234/devtools/index.html)
+[http://localhost:1234/devtools/](http://localhost:1234/devtools/index.html)
 
 *Optionally:*
 
