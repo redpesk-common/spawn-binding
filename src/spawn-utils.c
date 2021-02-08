@@ -467,8 +467,7 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
             label[labelIdx]='\0';
 
             // search for expansion label within keysJ
-            labelJ= json_object_object_get (keysJ, label);
-            if (!labelJ) {
+            if (!json_object_object_get_ex (keysJ, label, &labelJ)) {
                 if (separator == '%') goto OnErrorExit;
             } else {
                 // add label value to destination argument
