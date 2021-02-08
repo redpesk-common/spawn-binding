@@ -144,6 +144,7 @@ struct shellCmdS {
   void *opts;
   taskIdT *tids;
   pthread_rwlock_t sem;
+  int single;
 };
 
 // spawn-sandbox.c

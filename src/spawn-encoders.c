@@ -646,7 +646,7 @@ OnErrorExit:
 // fmtParsing take config cmd option and parse them into something usefull for taskId start
 static int encoderInitLog (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     int err;
-    const char *fileerr, *fileout;
+    const char *fileerr = NULL, *fileout = NULL;
 
     logOptsT *opts = malloc(sizeof (logOptsT));
     opts->fileerr = stderr;

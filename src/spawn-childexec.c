@@ -178,6 +178,15 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
     int   stderrP[2];
     int   err;
     taskIdT *taskId = NULL;
+    char* reasonE = "Internal error";
+
+    if (cmd->single) {
+        if (HASH_CNT(tidsHash, cmd->tids) > 0) {
+            reasonE = "Can only spawn one instance of this command";
+            AFB_API_ERROR (api, "%s", reasonE);
+            goto OnErrorExitNoFree;
+        }
+    }
 
     // create pipes FD to retreive son stdout/stderr
     if(pipe (stdoutP)<0){
@@ -334,6 +343,9 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         // if cmd->cli is not executable try /bin/sh
         if (cmd->sandbox->namespace) err= execv(cmd->sandbox->namespace->opts.bwrap, params);
         else err= execv(cmd->cli,params);
+
+        // not reached upon success
+
         fprintf (stderr, "HOOPS: spawnTaskStart execve return cmd->cli=%s error=%s\n", cmd->cli, strerror(errno));
         exit(1);
 
@@ -392,13 +404,13 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
 
         // update command anf binding global tids hashtable
         if (! pthread_rwlock_wrlock(&cmd->sem)) {
-            HASH_ADD(tidsHash, cmd->tids, pid, sizeof(int), taskId);
+            HASH_ADD(tidsHash, cmd->tids, pid, sizeof(pid_t), taskId);
             pthread_rwlock_unlock(&cmd->sem);
         }
 
         spawnBindingT *binding= cmd->sandbox->binding;
         if (! pthread_rwlock_wrlock(&binding->sem)) {
-            HASH_ADD(gtidsHash, binding->gtids, pid, sizeof(int), taskId);
+            HASH_ADD(gtidsHash, binding->gtids, pid, sizeof(pid_t), taskId);
             pthread_rwlock_unlock(&binding->sem);
         }
 
@@ -413,10 +425,12 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
 
         return 0;
 
-    OnErrorExit:
+OnErrorExit:
         spawnFreeTaskId (api, taskId);
+
+OnErrorExitNoFree:
         AFB_API_ERROR (api, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
-        afb_req_fail_f (request, "start-error", "fail to start sandbox=%s cmd=%s", cmd->sandbox->uid, cmd->uid);
+        afb_req_fail_f (request, "start-error", "fail to start sandbox=%s cmd=%s (%s)", cmd->sandbox->uid, cmd->uid, reasonE);
 
         if (sonPid>0) kill(-sonPid, SIGTERM);
         return 1;

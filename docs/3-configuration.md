@@ -205,6 +205,7 @@ Namespace allows to restrict children visibility to the filesystem by executing 
       "uid": "dir",
       "info" : "list directory files",
       "usage": {"dirname": "...dirpath..."},
+      "once": true,
       "exec": {"cmdpath": "/bin/ls", "args": ["-l", "%dirname%"]},
       "encoder": {"output": "document", "opts": {"maxlen":1024}}
       "samples": [
@@ -218,6 +219,7 @@ This section exposes for a given sandbox children commands. Command only require
 
 * **uid** is required to build command API/verb under the form 'sandbox-prefix/cmd-uid. Note that if sandbox-prefix="" (not undefined) then cmd api use a flat namespace with API/verb compose only of commands uid independently of its umbrella sandbox. *Note: is is a good behavior to prefix command api/verb with a sandbox prefix/uid.*
 
+* **once**: optional parameter whose default falue is false. When set to true, spawning the task fails if an instance is already running.
 * **exec**
 
   * **cmdpath**: full command file path to execute (no search path allowed). Spawn-binding check at startup time that exec file is executable by the hosting environnement. Nevertheless it cannot assert that it will still be executable after applying sandbox restrictions.

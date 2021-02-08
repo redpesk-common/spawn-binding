@@ -179,7 +179,7 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
     cmd->verbose= -1;
 
     // parse shell command and lock format+exec object if defined
-    err = wrap_json_unpack(cmdJ, "{ss,s?s,s?i,s?i,s?s,s?o,s?o,s?o,s?o !}"
+    err = wrap_json_unpack(cmdJ, "{ss,s?s,s?i,s?i,s?s,s?o,s?o,s?o,s?o,s?b !}"
                 ,"uid", &cmd->uid
                 ,"info", &cmd->info
                 ,"timeout", &cmd->timeout
@@ -189,6 +189,7 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
                 ,"encoder", &encoderJ
                 ,"sample", &cmd->sampleJ
                 ,"exec", &execJ
+                ,"single", &cmd->single
                 );
     if (err) {
         AFB_API_ERROR(api, "[parsing-error] sandbox='%s' fail to parse cmd=%s", sandbox->uid, json_object_to_json_string(cmdJ));
@@ -218,7 +219,7 @@ static int cmdLoadOne(afb_api_t api, sandBoxT *sandbox, shellCmdT *cmd, json_obj
     err= spawnParse (cmd, execJ);
     if (err) goto OnErrorExit;
 
-    // intialize semephore to protect tids hashtable
+    // initialize semaphore to protect tids hashtable
     err = pthread_rwlock_init(&cmd->sem, NULL);
     if (err < 0) {
         AFB_API_ERROR(api, "[fail init semaphore] API sandbox=%s cmd=%s", sandbox->uid, cmd->uid);

@@ -32,7 +32,7 @@
 
 struct taskIdS {
   spawnMagicT magic;
-  int pid; // hashtable key
+  pid_t pid; // hashtable key
   char *uid;
   int verbose;
   int outfd;
