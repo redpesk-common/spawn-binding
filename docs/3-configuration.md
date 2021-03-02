@@ -160,7 +160,7 @@ Linux [capabilities](https://www.openshift.com/blog/linux-capabilities-in-opensh
     },
     "mounts": [
       {"target": "/etc/passwd", "mode":"execfd", "source": "getent passwd $SBOXUSER 65534"},
-      {"target": "/home", "source": "/var/tmp/$SANDBOX", "mode": "rw"},
+      {"target": "/home", "source": "/var/tmp/$SANDBOX_UID", "mode": "rw"},
       {"target": "/usr",  "source": "/usr", "mode": "ro"},
       {"target": "/sbin", "source": "/usr/sbin", "mode": "symlink"},
       {"target": "/tmp", "mode": "tmpfs"},
@@ -224,7 +224,7 @@ This section exposes for a given sandbox children commands. Command only require
 
   * **cmdpath**: full command file path to execute (no search path allowed). Spawn-binding check at startup time that exec file is executable by the hosting environnement. Nevertheless it cannot assert that it will still be executable after applying sandbox restrictions.
   * **args** : a unique or array of arguments. Arguments can be expandable either at config time with '$NAME' or at query time with '%pattern%'. ***Warning**: argument expansion at query time is case sensitive.*
-    * **$NAME** : config time expansion. On top of traditional environment variables spawn-binding support few extra builtin expansion: $SANDBOX, $COMMAND, $APINAME, $PID, $UID, $GID, $TODAY, $UUID.
+    * **$NAME** : config time expansion. On top of traditional environment variables spawn-binding support few extra builtin expansion: $LOGNAME, $HOSTNAME, $HOME, $AFB_ROOTDIR, $AFB_CONFIG, $AFB_NAME, $SANDBOX_UID, $COMMAND_UID, $API_NAME, $SBINDIR, $SBOXUSER, $PID, $UID, $GID, $TODAY, $UUID.
     * **%name%***  those patterns are expanded at command launching time. By searching within query args json_object corresponding key. For example if your command line used '"exec": {"cmdpath": "/bin/sleep", "args": ["%timeout%"]}' then a query with '{"action":"start", "args": {"timeout": "180"}}' will fork/exec 'sleep 180'.
 
 * **verbose**: overload sandbox verbosity level. ***Warning** verbosity [5-9] are reserve to internal code debugging. With verbosity=5, query arguments expansion happen in main process and not in child to help 'gdb' debugging, nevertheless in this case any expansion error may kill the server.*

@@ -66,7 +66,7 @@
         },
         "mounts": [
           {"target": "/etc/passwd", "mode":"execfd", "source": "getent passwd $SBOXUSER 65534"},
-          {"target": "/home", "source": "/var/tmp/$SANDBOX", "mode": "rw"},
+          {"target": "/home", "source": "/var/tmp/$SANDBOX_UID", "mode": "rw"},
           {"target": "/usr",  "source": "/usr", "mode": "ro"},
           {"target": "/lib64",  "source": "/lib64", "mode": "ro"},
           {"target": "/sbin", "source": "/usr/sbin", "mode": "symlink"},
