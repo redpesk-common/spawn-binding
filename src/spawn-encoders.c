@@ -721,8 +721,9 @@ OnErrorExit:
 }
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
-encoderCbT encoderBuiltin[] = {
+encoderCbT encoderBuiltin[] = { /*1st default == TEXT*/
   {.uid="TEXT" , .info="unique event at closure with all outputs", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB},
+  {.uid="SYNC" , .info="return full data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB, .synchronous=1},
   {.uid="LINE" , .info="one event per line",  .initCB=encoderInitCB, .actionsCB=encoderLineCB},
   {.uid="JSON" , .info="one event per json blob",  .initCB=encoderInitCB, .actionsCB=encoderJsonCB},
   {.uid="LOG"  , .info="keep stdout/stderr on server",  .initCB=encoderInitLog, .actionsCB=encoderLogCB},

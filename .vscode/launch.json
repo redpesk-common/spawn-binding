@@ -11,7 +11,7 @@
           "name": "namespace config",
           "type": "cppdbg",
           "request": "launch",
-          "program": "/usr/bin/afb-binder",
+          "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-spawn",
             "--binding=./lib/afb-spawn.so",
@@ -39,10 +39,11 @@
           "name": "simple config",
           "type": "cppdbg",
           "request": "launch",
-          "program": "/usr/bin/afb-binder",
+          "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-spawn",
             "--binding=./lib/afb-spawn.so",
+            "--alias=/devtools:/usr/share/afb-ui-devtools/binder",
             "--verbose",
             "--verbose",
             "--verbose",
@@ -67,7 +68,7 @@
           "name": "simple+minimal config",
           "type": "cppdbg",
           "request": "launch",
-          "program": "/usr/bin/afb-binder",
+          "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-spawn",
             "--binding=./lib/afb-spawn.so",
@@ -95,7 +96,7 @@
           "name": "fulldir config",
           "type": "cppdbg",
           "request": "launch",
-          "program": "/usr/bin/afb-binder",
+          "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-spawn",
             "--binding=./lib/afb-spawn.so",
@@ -123,7 +124,7 @@
           "name": "autostart (should be root to work)",
           "type": "cppdbg",
           "request": "launch",
-          "program": "/usr/bin/afb-binder",
+          "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-spawn",
             "--binding=./lib/afb-spawn.so",
@@ -151,7 +152,7 @@
           "name": "no config",
           "type": "cppdbg",
           "request": "launch",
-          "program": "/usr/bin/afb-binder",
+          "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-spawn",
             "--binding=./lib/afb-spawn.so",
@@ -179,7 +180,7 @@
           "name": "fulup private config",
           "type": "cppdbg",
           "request": "launch",
-          "program": "/usr/bin/afb-binder",
+          "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-spawn",
             "--binding=./lib/afb-spawn.so",

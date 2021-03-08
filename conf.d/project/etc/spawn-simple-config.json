@@ -45,6 +45,12 @@
           "exec": {"cmdpath": "/usr/bin/id"}
         },
         {
+            "uid": "sync",
+            "encoder": "sync",
+            "info" : "return stdout/err in synchronous mode",
+            "exec": {"cmdpath": "/usr/bin/lsb_release", "args": ["-a"]}
+        },  
+        {
           "uid": "env",
           "encoder":"line",
           "info" : "return current namespace env",

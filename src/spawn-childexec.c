@@ -403,8 +403,13 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         }
 
         // build responseJ & update call tid
-        wrap_json_pack (&responseJ, "{ss ss* ss si}", "api", api->apiname, "sandbox", taskId->cmd->sandbox->uid, "command", taskId->cmd->uid, "pid", taskId->pid);
-        afb_req_success_f(request, responseJ, NULL);
+        if (taskId->cmd->encoder->synchronous) {
+            taskId->request= request; // save request for later synchronous responses
+            afb_req_addref(request);
+        } else {
+            wrap_json_pack (&responseJ, "{ss ss* ss si}", "api", api->apiname, "sandbox", taskId->cmd->sandbox->uid, "command", taskId->cmd->uid, "pid", taskId->pid);
+            afb_req_success(request, responseJ, NULL);
+        }
 
         return 0;
 

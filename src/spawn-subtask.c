@@ -68,8 +68,12 @@ void taskPushResponse (taskIdT *taskId) {
     int count=0;
 
     // push event if not one listen just stop pushing
-    if (taskId->responseJ) {
-        count= afb_event_push(taskId->event, taskId->responseJ);
+    if (taskId->responseJ) { 
+        if (taskId->request) {
+            afb_req_success(taskId->request, taskId->responseJ, NULL);
+            afb_req_unref(taskId->request);
+        }
+        else  count= afb_event_push(taskId->event, taskId->responseJ);
         taskId->responseJ=NULL;
         taskId->statusJ=NULL;
         taskId->errorJ=NULL;

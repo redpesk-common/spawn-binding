@@ -38,6 +38,7 @@ struct taskIdS {
   int outfd;
   int errfd;
   shellCmdT *cmd;
+  afb_req_t request;
   void *context;
   TimerHandleT *timer;
   sd_event_source *srcout;

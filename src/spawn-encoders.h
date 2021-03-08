@@ -51,6 +51,7 @@ typedef enum {
 typedef struct  {
   const char *uid;
   const char *info;
+  int synchronous;
   int (*initCB)(shellCmdT *cmd, json_object *optsJ, void* fmtctx);
   int (*actionsCB)(taskIdT *taskId, encoderActionE action, encoderOpsE subAction, void* fmtctx);
   void *fmtctx;
