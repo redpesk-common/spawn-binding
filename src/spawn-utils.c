@@ -259,7 +259,7 @@ OnErrorExit:
 
 // Extract $KeyName and replace with $Key Env or default Value
 static int utilExpandEnvKey (spawnDefaultsT *defaults, int *idxIn, const char *inputS, int *idxOut, char *outputS, int maxlen, void *userdata) {
-    char envkey[64];
+    char envkey[SPAWN_MAX_ARG_LABEL];
     char *envval=NULL;
     int index;
 
