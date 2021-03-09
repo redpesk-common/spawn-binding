@@ -50,7 +50,7 @@
 #endif
 
 #ifndef SPAWN_MAX_ARG_LEN
-#define SPAWN_MAX_ARG_LEN 256
+#define SPAWN_MAX_ARG_LEN 1024
 #endif
 
 #ifndef SPAWN_MAX_ARG_LABEL

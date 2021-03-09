@@ -193,25 +193,71 @@ OnErrorExit:
 }
 
 // none encoder callback output line on server
-static int logEventCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
+static int logEventCB (taskIdT *taskId, streamBufT *data, ssize_t start, json_object *errorJ, void *context) {
     long output= (long)context;
     logTaskCtxT *taskCtx= (logTaskCtxT*) taskId->context;
 
-    if (output == STDOUT_FILENO) fprintf (taskCtx->opts->fileout, "[%s] %s\n", taskId->uid, &docId->data[start]);
-    else fprintf (taskCtx->opts->fileerr, "[%s] %s\n", taskId->uid, &docId->data[start]);
+    if (output == STDOUT_FILENO) fprintf (taskCtx->opts->fileout, "[%s] %s\n", taskId->uid, &data->data[start]);
+    else fprintf (taskCtx->opts->fileerr, "[%s] %s\n", taskId->uid, &data->data[start]);
     return 0;
 }
 
 
 // line encoder callback send one event per new line
-static int lineEventCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
+static int lineEventCB (taskIdT *taskId, streamBufT *data, ssize_t start, json_object *errorJ, void *context) {
     int err;
     json_object *lineJ;
 
-    err = wrap_json_pack(&lineJ, "{si ss* so*}", "pid", taskId->pid, "output", &docId->data[start], "warning", errorJ);
+    err = wrap_json_pack(&lineJ, "{si ss* so*}", "pid", taskId->pid, "output", &data->data[start], "warning", errorJ);
     if (err) goto OnErrorExit;
 
     afb_event_push(taskId->event, lineJ);
+    return 0;
+
+OnErrorExit:
+    return 1;
+}
+
+// store all data in a buffer and turn it as string on cmd end
+static int rawDataCB (taskIdT *taskId, streamBufT *data, ssize_t start, json_object *errorJ, void *context) {
+    streamCtxT *streamctx = (streamCtxT*) context;
+
+    // update error message from buffer
+    if (errorJ) {
+        if (!streamctx->errorJ) streamctx->errorJ=errorJ;
+        else json_object_put (errorJ);
+    }
+    // data index point C line start
+    streamctx->arrayJ = json_object_new_string(&data->data[start]);
+    return 0;
+}
+
+// store raw pipe data en push it as a json string on command end
+static int encoderRawParserCB (taskIdT *taskId, streamBufT *data, ssize_t len, encoderEventCbT callback, void* context) {
+    int err;
+
+    // nothing to do
+    if (len == 0 && data->index == 0) return 0;
+
+    // keep raw buffer data until command finishes
+    if (len == 0) {
+        if (data->index == data->size) {
+            // no more space double buffer size
+            data->size = data->size * 2;
+            data->data = realloc (data->data, data->size);
+            AFB_API_NOTICE(taskId->cmd->api, "[buffer size doubled] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
+            if (!data->data) goto OnErrorExit;
+
+        } else {
+            if (data->data[data->index++] > '\r') data->index++; // if no new line keep last char
+            data->data[data->index++] = '\0';
+            err= callback(taskId, data, 0, NULL, context);
+            data->index=0;
+            if (err) goto OnErrorExit;
+        }
+    } else {
+       data->index = data->index + len;
+    }
     return 0;
 
 OnErrorExit:
@@ -261,6 +307,7 @@ static int encoderLineParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len,
             err= callback(taskId, docId, 0, json_object_new_string ("line too long truncated with '\\'"), context);
             if (err) goto OnErrorExit;
         } else {
+            if (docId->data[docId->index++] > '\r') docId->index++; // if last char is not a newline keep it
             docId->data[docId->index++] = '\0';
             err= callback(taskId, docId, 0, NULL, context);
             if (err) goto OnErrorExit;
@@ -451,6 +498,36 @@ OnErrorExit:
     return 1;
 }
 
+// Send one event for line on stdout and stderr at the command end
+static int encoderRawCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
+    assert (taskId->magic == MAGIC_SPAWN_TASKID);
+    shellCmdT *cmd= taskId->cmd;
+    streamOptsT *opts=cmd->encoder->fmtctx;
+    docTaskCtxT *taskCtx= (docTaskCtxT*)taskId->context;
+    int err;
+
+    switch (action) {
+
+        case ENCODER_TASK_STDOUT:
+            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_RAW_STDOUT taskId=0x%p pid=%d\n", taskId, taskId->pid);
+            err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderRawParserCB, rawDataCB, operation, &taskCtx->stdout);
+            if (err) {
+                AFB_API_ERROR(cmd->api, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                goto OnErrorExit;
+            }
+            break;
+
+        // anything else is delegated to document encoder
+        default:
+            err= encoderDefaultCB (taskId, action, operation, fmtctx);
+            if (err) goto OnErrorExit;
+            break;
+    }
+    return 0;
+
+OnErrorExit:
+    return 1;
+}
 
 // for debug print both stdout & stderr directly on server
 static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
@@ -723,7 +800,8 @@ OnErrorExit:
 // Builtin in output formater. Note that first one is used when cmd does not define a format
 encoderCbT encoderBuiltin[] = { /*1st default == TEXT*/
   {.uid="TEXT" , .info="unique event at closure with all outputs", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB},
-  {.uid="SYNC" , .info="return full data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB, .synchronous=1},
+  {.uid="SYNC" , .info="return json data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB, .synchronous=1},
+  {.uid="RAW"  , .info="return raw data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderRawCB, .synchronous=1},
   {.uid="LINE" , .info="one event per line",  .initCB=encoderInitCB, .actionsCB=encoderLineCB},
   {.uid="JSON" , .info="one event per json blob",  .initCB=encoderInitCB, .actionsCB=encoderJsonCB},
   {.uid="LOG"  , .info="keep stdout/stderr on server",  .initCB=encoderInitLog, .actionsCB=encoderLogCB},

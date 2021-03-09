@@ -19,6 +19,12 @@
       },
       "commands": [
         {
+            "uid": "long",
+            "encoder":{"output": "raw", "opts":{"maxlen":4000}},
+            "info" : "return very long argument",
+            "exec": {"cmdpath": "/bin/echo", "args": ["{'uid':'github','info':'Description long qui fait planter','logo':'','client-id':'7805sss7c15a','token-url':'https://github.com/login/oauth/authorize','login-url':'/sgate/github/login','profils':[{'loa':1,'uid':'basic','scope':'user:email'},{'loa':2,'uid':'teams','scope':'read:org'}]}"]}
+        },
+        {
           "uid": "afbroot",
           "info" : "expand afb_binder root directory",
           "exec": {"cmdpath": "/bin/echo", "args": ["$AFB_ROOTDIR"]}
@@ -50,6 +56,12 @@
             "info" : "return stdout/err in synchronous mode",
             "exec": {"cmdpath": "/usr/bin/lsb_release", "args": ["-a"]}
         },  
+        {
+            "uid": "raw",
+            "encoder": "raw",
+            "info" : "return raw stdout in synchronous mode",
+            "exec": {"cmdpath": "/usr/bin/cat", "args": "/etc/passwd"}
+        },
         {
           "uid": "env",
           "encoder":"line",
