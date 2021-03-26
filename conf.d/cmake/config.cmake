@@ -1,5 +1,5 @@
 ###########################################################################
-# Copyright 2015, 2016, 2017, 2018, 2019 IoT.bzh
+# Copyright 2015-2021 IoT.bzh
 #
 # author: Fulup Ar Foll <fulup@iot.bzh>
 #
@@ -22,12 +22,12 @@ set(CMAKE_INSTALL_SO_NO_EXE 0)
 # ------------------
 set(PROJECT_NAME spawn-binding)
 set(PROJECT_VERSION "1.0")
-set(PROJECT_PRETTY_NAME "Helloworld for AGL")
-set(PROJECT_DESCRIPTION "Provide an AGL Helloworld Binding")
-set(PROJECT_URL "https://github.com/iotbzh/spawn-service")
+set(PROJECT_PRETTY_NAME "Spawn Binding")
+set(PROJECT_DESCRIPTION "Spawn Binding")
+set(PROJECT_URL "https://github.com/redpesk-common/spawn-binding")
 set(PROJECT_ICON "icon.jpg")
 set(PROJECT_AUTHOR "Iot-Team")
-set(PROJECT_AUTHOR_MAIL "secretaria@iot.bzh")
+set(PROJECT_AUTHOR_MAIL "support@redpesk.bzh")
 set(PROJECT_LICENSE "APL2.0")
 set(PROJECT_LANGUAGES,"C")
 set(API_NAME "shell")
