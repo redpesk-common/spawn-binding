@@ -130,7 +130,7 @@ ssize_t utilsFileLoad (const char *filepath, char **buffer) {
 
     } while (len < 0 && errno == EINTR);
     close (fdread);
-    buffer[count]='\0'; // close string
+    *buffer[count]='\0'; // close string
 
     return count;
 
