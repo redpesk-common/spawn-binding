@@ -106,7 +106,7 @@ OnErrorExit:
     return 0;
 }
 
-ssize_t loadFile (const char *filepath, char **buffer) {
+ssize_t utilsFileLoad (const char *filepath, char **buffer) {
     int err;
     struct stat statbuf;
     char *data;
