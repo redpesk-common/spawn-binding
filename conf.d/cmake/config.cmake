@@ -74,6 +74,7 @@ set (PKG_REQUIRED_LIST
 	uuid
 	json-c
 	libcap-ng
+	libcurl
 	libseccomp
 	afb-binding
 	afb-libhelpers
