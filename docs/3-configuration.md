@@ -51,7 +51,7 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
 * **prefix**: is added to every command 'api/verb==api-name/prefix/cmd-uid'.  When prefix="" it is fully removed from commands API, providing a flat namespace to every commands independently of their umbrella sandbox.
 Default when prefix is not defined. If config.json declare more than one 'sandbox' by default *prefix==sandbox->uid*, on the other hand if config.json declare only one sandbox (no json-array) then no-prefix is added and api/ver==api-name/cmd-uid.
 * **verbose**: [0-9] value. Turn on/off some debug/log capabilities
-* **privilege**: required corresponding sample privileges [here]({% chapter_link afb_binder.overview %}). For further explanation on AFB privileges check: [Cynagora](../../developer-guides/afb-overview.html). AFB/AGL privileges are based on Tizen privileges definitions [here](https://www.tizen.org/privilege)
+* **privilege**: required corresponding sample privileges [here]({% chapter_link afb_binder.overview %}). For further explanation on AFB privileges check: [Cynagora]({% chapter_link afb_binder.overview %}). AFB/AGL privileges are based on Tizen privileges definitions [here](https://www.tizen.org/privilege)
 ```json
   "sandboxes": {
       "uid": "sandbox-demo",
