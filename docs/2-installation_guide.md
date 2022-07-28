@@ -67,6 +67,7 @@ afb-binder --name=afb-spawn --binding=/var/local/lib/afm/applications/spawn-bind
 
 #### Install spawn-binding specific dependencies
 
+* libuuid-devel
 * libcap-ng-devel
 * libseccomp-devel
 * liblua5.3-devel
