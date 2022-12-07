@@ -76,10 +76,12 @@ set (PKG_REQUIRED_LIST
     libcap-ng
     libseccomp
     afb-binding
-    afb-libhelpers
+    afb-helpers
     afb-libcontroller
     libsystemd
 )
+
+add_definitions(-DAFB_BINDING_VERSION=3)
 
 # Print a helper message when every thing is finished
 # ----------------------------------------------------
