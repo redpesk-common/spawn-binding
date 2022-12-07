@@ -231,12 +231,12 @@ This section exposes for a given sandbox children commands. Command only require
 * **timeout**: overload sandbox timeout. (note zero == no-timeout)
 * **info**: describes command function. Is return as part of 'api/info' introspection.
 * **usage**: is used to populate HTML5 help query area.
-* **encoder**: specify with output encoder should be used. When not used default 'document' encoder is used. spawn-binding provides 3 builtin encoders, nevertheless developer may add custom output formatting with encoder plugins. *Note: check plugin directory on github for a custom encoder sample.*
+* **encoder**: specify with output encoder should be used. When not used default 'text' encoder is used. spawn-binding provides 3 builtin encoders, nevertheless developer may add custom output formatting with encoder plugins. *Note: check plugin directory on github for a custom encoder sample.*
 
   * **text**: returns a json_array for both stdout/stderr at the end of command execution. Supports 'maxlen' & 'maxline' options.
-  * **line**: returns a json_string even each time a new line appear on stdout. Stderr keeps 'document' behavior.
-  * **json**: returns an event each time a new json blob is produce on stdout. Stderr keeps 'document' behavior.
-  * **sync**: returns stdout as a json array within command response in synchronous mode. Stderr keeps 'document' behavior.
+  * **line**: returns a json_string even each time a new line appear on stdout. Stderr keeps 'text' behavior.
+  * **json**: returns an event each time a new json blob is produce on stdout. Stderr keeps 'text' behavior.
+  * **sync**: returns stdout as a json array within command response in synchronous mode. Stderr keeps 'text' behavior.
   * **raw**: identical to 'sync' except that stdout data returns as single json string and formatting (newline, space, ...) is not removed. Note that in 'raw' mode, output buffer is automatically resized and may return big chuck of data.
   * **log**: push log in corresponding file default server side sdtdout/err. When output not defined default afb-binder stdout/err is used.
   * **xxxx**: where 'xxxx' is the 'uid' you gave to your plugin custom encoder options.
