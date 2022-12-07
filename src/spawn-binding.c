@@ -32,6 +32,7 @@
 #include "spawn-subtask.h"
 #include "spawn-utils.h"
 #include "spawn-defaults.h"
+#include "spawn-expand.h"
 
 #include <ctl-config.h>
 #include <filescan-utils.h>

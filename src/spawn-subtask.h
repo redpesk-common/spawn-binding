@@ -50,7 +50,7 @@ struct taskIdS {
   UT_hash_handle tidsHash, gtidsHash;    /* makes this structure hashable */
 };
 
-// spawn-task.c
+// spawn-subtask.c
 void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ);
 int spawnParse (shellCmdT *cmd, json_object *execJ);
 int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* context);

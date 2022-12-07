@@ -37,7 +37,7 @@
 #include <afb/afb-binding.h>
 #include <ctl-config.h>
 
-#include "spawn-defaults.h"
+#include "spawn-expand.h"
 #include "spawn-sandbox.h"
 
 

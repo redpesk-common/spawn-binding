@@ -53,7 +53,7 @@
 #include "spawn-sandbox.h"
 #include "spawn-subtask.h"
 #include "spawn-utils.h"
-#include "spawn-defaults.h"
+#include "spawn-expand.h"
 #include "spawn-enums.h"
 
 

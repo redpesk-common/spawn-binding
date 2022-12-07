@@ -23,33 +23,26 @@
 
 #define _GNU_SOURCE
 
-
-
 #include <errno.h>
 #include <pthread.h>
 #include <fcntl.h>
-#include <ctype.h>
 #include <seccomp.h>        // high level api
 #include <assert.h>
-#include <strings.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <sys/prctl.h>
-#include <sys/wait.h>
-#include <linux/seccomp.h>  // low level api
-#include <linux/filter.h>
 
 #include <cap-ng.h>
+
 #include <systemd/sd-event.h>
+
+#include <wrap-json.h>
 
 #include "spawn-binding.h"
 #include "spawn-utils.h"
 #include "spawn-enums.h"
 #include "spawn-sandbox.h"
 #include "spawn-subtask.h"
-#include <ctl-config.h>
-
+#include "spawn-expand.h"
 
 // Timer base cmd pooling tic send event if cmd value changed
 static int spawnTimerCB (TimerHandleT *handle) {

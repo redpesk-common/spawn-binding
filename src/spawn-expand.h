@@ -22,30 +22,31 @@
 */
 
 
-#ifndef _SPAWN_UTILS_INCLUDE_
-#define _SPAWN_UTILS_INCLUDE_
+#ifndef _SPAWN_EXPAND_INCLUDE_
+#define _SPAWN_EXPAND_INCLUDE_
 
 #include <afb/afb-binding.h>
 #include <json-c/json.h>
-#include "spawn-defaults.h"
 
-#ifdef MEMFD_CREATE_MISSING
-  // missing from Fedora, OpenSuse, ... !!!
-  long memfd_create (const char *name, unsigned int __flags);
-#endif
+typedef enum {
+    SPAWN_MEM_STATIC = 0,
+    SPAWN_MEM_DYNAMIC,
+} spawnMemDefaultsE;
 
-// spawn-utils.c
-mode_t utilsUmaskSetGet (const char *mask);
-int utilsTaskPrivileged(void);
+typedef char*(*spawnGetDefaultCbT)(const char *label, void *ctx, void *userdata);
+typedef struct {
+    const char *label;
+    spawnGetDefaultCbT callback;
+    spawnMemDefaultsE  allocation;
+    void *ctx;
+} spawnDefaultsT;
 
-int utilsFileModeIs (const char *filepath, int mode);
-ssize_t utilsFileLoad (const char *filepath, char **buffer);
-int utilsFileAddControl (afb_api_t api, const char *uid, int dirFd, const char *ctrlname, const char *ctrlval);
-const char* utilsExecCmd (afb_api_t api, const char* source, const char* command, int *filefd);
-int utilsExecFdCmd (afb_api_t api, const char* source, const char* command);
-long unsigned int utilsGetPathInod (const char* path);
-mode_t utilsUmaskSetGet (const char *mask);
+extern spawnDefaultsT spawnVarDefaults[];
 
-void utilsResetSigals(void);
+const char* utilsExpandString (spawnDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer, void *ctx);
+const char *utilsExpandKeyCtx (const char* src, void *ctx);
+const char* utilsExpandKey (const char* inputString);
+const char* utilsExpandJson (const char* src, json_object *keysJ);
+void utilsExpandJsonDebug (void);
 
-#endif /* _SPAWN_UTILS_INCLUDE_ */
+#endif /* _SPAWN_EXPAND_INCLUDE_ */

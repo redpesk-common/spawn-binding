@@ -30,11 +30,12 @@
 
 #include <wrap-json.h>
 
+#include "spawn-defaults.h"
 #include "spawn-binding.h"
 #include "spawn-sandbox.h"
 #include "spawn-encoders.h"
 #include "spawn-subtask.h"
-#include "spawn-utils.h"
+#include "spawn-expand.h"
 
 typedef struct encoderRegistryS {
    const char *uid;

@@ -23,13 +23,6 @@
 
 #define _GNU_SOURCE
 
-#include "spawn-binding.h"
-#include "spawn-utils.h"
-#include "spawn-enums.h"
-#include "spawn-sandbox.h"
-#include "spawn-subtask.h"
-#include <ctl-config.h>
-
 #include <errno.h>
 #include <systemd/sd-event.h>
 #include <sys/wait.h>
@@ -45,6 +38,16 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <signal.h>
+
+#include "spawn-binding.h"
+#include "spawn-expand.h"
+#include "spawn-utils.h"
+#include "spawn-enums.h"
+#include "spawn-sandbox.h"
+#include "spawn-subtask.h"
+#include <ctl-config.h>
+
+
 
 const nsKeyEnumT shSignals[] = {
     {"SIGTERM", SIGTERM},
