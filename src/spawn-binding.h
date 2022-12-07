@@ -25,10 +25,7 @@
 #ifndef _SPAWN_BINDING_INCLUDE_
 #define _SPAWN_BINDING_INCLUDE_
 
-#define  AFB_BINDING_VERSION 3
 #include <afb/afb-binding.h>
-#include "spawn-defaults.h"
-#include <wrap-json.h>
 
 // anonymous type definition to allow anonymous type in .h
 typedef struct shellCmdS shellCmdT;

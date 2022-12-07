@@ -20,19 +20,11 @@
  *  https://www.gnu.org/licenses/gpl-3.0.html.
  * $RP_END_LICENSE$
 */
-
-
 #ifndef _SPAWN_ENCODER_S_INCLUDE_
 #define _SPAWN_ENCODER_S_INCLUDE_
 
-// usefull classical include
-#include <stdio.h>
-#include <string.h>
-#include <assert.h>
-#include <stdbool.h>
-
-#include  "spawn-binding.h"
-#include <afb-timer.h>
+#include <json-c/json.h>
+#include "spawn-binding.h"
 
 typedef enum {
     ENCODER_STDOUT_UNKNOWN,

@@ -24,15 +24,6 @@
 
 #define _GNU_SOURCE
 
-// we need AFB definition to access binder config API
-#define  AFB_BINDING_VERSION 3
-#include <afb/afb-binding.h>
-#include <ctl-config.h>
-
-
-#include "spawn-defaults.h"
-#include "spawn-sandbox.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,6 +32,13 @@
 #include <uuid/uuid.h>
 #include <time.h>
 #include <sys/stat.h>
+
+// we need AFB definition to access binder config API
+#include <afb/afb-binding.h>
+#include <ctl-config.h>
+
+#include "spawn-defaults.h"
+#include "spawn-sandbox.h"
 
 
 static char*GetEnviron(const char *label, void *dflt, void *userdata) {

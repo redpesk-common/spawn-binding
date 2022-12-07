@@ -25,12 +25,9 @@
 #ifndef _SPAWN_UTILS_INCLUDE_
 #define _SPAWN_UTILS_INCLUDE_
 
-#define  AFB_BINDING_VERSION 3
 #include <afb/afb-binding.h>
-#include <systemd/sd-event.h>
-
+#include <json-c/json.h>
 #include "spawn-defaults.h"
-#include <json.h>
 
 #ifdef MEMFD_CREATE_MISSING
   // missing from Fedora, OpenSuse, ... !!!

@@ -23,13 +23,18 @@
 
 #define _GNU_SOURCE
 
+#include <assert.h>
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+
+#include <wrap-json.h>
+
 #include "spawn-binding.h"
 #include "spawn-sandbox.h"
 #include "spawn-encoders.h"
 #include "spawn-subtask.h"
 #include "spawn-utils.h"
-
-#include <errno.h>
 
 typedef struct encoderRegistryS {
    const char *uid;

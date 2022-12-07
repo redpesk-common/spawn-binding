@@ -23,6 +23,10 @@
 
 #define _GNU_SOURCE
 
+// usefull classical include
+#include <assert.h>
+#include <stdbool.h>
+
 #include "spawn-binding.h"
 #include "spawn-sandbox.h"
 #include "spawn-subtask.h"

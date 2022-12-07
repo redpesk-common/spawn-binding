@@ -29,10 +29,6 @@
 #include "spawn-enums.h"
 #include "spawn-encoders.h"
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <cap-ng.h>
-
 typedef struct {
     uid_t uid;
     gid_t gid;

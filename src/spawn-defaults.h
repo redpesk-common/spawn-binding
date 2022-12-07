@@ -81,6 +81,7 @@ typedef struct {
     spawnMemDefaultsE  allocation;
     void *ctx;
 } spawnDefaultsT;
+
 extern spawnDefaultsT spawnVarDefaults[];
 
 #endif /* _SPAWN_DEFAULTS_INCLUDE_ */

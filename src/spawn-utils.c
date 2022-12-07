@@ -23,8 +23,6 @@
 
 #define _GNU_SOURCE
 
-#include "spawn-utils.h"
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -47,6 +45,11 @@
      return (syscall(SYS_memfd_create, name, flags));
   }
 #endif
+
+#include <json-c/json.h>
+
+#include "spawn-utils.h"
+
 
 // Exec a command in a memory buffer and return stdout result as FD
 const char* utilsExecCmd (afb_api_t api, const char* target, const char* command, int *filefd) {
