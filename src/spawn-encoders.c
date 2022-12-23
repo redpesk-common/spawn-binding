@@ -28,6 +28,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include <systemd/sd-event.h>
+
 #include <wrap-json.h>
 
 #include "spawn-defaults.h"
@@ -35,6 +37,7 @@
 #include "spawn-sandbox.h"
 #include "spawn-encoders.h"
 #include "spawn-subtask.h"
+#include "spawn-subtask-internal.h"
 #include "spawn-expand.h"
 
 typedef struct encoderRegistryS {

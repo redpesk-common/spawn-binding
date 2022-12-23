@@ -26,29 +26,6 @@
 
 
 #include "spawn-binding.h"
-#include <afb-timer.h>
-#include <uthash.h>
-
-
-struct taskIdS {
-  spawnMagicT magic;
-  pid_t pid; // hashtable key
-  char *uid;
-  int verbose;
-  int outfd;
-  int errfd;
-  shellCmdT *cmd;
-  afb_req_t request;
-  void *context;
-  TimerHandleT *timer;
-  sd_event_source *srcout;
-  sd_event_source *srcerr;
-  afb_event_t event;
-  json_object *responseJ;
-  json_object *errorJ;
-  json_object *statusJ;
-  UT_hash_handle tidsHash, gtidsHash;    /* makes this structure hashable */
-};
 
 // spawn-subtask.c
 void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ);
@@ -59,7 +36,7 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnBindingT *binding, taskIdT *ta
 void taskPushResponse (taskIdT *taskId);
 void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId);
 
-// spawn-child.c
+// spawn-childexec.c
 int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose);
 
 #endif /* _SPAWN_SUBTASK_INCLUDE_ */

@@ -10,6 +10,8 @@
 
 #include <assert.h>
 
+#include <systemd/sd-event.h>
+
 #include <ctl-plugin.h>
 #include <wrap-json.h>
 
@@ -17,6 +19,8 @@
 #include "spawn-sandbox.h"
 #include "spawn-encoders.h"
 #include "spawn-subtask.h"
+
+#include "spawn-subtask-internal.h"
 
 
 /*

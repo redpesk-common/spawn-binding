@@ -21,38 +21,30 @@
  * $RP_END_LICENSE$
 */
 
+#ifndef _SPAWN_SUBTASK_INTERNAL_INCLUDE_
+#define _SPAWN_SUBTASK_INTERNAL_INCLUDE_
 
-#ifndef _SPAWN_BINDING_INCLUDE_
-#define _SPAWN_BINDING_INCLUDE_
+#include <afb-timer.h>
+#include <uthash.h>
 
-#include <afb/afb-binding.h>
-
-// anonymous type definition to allow anonymous type in .h
-typedef struct shellCmdS shellCmdT;
-typedef struct taskIdS   taskIdT;
-typedef struct sandBoxS  sandBoxT;
-
-
-// few magic to help debugging
-typedef enum {
-    MAGIC_SPAWN_BDING=12345678,
-    MAGIC_SPAWN_SBOX,
-    MAGIC_SPAWN_NSPACE,
-    MAGIC_SPAWN_CMD,
-    MAGIC_SPAWN_TASKID,
-    MAGIC_SPAWN_ENCODER,
-} spawnMagicT;
-
-// dummy object to check magic number
-typedef struct {
+struct taskIdS {
   spawnMagicT magic;
-} spawnObjectT;
+  pid_t pid; // hashtable key
+  char *uid;
+  int verbose;
+  int outfd;
+  int errfd;
+  shellCmdT *cmd;
+  afb_req_t request;
+  void *context;
+  TimerHandleT *timer;
+  sd_event_source *srcout;
+  sd_event_source *srcerr;
+  afb_event_t event;
+  json_object *responseJ;
+  json_object *errorJ;
+  json_object *statusJ;
+  UT_hash_handle tidsHash, gtidsHash;    /* makes this structure hashable */
+};
 
-typedef struct {
-    spawnMagicT magic;
-    afb_api_t api;
-    taskIdT *gtids;
-    pthread_rwlock_t sem;
-} spawnBindingT;
-
-#endif /* _SPAWN_BINDING_INCLUDE_ */
+#endif /* _SPAWN_SUBTASK_INTERNAL_INCLUDE_ */

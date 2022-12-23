@@ -39,14 +39,15 @@
 #include <pthread.h>
 #include <signal.h>
 
+#include <wrap-json.h>
+
 #include "spawn-binding.h"
 #include "spawn-expand.h"
 #include "spawn-utils.h"
 #include "spawn-enums.h"
 #include "spawn-sandbox.h"
 #include "spawn-subtask.h"
-#include <ctl-config.h>
-
+#include "spawn-subtask-internal.h"
 
 
 const nsKeyEnumT shSignals[] = {

@@ -73,6 +73,7 @@ typedef const struct {
 
 // spawn-encoder.c
 extern encoderPluginCbT encoderPluginCb;
+
 int encoderInit(void);
 int encoderFind (shellCmdT *cmd, json_object *encoderJ);
 

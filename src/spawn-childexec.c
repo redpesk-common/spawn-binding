@@ -43,6 +43,7 @@
 #include "spawn-sandbox.h"
 #include "spawn-subtask.h"
 #include "spawn-expand.h"
+#include "spawn-subtask-internal.h"
 
 // Timer base cmd pooling tic send event if cmd value changed
 static int spawnTimerCB (TimerHandleT *handle) {
