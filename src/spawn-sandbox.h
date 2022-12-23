@@ -132,7 +132,7 @@ struct shellCmdS {
   json_object *sampleJ;
   const char **argv;
   int  argc;
-  encoderCbT *encoder;
+  const encoderCbT *encoder;
   struct sandBoxS *sandbox;
   int timeout;
   afb_api_t api;

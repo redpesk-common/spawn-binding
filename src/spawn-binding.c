@@ -41,6 +41,10 @@
 #include "spawn-utils.h"
 #include "spawn-defaults.h"
 #include "spawn-expand.h"
+#include "spawn-encoders-plugins.h"
+
+// spawn-encoder.c
+extern encoderPluginCbT encoderPluginCb;
 
 
 static int SandboxConfig(afb_api_t api, CtlSectionT *section, json_object *sandboxesJ);

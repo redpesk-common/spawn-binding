@@ -43,11 +43,10 @@
 typedef struct encoderRegistryS {
    const char *uid;
    struct encoderRegistryS *next;
-   encoderCbT *encoders;
+   const encoderCbT *encoders;
 } encoderRegistryT;
 
 // registry holds a linked list of core+pugins encoders
-encoderCbT encoderBuiltin[];
 static encoderRegistryT *registryHead = NULL;
 
 // builtin document encoder
@@ -705,8 +704,22 @@ static int encoderInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     return 1;
 }
 
+// Builtin in output formater. Note that first one is used when cmd does not define a format
+static const encoderCbT encoderBuiltin[] = { /*1st default == TEXT*/
+  {.uid="TEXT" , .info="unique event at closure with all outputs", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB},
+  {.uid="SYNC" , .info="return json data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB, .synchronous=1},
+  {.uid="RAW"  , .info="return raw data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderRawCB, .synchronous=1},
+  {.uid="LINE" , .info="one event per line",  .initCB=encoderInitCB, .actionsCB=encoderLineCB},
+  {.uid="JSON" , .info="one event per json blob",  .initCB=encoderInitCB, .actionsCB=encoderJsonCB},
+  {.uid="LOG"  , .info="keep stdout/stderr on server",  .initCB=encoderInitLog, .actionsCB=encoderLogCB},
+  {.uid= NULL} // must be null terminated
+};
+
+
+
+
 // add a new plugin encoder to the registry
-static int encoderRegisterCB (const char *uid, encoderCbT *actionsCB) {
+static int encoderRegisterCB (const char *uid, const encoderCbT *actionsCB) {
     encoderRegistryT *registryIdx, *registryEntry;
 
     // create holding hat for encoder/decoder CB
@@ -776,7 +789,7 @@ int encoderFind (shellCmdT *cmd, json_object *encoderJ) {
     }
 
     // search format encoder within selected plugin
-    encoderCbT *encoders = registryIdx->encoders;
+    const encoderCbT *encoders = registryIdx->encoders;
     for (index=0; encoders[index].uid; index++) {
         if (!strcasecmp (encoders[index].uid, formatuid)) break;
     }
@@ -806,16 +819,7 @@ OnErrorExit:
     return 1;
 }
 
-// Builtin in output formater. Note that first one is used when cmd does not define a format
-encoderCbT encoderBuiltin[] = { /*1st default == TEXT*/
-  {.uid="TEXT" , .info="unique event at closure with all outputs", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB},
-  {.uid="SYNC" , .info="return json data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB, .synchronous=1},
-  {.uid="RAW"  , .info="return raw data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderRawCB, .synchronous=1},
-  {.uid="LINE" , .info="one event per line",  .initCB=encoderInitCB, .actionsCB=encoderLineCB},
-  {.uid="JSON" , .info="one event per json blob",  .initCB=encoderInitCB, .actionsCB=encoderJsonCB},
-  {.uid="LOG"  , .info="keep stdout/stderr on server",  .initCB=encoderInitLog, .actionsCB=encoderLogCB},
-  {.uid= NULL} // must be null terminated
-};
+#include "spawn-encoders-plugins.h"
 
 // Default callback structure is passed to plugin at initialisation time
 encoderPluginCbT encoderPluginCb = {

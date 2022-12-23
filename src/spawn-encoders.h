@@ -26,8 +26,11 @@
 #include <json-c/json.h>
 #include "spawn-binding.h"
 
+/**
+* Defintion of main actions for encoders
+*/
 typedef enum {
-    ENCODER_STDOUT_UNKNOWN,
+    ENCODER_TASK_UNSET,
     ENCODER_TASK_STDOUT,
     ENCODER_TASK_STDERR,
     ENCODER_TASK_START,
@@ -56,23 +59,8 @@ typedef struct {
     long count;
 } streamBufT;
 
-#define PLUGIN_ENCODER_MAGIC 159357456
-
 typedef int encoderEventCbT (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context);
 typedef int encoderParserCbT(taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
-
-// this structure is returned by plugin registration callback
-typedef const struct {
-  long magic;
-  streamBufT *(*bufferSet) (streamBufT *buffer, ssize_t size);
-  int (*registrate) (const char *uid, encoderCbT *actionsCB);
-  int (*jsonParser) (taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
-  int (*textParser) (taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
-  int (*readStream) (taskIdT *taskId, int pipefd, streamBufT *buffer, ssize_t bufsize, encoderParserCbT parserCB, encoderEventCbT eventCB, encoderOpsE operation, void *userdata);
-} encoderPluginCbT;
-
-// spawn-encoder.c
-extern encoderPluginCbT encoderPluginCb;
 
 int encoderInit(void);
 int encoderFind (shellCmdT *cmd, json_object *encoderJ);

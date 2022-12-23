@@ -18,6 +18,7 @@
 #include "spawn-binding.h"
 #include "spawn-sandbox.h"
 #include "spawn-encoders.h"
+#include "spawn-encoders-plugins.h"
 #include "spawn-subtask.h"
 
 #include "spawn-subtask-internal.h"

@@ -81,14 +81,17 @@ set (PKG_REQUIRED_LIST
     libsystemd
 )
 
-add_definitions(-DAFB_BINDING_VERSION=3)
+add_definitions(
+    -DUSECONTROLER=1
+    -DAFB_BINDING_VERSION=3
+)
 
 # Print a helper message when every thing is finished
 # ----------------------------------------------------
 if(IS_DIRECTORY $ENV{HOME}/opt/afb-monitoring)
 set(MONITORING_ALIAS "--alias=/monitoring:$ENV{HOME}/opt/afb-monitoring")
 endif()
-set( CLOSING_MESSAGE "Debug: AFB_SPAWN_CONFIG=../conf.d/project/etc/spawn-simple-config.json afb-binder --name=afb-spawn --binding=package/lib/afb-spawn.so -vvv # http://localhost:1234/devtools/index.html")
+set(CLOSING_MESSAGE "Debug: AFB_SPAWN_CONFIG=../conf.d/project/etc/spawn-simple-config.json afb-binder --name=afb-spawn --binding=package/lib/afb-spawn.so -vvv # http://localhost:1234/devtools/index.html")
 set(PACKAGE_MESSAGE "Install widget file using in the target : afm-util install ${PROJECT_NAME}.wgt")
 
 # Customize link option
@@ -96,7 +99,8 @@ set(PACKAGE_MESSAGE "Install widget file using in the target : afm-util install 
 #list(APPEND link_libraries -an-option)
 
 # Compilation options definition
-set(CONTROL_CONFIG_PATH "${CMAKE_SOURCE_DIR}/conf.d/project/etc:${CMAKE_BINARY_DIR}/package/etc:${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/etc" CACHE STRING "CONTROL_CONFIG_PATH")
+include(GNUInstallDirs)
+set(CONTROL_CONFIG_PATH "${CMAKE_INSTALL_FULL_SYSCONFDIR}/${PROJECT_NAME}.d:${CMAKE_INSTALL_FULL_DATAROOTDIR}/${PROJECT_NAME}/etc" CACHE STRING "CONTROL_CONFIG_PATH")
 add_definitions(-DCONTROL_CONFIG_PATH="${CONTROL_CONFIG_PATH}")
 # Use CMake generator expressions to specify only for a specific language
 # Values are prefilled with default options that is currently used.
