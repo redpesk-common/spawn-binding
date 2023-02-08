@@ -26,6 +26,7 @@
 #define _SPAWN_BINDING_INCLUDE_
 
 #include <afb/afb-binding.h>
+#include "ctl-lib.h"
 
 // anonymous type definition to allow anonymous type in .h
 typedef struct shellCmdS shellCmdT;
@@ -49,10 +50,16 @@ typedef struct {
 } spawnObjectT;
 
 typedef struct {
-    spawnMagicT magic;
-    afb_api_t api;
-    taskIdT *gtids;
-    pthread_rwlock_t sem;
+	spawnMagicT magic;
+	afb_api_t api;
+	taskIdT *gtids;
+	pthread_rwlock_t sem;
+	ctl_metadata_t metadata;
+	json_object *config;
+	sandBoxT *sandboxes;
 } spawnBindingT;
+
+
+
 
 #endif /* _SPAWN_BINDING_INCLUDE_ */

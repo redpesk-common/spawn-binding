@@ -35,7 +35,6 @@
 
 // we need AFB definition to access binder config API
 #include <afb/afb-binding.h>
-#include <ctl-config.h>
 
 #include "spawn-expand.h"
 #include "spawn-sandbox.h"
@@ -99,7 +98,7 @@ static char*GetPid(const char *label, void *dflt, void *userdata) {
 }
 
 static char*GetBindingRoot(const char *label, void *dflt, void *userdata) {
-    const char *rootdir= GetBindingDirPath(afbBindingRoot);
+    const char *rootdir= getenv("AFB_ROOTDIR") ?: ".";
     return (char*)rootdir;
 }
 
@@ -178,7 +177,8 @@ static char*SelectSbinPath(const char *label, void *dflt, void *userdata) {
 }
 
 static char*GetBinderMidName(const char *label, void *dflt, void *userdata) {
-    return ((char*)GetBinderName());
+    const char *rootdir = getenv("AFB_NAME") ?: "spawn-binding";
+    return (char*)rootdir;
 }
 
 // Warning: REDDEFLT_CB will get its return free

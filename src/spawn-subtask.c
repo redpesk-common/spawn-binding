@@ -39,7 +39,9 @@
 #include <pthread.h>
 #include <signal.h>
 
-#include <wrap-json.h>
+#include <rp-utils/rp-jsonc.h>
+#include <afb-helpers4/afb-data-utils.h>
+#include <afb-helpers4/afb-req-utils.h>
 
 #include "spawn-binding.h"
 #include "spawn-expand.h"
@@ -72,18 +74,23 @@ void taskPushResponse (taskIdT *taskId) {
     int count=0;
 
     // push event if not one listen just stop pushing
-    if (taskId->responseJ) { 
+    if (taskId->responseJ) {
         if (taskId->request) {
             afb_req_success(taskId->request, taskId->responseJ, NULL);
             afb_req_unref(taskId->request);
         }
-        else  count= afb_event_push(taskId->event, taskId->responseJ);
+        else {
+	    afb_data_t data = afb_data_json_c_hold(taskId->responseJ);
+	    count= afb_event_push(taskId->event, 1, &data);
+	}
         taskId->responseJ=NULL;
         taskId->statusJ=NULL;
         taskId->errorJ=NULL;
         if (!count && taskId->verbose >4) AFB_API_NOTICE(taskId->cmd->api, "uid='%s' no client listening",  taskId->uid);
     }
 }
+
+extern void end_timeout_monitor(taskIdT *taskId);
 
 void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
     assert (taskId->magic == MAGIC_SPAWN_TASKID);
@@ -92,24 +99,16 @@ void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
     taskId->pid=0;
 
     // release source to prevent any further notification
-    if (taskId->srcout) {
-        sd_event_source_set_enabled (taskId->srcout, SD_EVENT_OFF);
-        sd_event_source_unref (taskId->srcout);
-    }
-    if (taskId->srcerr) {
-        sd_event_source_set_enabled (taskId->srcerr, SD_EVENT_OFF);
-        sd_event_source_unref (taskId->srcerr);
-    }
+    if (taskId->srcout)
+        afb_evfd_unref(taskId->srcout);
+    if (taskId->srcerr)
+        afb_evfd_unref(taskId->srcerr);
 
     // TimerEvtStop stop+free timer handle
-    if (taskId->timer) TimerEvtStop(taskId->timer);
-
-    if (taskId->errfd) close (taskId->errfd);
-    if (taskId->outfd) close (taskId->outfd);
+    end_timeout_monitor(taskId);
 
     if (taskId->uid) free(taskId->uid);
     free(taskId);
-
 }
 
 static void taskPushFinalResponse (taskIdT *taskId) {
@@ -167,7 +166,7 @@ static int spawnTaskControl (afb_req_t request, shellCmdT *cmd, taskActionE acti
 
     // if not argument kill all task attache to this cmd->cli
     if (argsJ) {
-        err= wrap_json_unpack (argsJ, "{s?i s?o !}", "pid", &taskPid, "signal", &signalJ);
+        err= rp_jsonc_unpack (argsJ, "{s?i s?o !}", "pid", &taskPid, "signal", &signalJ);
         if (err || (!taskPid && !signalJ)) {
             afb_req_fail_f (request, "task-ctrl-fail","[missing pid|signal] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
             goto OnErrorExit;
@@ -230,7 +229,7 @@ void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ) {
     int err, verbose=-1;
 
     // if not a valid formating then everything is args and action==start
-    err= wrap_json_unpack(queryJ, "{s?s s?o s?i !}", "action", &action, "args", &argsJ, "verbose", &verbose);
+    err= rp_jsonc_unpack(queryJ, "{s?s s?o s?i !}", "action", &action, "args", &argsJ, "verbose", &verbose);
     if (err) argsJ=queryJ;
 
     // default is not null but cmd->verbose and query can not set verbosity to more than 4
@@ -265,65 +264,70 @@ OnErrorExit:
     return;
 }
 
-int spawnParse (shellCmdT *cmd, json_object *execJ) {
-    int err;
-    json_object *argsJ=NULL;
+/**
+*/
+int spawnParse (shellCmdT *cmd, json_object *execJ)
+{
+	int idx, err;
+	json_object *argsJ = NULL;
+	const char*param;
 
-    err= wrap_json_unpack(execJ, "{ss s?o !}", "cmdpath", &cmd->cli, "args", &argsJ);
-    if (err) {
-        AFB_API_ERROR(cmd->api, "[fail-parsing] cmdpath sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
-        goto OnErrorExit;
-    }
+	/* get the command and its arguments */
+	err = rp_jsonc_unpack(execJ, "{ss s?o !}", "cmdpath", &cmd->cli, "args", &argsJ);
+	if (err) {
+		AFB_API_ERROR(cmd->api, "[fail-parsing] cmdpath sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
+		goto OnErrorExit;
+	}
 
-    cmd->cli= utilsExpandKeyCtx(cmd->cli, (void*)cmd);  // expand env $keys
-    if (!utilsFileModeIs(cmd->cli, S_IXUSR)) {
-       AFB_API_ERROR(cmd->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
-       goto OnErrorExit;
-    }
+	cmd->cli = utilsExpandKeyCtx(cmd->cli, (void*)cmd);  // expand env $keys
+	if (!utilsFileModeIs(cmd->cli, S_IXUSR)) {
+		AFB_API_ERROR(cmd->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
+		goto OnErrorExit;
+	}
 
-    // prepare arguments list, they will still need to be expanded before execution
-    if (!argsJ) {
-        cmd->argc=2;
-        cmd->argv=calloc (cmd->argc, sizeof (char*));
-        cmd->argv[0]=  utilsExpandKeyCtx(cmd->cli, (void*)cmd);
-        if (!cmd->argv[0]) {
-            AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
-            goto OnErrorExit;
-        }
-    } else {
-        switch (json_object_get_type(argsJ)) {
-            const char*param;
-            case json_type_array:
-                cmd->argc= (int)json_object_array_length(argsJ)+2;
-                cmd->argv=calloc (cmd->argc, sizeof (char*));
-                cmd->argv[0]= cmd->uid;
-                for (int idx=1; idx < cmd->argc-1; idx ++) {
-                    param= json_object_get_string (json_object_array_get_idx(argsJ, idx-1));
-                    cmd->argv[idx] = utilsExpandKeyCtx(param, (void*)cmd);
-                    if (!cmd->argv[idx]) {
-                        AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, param);
-                        goto OnErrorExit;
-                    }
-                }
-                break;
+	// prepare arguments list, they will still need to be expanded before execution
+	if (!argsJ) {
+		cmd->argc = 2;
+		cmd->argv = calloc (cmd->argc, sizeof (char*));
+		cmd->argv[0] = utilsExpandKeyCtx(cmd->cli, (void*)cmd);
+		if (!cmd->argv[0]) {
+			AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
+			goto OnErrorExit;
+		}
+	}
+	else {
+		switch (json_object_get_type(argsJ)) {
+		case json_type_array:
+			cmd->argc = (int)json_object_array_length(argsJ) + 2;
+			cmd->argv = calloc (cmd->argc, sizeof (char*));
+			cmd->argv[0] = cmd->uid;
+			for (idx = 1; idx < cmd->argc-1; idx++) {
+				param = json_object_get_string (json_object_array_get_idx(argsJ, idx - 1));
+				cmd->argv[idx] = utilsExpandKeyCtx(param, (void*)cmd);
+				if (!cmd->argv[idx]) {
+					AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, param);
+					goto OnErrorExit;
+				}
+			}
+			break;
 
-            default:
-                param=json_object_get_string (argsJ);
-                cmd->argc=3;
-                cmd->argv=calloc (cmd->argc, sizeof (char*));
-                cmd->argv[0]= cmd->uid;
-                cmd->argv[1] = utilsExpandKeyCtx(param, (void*)cmd);
-                if (!cmd->argv[1]) {
-                    AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->cli, param);
-                    goto OnErrorExit;
-                }
-               break;
-        }
-    }
-    return 0;
+		default:
+			param = json_object_get_string (argsJ);
+			cmd->argc = 3;
+			cmd->argv = calloc(cmd->argc, sizeof (char*));
+			cmd->argv[0] = cmd->uid;
+			cmd->argv[1] = utilsExpandKeyCtx(param, (void*)cmd);
+			if (!cmd->argv[1]) {
+				AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->cli, param);
+				goto OnErrorExit;
+			}
+			break;
+		}
+	}
+	return 0;
 
- OnErrorExit:
-    return 1;
+OnErrorExit:
+	return 1;
 }
 
 // search taskId from child pid within global binding gtids
@@ -377,11 +381,11 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnBindingT *binding, taskIdT *ta
 
         // update child taskId status
         if (WIFEXITED (childStatus)) {
-            wrap_json_pack (&taskId->statusJ, "{si so*}", "exit", WEXITSTATUS(childStatus), "info", taskId->errorJ);
+            rp_jsonc_pack (&taskId->statusJ, "{si so*}", "exit", WEXITSTATUS(childStatus), "info", taskId->errorJ);
         } else if(WIFSIGNALED (childStatus)) {
-            wrap_json_pack (&taskId->statusJ, "{ss so*}", "signal", strsignal(WTERMSIG(childStatus)), "info", taskId->errorJ);
+            rp_jsonc_pack (&taskId->statusJ, "{ss so*}", "signal", strsignal(WTERMSIG(childStatus)), "info", taskId->errorJ);
         } else {
-            wrap_json_pack (&taskId->statusJ, "{si so*}", "unknown", 255, "info", taskId->errorJ);
+            rp_jsonc_pack (&taskId->statusJ, "{si so*}", "unknown", 255, "info", taskId->errorJ);
         }
 
         // push final respond to every taskId subscriber
@@ -391,6 +395,7 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnBindingT *binding, taskIdT *ta
     } // end while
 }
 
+#if 0
 int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* context) {
     spawnBindingT *binding= (spawnBindingT*)context;
     assert(binding->magic == MAGIC_SPAWN_BDING);
@@ -405,6 +410,7 @@ int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* 
 // register a callback to monitor sigchild events
 int spawnChildMonitor (afb_api_t api, sd_event_io_handler_t callback, spawnBindingT *binding) {
     sigset_t sigMask;
+    afb_evfd_t efd;
 
     // init signal mask
     sigemptyset (&sigMask);
@@ -422,9 +428,18 @@ int spawnChildMonitor (afb_api_t api, sd_event_io_handler_t callback, spawnBindi
         goto OnErrorExit;
     }
     (void)sd_event_add_io(afb_api_get_event_loop(api), NULL, sigFd, EPOLLIN, callback, (void*)binding);
-
+    afb_evfd_create(&efd, sigFd, EPOLLIN,
+	int fd,
+	uint32_t events,
+	afb_evfd_handler_t handler,
+	void *closure,
+	int autounref,
+	int autoclose
+);
     return 0;
 
  OnErrorExit:
     return 1;
 }
+
+#endif

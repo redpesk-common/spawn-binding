@@ -25,10 +25,8 @@
 
 #include "spawn-encoders.h"
 
-#define PLUGIN_ENCODER_MAGIC 159357456
-
 // this structure is used by plugin registration callback
-typedef const struct {
+typedef /*const*/ struct {
   long magic;
   streamBufT *(*bufferSet) (streamBufT *buffer, ssize_t size);
   int (*registrate) (const char *uid, const encoderCbT *actionsCB);
@@ -37,5 +35,22 @@ typedef const struct {
   int (*readStream) (taskIdT *taskId, int pipefd, streamBufT *buffer, ssize_t bufsize, encoderParserCbT parserCB, encoderEventCbT eventCB, encoderOpsE operation, void *userdata);
 } encoderPluginCbT;
 
+#define PLUGIN_ENCODER_MAGIC 159357456
+
+#define SPAWN_ENCODER_PLUGIN_MAGIC  267194737
+
+typedef const struct {
+	long magic;
+	int (*entry)(encoderPluginCbT *callbacks);
+	const char *name;
+} encoderMafifestT;
+
+#define DECLARE_SPAWN_ENCODER_PLUGIN(plugin_name, plugin_entry) \
+		static int plugin_entry(encoderPluginCbT*);     \
+		encoderMafifestT SpawnEncoderManifest = {       \
+			.magic = SPAWN_ENCODER_PLUGIN_MAGIC,    \
+			.entry = plugin_entry,                  \
+			.name  = plugin_name                    \
+		};
 
 #endif /* _SPAWN_ENCODERS_PLUGINS_INCLUDE_ */

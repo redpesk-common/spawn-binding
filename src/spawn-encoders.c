@@ -30,7 +30,9 @@
 
 #include <systemd/sd-event.h>
 
-#include <wrap-json.h>
+#include <rp-utils/rp-jsonc.h>
+#include <afb-helpers4/afb-data-utils.h>
+//#include <afb-helpers4/afb-req-utils.h>
 
 #include "spawn-defaults.h"
 #include "spawn-binding.h"
@@ -96,19 +98,23 @@ static streamBufT *encoderBufferSetCB(streamBufT *buffer, ssize_t size) {
 // document encoder callback add one line into document json array
 static int jsonEventCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
     json_object *blobJ, *lineJ;
+    afb_data_t data;
 
     // try to build a json from current buffer
     blobJ =json_tokener_parse(&docId->data[start]);
 
     if (blobJ) {
-        wrap_json_pack(&lineJ, "{si ss}", "pid", taskId->pid, "output", &docId->data[start]);
-        afb_event_push(taskId->event, blobJ);
+        //rp_jsonc_pack(&lineJ, "{si ss}", "pid", taskId->pid, "output", &docId->data[start]);
+	data = afb_data_json_c_hold(blobJ);
+        afb_event_push(taskId->event, 1, &data);
 
     } else {
         // push error event
-        if (!errorJ) errorJ= json_object_new_string("[parsing fail] invalid json");
-        wrap_json_pack(&lineJ, "{si ss so*}", "pid", taskId->pid, "output", &docId->data[start], "warning", errorJ);
-        afb_event_push(taskId->event, lineJ);
+        if (!errorJ)
+		errorJ = json_object_new_string("[parsing fail] invalid json");
+        rp_jsonc_pack(&lineJ, "{si ss so*}", "pid", taskId->pid, "output", &docId->data[start], "warning", errorJ);
+	data = afb_data_json_c_hold(lineJ);
+        afb_event_push(taskId->event, 1, &data);
         goto OnErrorExit;
     }
 
@@ -212,14 +218,16 @@ static int logEventCB (taskIdT *taskId, streamBufT *data, ssize_t start, json_ob
 
 
 // line encoder callback send one event per new line
-static int lineEventCB (taskIdT *taskId, streamBufT *data, ssize_t start, json_object *errorJ, void *context) {
+static int lineEventCB (taskIdT *taskId, streamBufT *sbuf, ssize_t start, json_object *errorJ, void *context) {
     int err;
     json_object *lineJ;
+    afb_data_t data;
 
-    err = wrap_json_pack(&lineJ, "{si ss* so*}", "pid", taskId->pid, "output", &data->data[start], "warning", errorJ);
+    err = rp_jsonc_pack(&lineJ, "{si ss* so*}", "pid", taskId->pid, "output", &sbuf->data[start], "warning", errorJ);
     if (err) goto OnErrorExit;
 
-    afb_event_push(taskId->event, lineJ);
+    data = afb_data_json_c_hold(lineJ);
+    afb_event_push(taskId->event, 1, &data);
     return 0;
 
 OnErrorExit:
@@ -434,14 +442,14 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
             json_object *errorJ=NULL;
             if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_STOP uid=%s pid=%d\n", taskId->uid, taskId->pid);
             if (taskCtx->stdout.errorJ || taskCtx->stderr.errorJ) {
-                err= wrap_json_pack (&errorJ, "{so* so*}"
+                err= rp_jsonc_pack (&errorJ, "{so* so*}"
                     , "stdout", taskCtx->stdout.errorJ
                     , "stderr", taskCtx->stderr.errorJ
                 );
                 if (err) goto OnErrorExit;
             }
 
-            err=wrap_json_pack (&taskId->responseJ, "{ss si so* so* so* so*}"
+            err=rp_jsonc_pack (&taskId->responseJ, "{ss si so* so* so* so*}"
                 , "cmd", taskId->cmd->uid
                 , "pid", taskId->pid
                 , "status", taskId->statusJ
@@ -591,7 +599,7 @@ static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE ope
             fflush(taskCtx->opts->fileerr);
 
             if (taskId->verbose >8) fprintf (stderr, "**** encoderLogCB uid=%s pid=%d\n", taskId->uid, taskId->pid);
-            err=wrap_json_pack (&taskId->responseJ, "{ss si so* so*}"
+            err=rp_jsonc_pack (&taskId->responseJ, "{ss si so* so*}"
                 , "cmd", taskId->cmd->uid
                 , "pid", taskId->pid
                 , "status", taskId->statusJ
@@ -661,9 +669,9 @@ static int encoderInitLog (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     opts->fileout = stdout;
     opts->maxlen = MAX_DOC_LINE_SIZE;
 
-    cmd->encoder->fmtctx = (void*)opts;
+    ((encoderCbT*)cmd->encoder)->fmtctx = (void*)opts;
     if (optsJ) {
-        err = wrap_json_unpack(optsJ, "{s?s s?s s?i !}" ,"stdout", &fileout, "stderr", &fileerr, "maxlen", &opts->maxlen);
+        err = rp_jsonc_unpack(optsJ, "{s?s s?s s?i !}" ,"stdout", &fileout, "stderr", &fileerr, "maxlen", &opts->maxlen);
         if (err) {
             AFB_API_ERROR(cmd->api, "[invalid format] sandbox=%s cmd=%s opts=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
             goto OnErrorExit;
@@ -690,9 +698,9 @@ static int encoderInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     streamOptsT *opts = malloc(sizeof (streamOptsT));
     opts->maxlen =  MAX_DOC_LINE_SIZE;
     opts->lineCount = MAX_DOC_LINE_COUNT;
-    cmd->encoder->fmtctx = (void*)opts;
+    ((encoderCbT*)cmd->encoder)->fmtctx = (void*)opts;
     if (optsJ) {
-        err = wrap_json_unpack(optsJ, "{s?i s?i !}" ,"maxline", &opts->lineCount, "maxlen", &opts->maxlen);
+        err = rp_jsonc_unpack(optsJ, "{s?i s?i !}" ,"maxline", &opts->lineCount, "maxlen", &opts->maxlen);
         if (err) {
             AFB_API_ERROR(cmd->api, "[invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
             goto OnErrorExit;
@@ -705,7 +713,7 @@ static int encoderInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
 }
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
-static const encoderCbT encoderBuiltin[] = { /*1st default == TEXT*/
+static /*const*/ encoderCbT encoderBuiltin[] = { /*1st default == TEXT*/
   {.uid="TEXT" , .info="unique event at closure with all outputs", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB},
   {.uid="SYNC" , .info="return json data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB, .synchronous=1},
   {.uid="RAW"  , .info="return raw data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderRawCB, .synchronous=1},
@@ -759,7 +767,7 @@ int encoderFind (shellCmdT *cmd, json_object *encoderJ) {
     if (json_object_is_type (encoderJ, json_type_string)) {
        formatuid= (char*)json_object_get_string(encoderJ);
     } else {
-        err = wrap_json_unpack(encoderJ, "{s?s,ss,s?o !}"
+        err = rp_jsonc_unpack(encoderJ, "{s?s,ss,s?o !}"
             ,"plugin", &pluginuid
             ,"output", &formatuid
             ,"opts", &optsJ
@@ -835,7 +843,6 @@ encoderPluginCbT encoderPluginCb = {
 int encoderInit (void) {
 
   // Builtin Encoder don't have UID
-  int status= encoderRegisterCB (NULL, encoderBuiltin);
+  int status = encoderRegisterCB (NULL, encoderBuiltin);
   return status;
 }
-

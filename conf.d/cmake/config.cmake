@@ -76,14 +76,13 @@ set (PKG_REQUIRED_LIST
     libcap-ng
     libseccomp
     afb-binding
-    afb-helpers
-    afb-libcontroller
+    librp-utils-static
+    afb-helpers4>=10.0.2
     libsystemd
 )
 
 add_definitions(
-    -DUSECONTROLER=1
-    -DAFB_BINDING_VERSION=3
+    -DAFB_BINDING_VERSION=4
 )
 
 # Print a helper message when every thing is finished

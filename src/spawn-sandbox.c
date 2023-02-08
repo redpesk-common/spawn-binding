@@ -47,7 +47,7 @@
 #include <cap-ng.h>
 #include <systemd/sd-event.h>
 
-#include <wrap-json.h>
+#include <rp-utils/rp-jsonc.h>
 
 #include "spawn-binding.h"
 #include "spawn-sandbox.h"
@@ -110,7 +110,7 @@ static int nsParseOneMount (afb_api_t api, sandBoxT *sandbox, json_object *mount
     const char *keymode= NULL;
     int err;
 
-    err= wrap_json_unpack (mountJ, "{ss s?s s?s !}"
+    err= rp_jsonc_unpack (mountJ, "{ss s?s s?s !}"
     ,"target", &mount->target
     ,"source", &mount->source
     ,"mode", &keymode
@@ -137,7 +137,7 @@ static int nsParseOneEnv (afb_api_t api, json_object *envJ, confEnvT *env)  {
     int err;
     const char *keymode= NULL;
 
-    err= wrap_json_unpack (envJ, "{ss s?s s?s !}"
+    err= rp_jsonc_unpack (envJ, "{ss s?s s?s !}"
     ,"name", &env->key
     ,"value", &env->value
     ,"mode", &keymode
@@ -160,7 +160,7 @@ static int nsParseOneCap (afb_api_t api, sandBoxT *sandbox, json_object *capJ, c
     const char *capflag= NULL;
     const char *capName= NULL;
 
-    err= wrap_json_unpack (capJ, "{ss ss !}"
+    err= rp_jsonc_unpack (capJ, "{ss ss !}"
     ,"cap",  &capName
     ,"mode", &capflag
     );
@@ -198,7 +198,7 @@ static int nsParseOneSecRule (afb_api_t api, sandBoxT *sandbox, json_object *rul
     const char *action= NULL;
     const char *syscall= NULL;
 
-    err= wrap_json_unpack (ruleJ, "{ss ss !}"
+    err= rp_jsonc_unpack (ruleJ, "{ss ss !}"
     ,"action", &action
     ,"syscall",&syscall
     );
@@ -234,7 +234,7 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, sandBoxT *sandbox, json_object 
     const char *cgCset, *mntpath=CGROUPS_MOUNT_POINT;
 
     // uppack cgroup namespace configuration
-    err= wrap_json_unpack(cgroupsJ, "{s?s s?s s?o s?o s?o !}"
+    err= rp_jsonc_unpack(cgroupsJ, "{s?s s?s s?o s?o s?o !}"
     ,"mount", &mntpath
     ,"cset",&cgCset
     ,"mem", &cgMemJ
@@ -280,7 +280,7 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, sandBoxT *sandbox, json_object 
 
     if (cgCpuJ) {
         const char* cpuWeight=NULL, *cpuMax=NULL;
-        err= wrap_json_unpack(cgCpuJ, "{s?s s?s!}"
+        err= rp_jsonc_unpack(cgCpuJ, "{s?s s?s!}"
             ,"weight", &cpuWeight
             ,"max"   , &cpuMax
         );
@@ -300,7 +300,7 @@ confCgroupT *sandboxParseCgroups (afb_api_t api, sandBoxT *sandbox, json_object 
 
     if (cgMemJ) {
         const char* memMin=NULL, *memMax=NULL, *memSwap=NULL, *memHight=NULL;
-        err= wrap_json_unpack(cgMemJ, "{s?s s?s s?s s?s !}"
+        err= rp_jsonc_unpack(cgMemJ, "{s?s s?s s?s s?s !}"
             ,"min" , &memMin
             ,"max" , &memMax
             ,"hight",&memHight
@@ -441,7 +441,7 @@ confAclT *sandboxParseAcls(afb_api_t api, sandBoxT *sandbox, json_object *aclsJ)
     int err;
     json_object_get(aclsJ);
 
-    err = wrap_json_unpack(aclsJ, "{s?s s?o s?o s?i s?s s?s s?s s?s !}"
+    err = rp_jsonc_unpack(aclsJ, "{s?s s?o s?o s?i s?s s?s s?s s?s !}"
         ,"umask" , &acls->umask
         ,"user", &uidJ
         ,"group" , &gidJ
@@ -551,7 +551,7 @@ confSeccompT *sandboxParseSecRules(afb_api_t api, sandBoxT *sandbox, json_object
     json_object_get(seccompJ);
     const char *dfltAction=NULL;
 
-    err = wrap_json_unpack(seccompJ, "{s?s s?s s?b s?o!}"
+    err = rp_jsonc_unpack(seccompJ, "{s?s s?s s?b s?o!}"
         ,"default", &dfltAction
         ,"rulespath" , &seccomp->rulespath
         ,"locked" , &seccomp->locked
@@ -637,7 +637,7 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
 
 
     // parse namespace and lock json object with 'O'
-    err = wrap_json_unpack(namespaceJ, "{s?o s?o s?o !}"
+    err = rp_jsonc_unpack(namespaceJ, "{s?o s?o s?o !}"
         ,"opts"   , &optsJ
         ,"mounts" , &mountsJ
         ,"shares" , &sharesJ
@@ -648,7 +648,7 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
     }
 
     if (optsJ) {
-        err = wrap_json_unpack(optsJ, "{s?s s?s s?b s?b !}"
+        err = rp_jsonc_unpack(optsJ, "{s?s s?s s?b s?b !}"
             ,"hostname"  , &namespace->opts.hostname
             ,"bwrap"     , &namespace->opts.bwrap
             ,"selinux"     , &namespace->opts.selinux
@@ -702,7 +702,7 @@ confNamespaceT *sandboxParseNamespace (afb_api_t api, sandBoxT *sandbox, json_ob
         namespace->shares = calloc (1, sizeof (confNamespaceTagsT));
         const char *shareall=NULL, *shareuser=NULL, *sharecgroup=NULL, *sharenet=NULL, *shareipc=NULL;
 
-        err = wrap_json_unpack(sharesJ, "{s?s s?s s?s s?s s?s !}"
+        err = rp_jsonc_unpack(sharesJ, "{s?s s?s s?s s?s s?s !}"
             ,"all" , &shareall
             ,"users", &shareuser
             ,"cgroups" , &sharecgroup

@@ -35,7 +35,10 @@
 
 #include <systemd/sd-event.h>
 
-#include <wrap-json.h>
+#include <afb/afb-binding.h>
+#include <rp-utils/rp-jsonc.h>
+#include <afb-helpers4/afb-data-utils.h>
+#include <afb-helpers4/afb-req-utils.h>
 
 #include "spawn-binding.h"
 #include "spawn-utils.h"
@@ -43,78 +46,135 @@
 #include "spawn-sandbox.h"
 #include "spawn-subtask.h"
 #include "spawn-expand.h"
+
 #include "spawn-subtask-internal.h"
 
-// Timer base cmd pooling tic send event if cmd value changed
-static int spawnTimerCB (TimerHandleT *handle) {
-    assert(handle);
-    taskIdT *taskId= (taskIdT*) handle->context;
-    assert (taskId->magic == MAGIC_SPAWN_TASKID);
 
-    // if process still run terminate it
-    if (getpgid(taskId->pid) >= 0) {
-        AFB_NOTICE("Terminating task uid=%s", taskId->uid);
-        taskId->cmd->encoder->actionsCB (taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, taskId->cmd->encoder->fmtctx);
-        kill(-taskId->pid, SIGKILL);
-    }
-    return 0; // OK count will stop timer
+
+/************************************************************************/
+/* MANAGE TIMEOUTS */
+/************************************************************************/
+
+static pthread_mutex_t timeout_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+struct timeout_data
+{
+	taskIdT *taskId;
+};
+
+static void on_timeout_expired(int signum, void *arg)
+{
+	taskIdT *taskId;
+	pid_t pid;
+	struct timeout_data *data = arg;
+	pthread_mutex_lock(&timeout_mutex);
+	taskId = data->taskId;
+	if (taskId == NULL)
+		pthread_mutex_unlock(&timeout_mutex);
+	else {
+		data->taskId = NULL;
+		taskId->timeout = NULL;
+		pid = taskId->pid;
+		if (pid == 0)
+			pthread_mutex_unlock(&timeout_mutex);
+		else {
+			AFB_NOTICE("Terminating task uid=%s", taskId->uid);
+			taskId->cmd->encoder->actionsCB (taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, taskId->cmd->encoder->fmtctx);
+			pthread_mutex_unlock(&timeout_mutex);
+			kill(-pid, SIGKILL);
+		}
+	}
+	free(arg);
 }
 
-static int spawnPipeFdCB (sd_event_source* source, int fd, uint32_t events, void* context) {
-    taskIdT *taskId = (taskIdT*) context;
-    assert (taskId->magic == MAGIC_SPAWN_TASKID);
-    shellCmdT *cmd=taskId->cmd;
-    int err;
-
-    // if taskId->pid == 0 then FMT_TASK_STOP was already called once
-    if (taskId->pid) {
-
-        if (fd == taskId->outfd && events & EPOLLIN) {
-            if (taskId->verbose >2) AFB_API_INFO (cmd->api, "uid=%s pid=%d [EPOLLIN stdout=%d]", taskId->uid, taskId->pid, taskId->outfd );
-            err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_STD, cmd->encoder->fmtctx);
-            if (err) {
-                wrap_json_pack (&taskId->responseJ, "{ss so* so*}"
-                   , "fail" ,"ENCODER_TASK_STDOUT"
-                   , "error" , taskId->errorJ
-                   , "status", taskId->statusJ
-                );
-                taskPushResponse (taskId);
-                taskId->errorJ=NULL;
-                taskId->statusJ=NULL;
-            }
-
-        } else if (fd == taskId->errfd && events & EPOLLIN) {
-            if (taskId->verbose >2) AFB_API_INFO (cmd->api, "uid=%s pid=%d [EPOLLIN stderr=%d]", taskId->uid, taskId->pid, taskId->outfd );
-            err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDERR, ENCODER_OPS_STD, cmd->encoder->fmtctx);
-            if (err) {
-                wrap_json_pack (&taskId->responseJ, "{ss so* so*}"
-                   , "fail" , "ENCODER_TASK_STDERR"
-                   , "error" , taskId->errorJ
-                   , "status", taskId->statusJ
-                );
-                taskPushResponse (taskId);
-                taskId->errorJ=NULL;
-                taskId->statusJ=NULL;
-            }
-        }
-        // what ever stdout/err pipe hanghup 1st we close both event sources
-        if (events & EPOLLHUP) {
-            spawnChildUpdateStatus (cmd->api, cmd->sandbox->binding, taskId);
-        }
-    }
-    return 0;
+static int make_timeout_monitor(taskIdT *taskId, int timeout)
+{
+	struct timeout_data *data = malloc(sizeof *data);
+	if (data == NULL)
+		return -1;
+	pthread_mutex_lock(&timeout_mutex);
+	data->taskId = taskId;
+	taskId->timeout = data;
+	pthread_mutex_unlock(&timeout_mutex);
+	afb_job_post(timeout * 1000, 0, on_timeout_expired, data, NULL);
+	return 0;
 }
 
-static void childDumpArgv (shellCmdT *cmd, const char **params) {
-    int argcount;
+void end_timeout_monitor(taskIdT *taskId)
+{
+	struct timeout_data *data;
+	pthread_mutex_lock(&timeout_mutex);
+	data = taskId->timeout;
+	taskId->timeout = NULL;
+	if (data != NULL)
+		data->taskId = NULL;
+	pthread_mutex_unlock(&timeout_mutex);
+}
 
-    if (cmd->sandbox->namespace) fprintf(stderr, "child(%s)=> bwrap ", cmd->uid);
-    else fprintf(stderr, "command(%s)=> %s ", cmd->uid, cmd->cli);
 
-    for (argcount=1; params[argcount]; argcount++) {
-        fprintf (stderr, "%s ", params[argcount]);
-    }
-    fprintf (stderr, "\n");
+/************************************************************************/
+/*  */
+/************************************************************************/
+
+static void on_pipe(afb_evfd_t efd, int fd, uint32_t revents, taskIdT *taskId, int out)
+{
+	shellCmdT *cmd=taskId->cmd;
+	int err;
+
+	// if taskId->pid == 0 then FMT_TASK_STOP was already called once
+	if (taskId->pid == 0)
+		return;
+
+
+	if (revents & EPOLLIN) {
+		if (taskId->verbose >2)
+			AFB_REQ_INFO (taskId->request, "uid=%s pid=%d [EPOLLIN std%s=%d]", taskId->uid, taskId->pid, out?"out":"err", fd);
+		err = cmd->encoder->actionsCB (taskId, out ? ENCODER_TASK_STDOUT : ENCODER_TASK_STDERR, ENCODER_OPS_STD, cmd->encoder->fmtctx);
+		if (err) {
+			rp_jsonc_pack (&taskId->responseJ, "{ss so* so*}"
+				, "fail" ,"ENCODER_TASK_STDOUT"
+				, "error" , taskId->errorJ
+				, "status", taskId->statusJ
+				);
+			taskPushResponse (taskId);
+			taskId->errorJ=NULL;
+			taskId->statusJ=NULL;
+		}
+	}
+
+	// what ever stdout/err pipe hanghup 1st we close both event sources
+	if (revents & EPOLLHUP) {
+		spawnChildUpdateStatus (cmd->api, cmd->sandbox->binding, taskId);
+	}
+}
+
+static void on_pipe_out(afb_evfd_t efd, int fd, uint32_t revents, void *closure)
+{
+	taskIdT *taskId = closure;
+	on_pipe(efd, fd, revents, taskId, 1);
+}
+
+static void on_pipe_err(afb_evfd_t efd, int fd, uint32_t revents, void *closure)
+{
+	taskIdT *taskId = closure;
+	on_pipe(efd, fd, revents, taskId, 0);
+}
+
+
+
+static void childDumpArgv (shellCmdT *cmd, const char **params)
+{
+	int argcount;
+
+	if (cmd->sandbox->namespace)
+		fprintf(stderr, "child(%s)=> bwrap", cmd->uid);
+	else
+		fprintf(stderr, "command(%s)=> %s", cmd->uid, cmd->cli);
+
+	for (argcount=1; params[argcount]; argcount++)
+		fprintf (stderr, " %s", params[argcount]);
+	fprintf (stderr, "\n");
 }
 
 // Build Child execv argument list. Argument list is compose of expanded argument from config + namespace specific one.
@@ -173,8 +233,8 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
     assert(cmd);
     json_object *responseJ;
     pid_t sonPid = -1;
-    char* const* params=NULL;
-    afb_api_t api= cmd->api;
+    char* const* params = NULL;
+    afb_api_t api = cmd->api;
     int   stdoutP[2];
     int   stderrP[2];
     int   err;
@@ -368,8 +428,8 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         if (verbose) AFB_API_NOTICE (api, "[taskid-created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
 
         // create task event
-        taskId->event = afb_api_make_event(api, taskId->cmd->apiverb);
-        if (!taskId->event) goto OnErrorExit;
+        err = afb_api_new_event(api, taskId->cmd->apiverb, &taskId->event);
+        if (err < 0) goto OnErrorExit;
 
         err=afb_req_subscribe(request, taskId->event);
         if (err) {
@@ -378,13 +438,8 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         }
 
         // main process register son stdout/err into event mainloop
-        if (cmd->timeout > 0) {
-            taskId->timer = (TimerHandleT*)calloc (1, sizeof(TimerHandleT));
-            taskId->timer->delay = cmd->timeout * 1000; // move to ms
-            taskId->timer->count = 1; // run only once
-            taskId->timer->uid = taskId->uid;
-            TimerEvtStart (api, taskId->timer, spawnTimerCB, (void*)taskId);
-        }
+        if (cmd->timeout > 0)
+		make_timeout_monitor(taskId, cmd->timeout);
 
         // initilise cmd->cli corresponding output formater buffer
         err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_START, ENCODER_OPS_STD, cmd->encoder->fmtctx);
@@ -398,9 +453,9 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         if (err) goto OnErrorExit;
 
         // register stdout/err piped FD within mainloop
-        err=sd_event_add_io(afb_api_get_event_loop(api), &taskId->srcout, taskId->outfd, EPOLLIN|EPOLLHUP, spawnPipeFdCB, taskId);
+        err = afb_evfd_create(&taskId->srcout, taskId->outfd, EPOLLIN|EPOLLHUP, on_pipe_out, taskId, 0, 1);
         if (err) goto OnErrorExit;
-        err=sd_event_add_io(afb_api_get_event_loop(api), &taskId->srcerr, taskId->errfd, EPOLLIN|EPOLLHUP, spawnPipeFdCB, taskId);
+        err = afb_evfd_create(&taskId->srcerr, taskId->errfd, EPOLLIN|EPOLLHUP, on_pipe_err, taskId, 0, 1);
         if (err) goto OnErrorExit;
 
         // update command anf binding global tids hashtable
@@ -420,7 +475,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
             taskId->request= request; // save request for later synchronous responses
             afb_req_addref(request);
         } else {
-            wrap_json_pack (&responseJ, "{ss ss* ss si}", "api", api->apiname, "sandbox", taskId->cmd->sandbox->uid, "command", taskId->cmd->uid, "pid", taskId->pid);
+            rp_jsonc_pack (&responseJ, "{ss ss* ss si}", "api", afb_api_name(api), "sandbox", taskId->cmd->sandbox->uid, "command", taskId->cmd->uid, "pid", taskId->pid);
             afb_req_success(request, responseJ, NULL);
         }
 
@@ -437,4 +492,3 @@ OnErrorExitNoFree:
         return 1;
     }
 } //end spawnTaskStart
-

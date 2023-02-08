@@ -121,26 +121,39 @@ struct sandBoxS {
   shellCmdT *cmds;
 };
 
-struct shellCmdS {
-  spawnMagicT magic;
-  const char *uid;
-  const char *info;
-  const char *cli;
-  const char *apiverb;
-  int verbose;
-  json_object *usageJ;
-  json_object *sampleJ;
-  const char **argv;
-  int  argc;
-  const encoderCbT *encoder;
-  struct sandBoxS *sandbox;
-  int timeout;
-  afb_api_t api;
-  void *context;
-  void *opts;
-  taskIdT *tids;
-  pthread_rwlock_t sem;
-  int single;
+/**
+*
+*/
+struct shellCmdS
+{
+	/** magic tag */
+	spawnMagicT magic;
+
+	/** identifier */
+	const char *uid;
+
+	/** some info */
+	const char *info;
+
+	/** ? */
+	const char *cli;
+
+	/** */
+	const char *apiverb;
+	int verbose;
+	json_object *usageJ;
+	json_object *sampleJ;
+	const char **argv;
+	int  argc;
+	const encoderCbT *encoder;
+	struct sandBoxS *sandbox;
+	int timeout;
+	afb_api_t api;
+	void *context;
+	void *opts;
+	taskIdT *tids;
+	pthread_rwlock_t sem;
+	int single;
 };
 
 // spawn-sandbox.c

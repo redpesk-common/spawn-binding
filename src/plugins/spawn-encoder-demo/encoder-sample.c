@@ -10,19 +10,19 @@
 
 #include <assert.h>
 
-#include <systemd/sd-event.h>
+#include <afb/afb-binding.h>
 
-#include <ctl-plugin.h>
-#include <wrap-json.h>
+#include <systemd/sd-event.h>
 
 #include "spawn-binding.h"
 #include "spawn-sandbox.h"
 #include "spawn-encoders.h"
+
 #include "spawn-encoders-plugins.h"
+
 #include "spawn-subtask.h"
 
-#include "spawn-subtask-internal.h"
-
+//#include "spawn-subtask-internal.h"
 
 /*
  * demo custom plugin encoder
@@ -41,7 +41,8 @@
  *
  */
 
-CTLP_CAPI_REGISTER("encoder_sample");
+DECLARE_SPAWN_ENCODER_PLUGIN("encoder_sample", encoder_entry)
+
 
 #define MY_DEFAULT_blkcount 10   // send one event every 10 lines
 #define MY_DEFAULT_maxlen 512  // any line longer than this will be split
@@ -227,13 +228,7 @@ encoderCbT MyEncoders[] = {
 };
 
 
-CTLP_ONLOAD(plugin, context) {
-
-    pluginCB = (encoderPluginCbT*) context;
-    assert (pluginCB->magic == PLUGIN_ENCODER_MAGIC);
-
-    AFB_API_NOTICE (plugin->api, "MY-CUSTOM-ENCODER plugin onload done [uid='%s']", plugin->uid);
-    (*pluginCB->registrate) (plugin->uid, MyEncoders);
-
-    return 0;
+static int encoder_entry(encoderPluginCbT *pluginCB)
+{
+	return pluginCB->registrate(SpawnEncoderManifest.name, MyEncoders);
 }
