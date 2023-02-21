@@ -12,7 +12,8 @@
 
 #include <afb/afb-binding.h>
 
-#include <systemd/sd-event.h>
+#include <afb-helpers4/afb-data-utils.h>
+#include <rp-utils/rp-jsonc.h>
 
 #include "spawn-binding.h"
 #include "spawn-sandbox.h"
@@ -22,7 +23,7 @@
 
 #include "spawn-subtask.h"
 
-//#include "spawn-subtask-internal.h"
+#include "spawn-subtask-internal.h"
 
 /*
  * demo custom plugin encoder
@@ -94,7 +95,8 @@ static int MyCustomStdoutCB (taskIdT *taskId, streamBufT *docId, ssize_t start, 
 
     // we reach block number of line count
     if (!taskctx->linecount-- && !err) {
-        afb_event_push(taskId->event, taskctx->stdoutJ);
+	afb_data_t data = afb_data_json_c_hold(taskctx->stdoutJ);
+        afb_event_push(taskId->event, 1, &data);
         taskctx->stdoutJ= NULL; // force a new json array as previous one was free by afb_event_push
     }
     return 0;
@@ -112,10 +114,11 @@ static int MyCustomStderrCB (taskIdT *taskId, streamBufT *docId, ssize_t start, 
     json_object *responseJ;
 
     // build a json object with counter and data for each new stderr output line
-    err=wrap_json_pack (&responseJ, "{si, ss}", "errcount", taskctx->errcount++, "data", &docId->data[start]);
+    err=rp_jsonc_pack (&responseJ, "{si, ss}", "errcount", taskctx->errcount++, "data", &docId->data[start]);
     if (err) goto OnErrorExit;
 
-    afb_event_push(taskId->event, responseJ);
+    afb_data_t data = afb_data_json_c_hold(responseJ);
+    afb_event_push(taskId->event, 1, &data);
     return 0;
 
 OnErrorExit:
@@ -129,11 +132,11 @@ static int MyCustomInitCB (shellCmdT *cmd, json_object *optsJ, void* context) {
     // create option handle and attach it to conresponding command handler
     MyCmdOpts *opts = malloc(sizeof (MyCmdOpts));
     opts->blkcount =  MY_DEFAULT_blkcount;
-    cmd->encoder->fmtctx = (void*)opts;
+    ((encoderCbT*)cmd->encoder)->fmtctx = (void*)opts;
 
     // If config private a custom 'opts' value parse it now
     if (optsJ) {
-        err = wrap_json_unpack(optsJ, "{s?i s?i}" ,"blkcount", &opts->blkcount, "maxlen", &opts->maxlen);
+        err = rp_jsonc_unpack(optsJ, "{s?i s?i}" ,"blkcount", &opts->blkcount, "maxlen", &opts->maxlen);
         if (err) {
             AFB_API_ERROR(cmd->api, "MyCustomInitCB: [invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
             goto OnErrorExit;
@@ -189,7 +192,7 @@ static int MyCustomSampleCB (taskIdT *taskId, encoderActionE action, encoderOpsE
 
         case ENCODER_TASK_STOP: {
 
-            err=wrap_json_pack (&taskId->responseJ, "{ss si so* so*}"
+            err=rp_jsonc_pack (&taskId->responseJ, "{ss si so* so*}"
                 , "cmd", taskId->cmd->uid
                 , "pid", taskId->pid
                 , "status", taskId->statusJ
