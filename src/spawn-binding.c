@@ -30,8 +30,7 @@
 #include <pthread.h>
 #include <sys/stat.h>
 #include <limits.h>
-
-#include <systemd/sd-event.h>
+#include <unistd.h>
 
 #include <afb/afb-binding.h>
 
@@ -39,8 +38,6 @@
 #include <rp-utils/rp-jsonc.h>
 #include <rp-utils/rp-expand-vars.h>
 #include <afb-helpers4/afb-data-utils.h>
-
-//#include <filescan-utils.h>
 
 #include "ctl-lib.h"
 

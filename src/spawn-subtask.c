@@ -24,7 +24,6 @@
 #define _GNU_SOURCE
 
 #include <errno.h>
-#include <systemd/sd-event.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>

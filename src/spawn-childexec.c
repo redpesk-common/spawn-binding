@@ -30,10 +30,10 @@
 #include <assert.h>
 #include <stdio.h>
 #include <sys/prctl.h>
+#include <signal.h>
+#include <sys/epoll.h>
 
 #include <cap-ng.h>
-
-#include <systemd/sd-event.h>
 
 #include <afb/afb-binding.h>
 #include <rp-utils/rp-jsonc.h>

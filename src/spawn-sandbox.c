@@ -45,7 +45,6 @@
 #include <seccomp.h>
 #include <linux/seccomp.h>
 #include <cap-ng.h>
-#include <systemd/sd-event.h>
 
 #include <rp-utils/rp-jsonc.h>
 

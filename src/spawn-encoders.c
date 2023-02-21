@@ -27,12 +27,10 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-
-#include <systemd/sd-event.h>
+#include <unistd.h>
 
 #include <rp-utils/rp-jsonc.h>
 #include <afb-helpers4/afb-data-utils.h>
-//#include <afb-helpers4/afb-req-utils.h>
 
 #include "spawn-defaults.h"
 #include "spawn-binding.h"
