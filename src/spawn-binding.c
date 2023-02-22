@@ -50,7 +50,7 @@
 #include "spawn-encoders-plugins.h"
 
 
-/* simple implementation of ping */
+/* basic implementation of ping */
 static void PingTest (afb_req_t request, unsigned naparam, afb_data_t const params[])
 {
 	static int count = 0;
@@ -64,89 +64,62 @@ static void PingTest (afb_req_t request, unsigned naparam, afb_data_t const para
 	afb_req_reply(request, 0, 1, &repl);
 }
 
-
-static void InfoCmds (sandBoxT *sandbox, json_object *responseJ)
+/* returns the array of info description for verbs of the sandbox */
+static json_object *InfoCmds(sandBoxT *sandbox)
 {
-    // create a static action valid for all response
-    static json_object *actionsJ= NULL;
-    if (!actionsJ) {
-        actionsJ =json_tokener_parse("['start','stop']");
-    }
-
-    for (int idx=0; sandbox->cmds[idx].uid; idx++) {
-        shellCmdT *cmd = &sandbox->cmds[idx];
-        json_object *cmdJ, *usageJ;
-        json_object_get (actionsJ);
-        json_object_get (cmd->usageJ);
-        json_object_get (cmd->sampleJ);
-
-        rp_jsonc_pack (&usageJ, "{so so*}", "action", actionsJ, "args", cmd->usageJ);
-        rp_jsonc_pack (&cmdJ, "{ss ss ss* so so*}"
-        , "uid",  cmd->uid
-        , "verb", cmd->apiverb
-        , "info", cmd->info
-        , "usage", usageJ
-        , "sample", cmd->sampleJ
-        );
-
-        json_object_array_add (responseJ, cmdJ);
-    }
+        json_object *cmdJ, *commandsJ = json_object_new_array();
+        shellCmdT *cmd = sandbox->cmds;
+        for (; cmd->uid; cmd++) {
+                rp_jsonc_pack (&cmdJ, "{ss ss ss* sO* s{s[ss] sO*}}"
+                        , "uid",  cmd->uid
+                        , "verb", cmd->apiverb
+                        , "info", cmd->info
+                        , "sample", cmd->sampleJ
+                        , "usage"
+                                , "action"
+                                        , "start", "stop"
+                                , "args", cmd->usageJ
+                        );
+                json_object_array_add (commandsJ, cmdJ);
+        }
+        return commandsJ;
 }
 
 // build global info page for developper dynamic HTML5 page
 static void Infosandbox (afb_req_t request, unsigned naparam, afb_data_t const params[])
 {
-    int idx;
-    sandBoxT *sandboxes = (sandBoxT*) afb_req_get_vcbdata(request);
-    json_object *responseJ, *globalJ, *sandboxJ, *sandboxesJ, *cmdsJ;
-	afb_data_t repldata;
+        afb_data_t repldata;
+        json_object *responseJ, *sandboxJ, *sandboxesJ;
+        spawnBindingT *spawnapi = (spawnBindingT*)afb_req_get_vcbdata(request);
+        sandBoxT *sandbox = spawnapi->sandboxes;
 
-#if 1
-	globalJ = NULL;
-#else
-    CtlConfigT* ctlConfig = (CtlConfigT*)afb_api_get_userdata(afb_req_get_api(request));
-    err= rp_jsonc_pack (&globalJ, "{ss ss* ss* ss*}",
-										"uid", ctlConfig->uid,
-										"info",	ctlConfig->info,
-										"version", ctlConfig->version,
-										"author", ctlConfig->author);
-    if (err) {
-        AFB_DEBUG ("Fail to wrap json binding metadata");
-        goto OnErrorExit;
-    }
-#endif
+        // loop on shell command sandboxes
+        sandboxesJ = json_object_new_array();
+        for (; sandbox->uid; sandbox++){
+                // create sandbox object with sandbox_info and sandbox-cmds
+                rp_jsonc_pack (&sandboxJ, "{ss ss* so*}",
+                        "uid", sandbox->uid,
+                        "info", sandbox->info,
+                        "verbs", InfoCmds(sandbox));
+                json_object_array_add(sandboxesJ, sandboxJ);
+        }
 
-    // loop on shell command sandboxes
-    sandboxesJ= json_object_new_array();
-    for (idx=0; sandboxes[idx].uid; idx++){
-        // create sandbox object with sandbox_info and sandbox-cmds
-	cmdsJ = json_object_new_array();
-        InfoCmds (&sandboxes[idx], cmdsJ);
-        rp_jsonc_pack (&sandboxJ, "{ss ss* so*}",
-				"uid", sandboxes[idx].uid,
-				"info", sandboxes[idx].info,
-				"verbs", cmdsJ);
-        json_object_array_add(sandboxesJ, sandboxJ);
-    }
-
-    rp_jsonc_pack (&responseJ, "{so so}", "metadata", globalJ, "groups", sandboxesJ);
-
-	repldata = afb_data_json_c_hold(responseJ);
-
-    afb_req_reply(request, 0, 1, &repldata);
+        rp_jsonc_pack (&responseJ, "{so s{ss ss* ss* ss*}}"
+                , "groups", sandboxesJ
+                , "metadata"
+                        , "uid", spawnapi->metadata.uid
+                        , "info", spawnapi->metadata.info
+                        , "version", spawnapi->metadata.version
+                        , "author", spawnapi->metadata.author
+                );
+        repldata = afb_data_json_c_hold(responseJ);
+        afb_req_reply(request, 0, 1, &repldata);
 }
 
-// Static verb not depending on shell json config file
-static afb_verb_t CtrlApiVerbs[] = {
-    /* VERB'S NAME         FUNCTION TO CALL         SHORT DESCRIPTION */
-    { .verb = "ping",     .callback = PingTest    , .info = "shell API ping test"},
-    { .verb = "info",     .callback = Infosandbox     , .info = "shell List sandboxes"},
-    { .verb = NULL} /* marker for end of the array */
-};
-
-
-
-// retrieve action handle from request and execute the request
+/**
+* Main verb entry, extracts the JSON argument object and the associated command.
+* Then calls the function spawnTaskVerb that effectively perform the action.
+*/
 static void cmdApiRequest(afb_req_t request, unsigned naparam, afb_data_t const params[])
 {
 	afb_data_t arg;
@@ -388,8 +361,6 @@ OnErrorExit:
 	return -1;
 }
 
-
-
 static int config_sandboxes(spawnBindingT *spawnapi, json_object *sandboxesJ)
 {
 	unsigned sbidx, sbcnt, nncnt;
@@ -434,22 +405,22 @@ static int config_sandboxes(spawnBindingT *spawnapi, json_object *sandboxesJ)
 			// when having more than one sandboxes default prefix is sandbox->uid
 			for(sbidx = 0 ; sbidx < nncnt ; sbidx++)
 				if (!sandboxes[sbidx].prefix)
-					sandboxes[sbidx].prefix= sandboxes[sbidx].uid;
+					sandboxes[sbidx].prefix = sandboxes[sbidx].uid;
 		}
 		// add static controls verbsmake
-		rc = afb_api_set_verbs(spawnapi->api, CtrlApiVerbs);
+	        rc = afb_api_add_verb(spawnapi->api, "ping", "ping test", PingTest, NULL, NULL, 0, 0);
 		if (rc >= 0)
+        	        rc = afb_api_add_verb(spawnapi->api, "info", "info about sandboxes", Infosandbox, spawnapi, NULL, 0, 0);
+		if (rc >= 0) {
+                	spawnapi->sandboxes = sandboxes;
 			return 0;
+                }
 		AFB_API_ERROR(spawnapi->api, "registry static of static verbs");
 	}
-	spawnapi->sandboxes = sandboxes;
 
 	free(sandboxes);
 	return -1;
 }
-
-
-
 
 
 
