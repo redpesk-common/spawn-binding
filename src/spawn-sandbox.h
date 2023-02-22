@@ -157,13 +157,13 @@ struct shellCmdS
 };
 
 // spawn-sandbox.c
-confEnvT *sandboxParseEnvs (afb_api_t api, sandBoxT *sandbox, json_object *envsJ);
-confAclT *sandboxParseAcls(afb_api_t api, sandBoxT *sandbox, json_object *namespaceJ);
-confCapT *sandboxParseCaps(afb_api_t api, sandBoxT *sandbox, json_object *capsJ);
-confCgroupT *sandboxParseCgroups (afb_api_t api, sandBoxT *sandbox, json_object *cgroupsJ);
-confSeccompT *sandboxParseSecRules(afb_api_t api, sandBoxT *sandbox, json_object *seccompJ);
-confNamespaceT *sandboxParseNamespace(afb_api_t api, sandBoxT *sandbox, json_object *namespaceJ);
-const char **sandboxBwrapArg (afb_api_t api, sandBoxT *sandbox, confNamespaceT *namespace);
+confEnvT *sandboxParseEnvs (sandBoxT *sandbox, json_object *envsJ);
+confAclT *sandboxParseAcls(sandBoxT *sandbox, json_object *namespaceJ);
+confCapT *sandboxParseCaps(sandBoxT *sandbox, json_object *capsJ);
+confCgroupT *sandboxParseCgroups (sandBoxT *sandbox, json_object *cgroupsJ);
+confSeccompT *sandboxParseSecRules(sandBoxT *sandbox, json_object *seccompJ);
+confNamespaceT *sandboxParseNamespace(sandBoxT *sandbox, json_object *namespaceJ);
+const char **sandboxBwrapArg (sandBoxT *sandbox, confNamespaceT *namespace);
 
 int sandboxApplyAcls(confAclT *acls, int isPrivileged);
 

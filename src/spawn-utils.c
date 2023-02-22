@@ -180,13 +180,19 @@ int utilsExecFdCmd (afb_api_t api, const char* source, const char* command) {
 		dup2(fd, 1);
 		close (fd);
 		execv("/usr/bin/sh", argv);
-		AFB_API_NOTICE(api, "[execv returned] command return command=%s error=%s (utilsExecFdCmd)\n", command, strerror(errno));
+                if (api)
+		        AFB_API_NOTICE(api, "[execv returned] command return command=%s error=%s (utilsExecFdCmd)\n", command, strerror(errno));
+                else
+		        AFB_NOTICE("[execv returned] command return command=%s error=%s (utilsExecFdCmd)\n", command, strerror(errno));
         exit(1);
 	}
 	return (fd);
 
 OnErrorExit:
-	AFB_API_NOTICE(api, "[Fail to exec] command=%s (utilsExecFdCmd)\n", command);
+        if (api)
+	        AFB_API_NOTICE(api, "[Fail to exec] command=%s (utilsExecFdCmd)\n", command);
+        else
+	        AFB_NOTICE("[Fail to exec] command=%s (utilsExecFdCmd)\n", command);
 	return -1;
 }
 
@@ -236,7 +242,7 @@ int utilsFileAddControl (afb_api_t api, const char *uid, int dirFd, const char *
         if (api)
             AFB_API_NOTICE(api, "[cgroup-ctrl-not-found] sandbox='%s' ctrlname='%s' error=%s (nsCgroupSetControl)", uid, ctrlname, strerror(errno));
         else
-            fprintf(stderr, "[cgroup-ctrl-not-found] sandbox='%s' ctrlname='%s' error=%s (nsCgroupSetControl)\n", uid, ctrlname, strerror(errno));
+            AFB_NOTICE("[cgroup-ctrl-not-found] sandbox='%s' ctrlname='%s' error=%s (nsCgroupSetControl)\n", uid, ctrlname, strerror(errno));
         goto OnErrorExit;
     }
 
@@ -250,7 +256,7 @@ int utilsFileAddControl (afb_api_t api, const char *uid, int dirFd, const char *
         if (api)
             AFB_API_NOTICE(api, "[cgroup-control-refused] sandbox='%s' ctrlname='%s' inode=%ld value=%s error=%s (nsCgroupSetControl)", uid, ctrlname, statfd.st_ino, ctrlval, strerror(errno));
         else
-            fprintf(stderr, "[cgroup-control-refused] sandbox='%s' ctrlname='%s' inode=%ld value=%s error=%s (nsCgroupSetControl)\n", uid, ctrlname, statfd.st_ino, ctrlval, strerror(errno));
+            AFB_NOTICE("[cgroup-control-refused] sandbox='%s' ctrlname='%s' inode=%ld value=%s error=%s (nsCgroupSetControl)\n", uid, ctrlname, statfd.st_ino, ctrlval, strerror(errno));
         close (ctrlfd);
         goto OnErrorExit;
     }

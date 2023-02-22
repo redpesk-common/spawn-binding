@@ -285,42 +285,42 @@ static int sandboxLoadOne(spawnBindingT *spawnapi, sandBoxT *sandbox, json_objec
 
 	/* get environment */
 	if (envsJ) {
-		sandbox->envs = sandboxParseEnvs(spawnapi->api, sandbox, envsJ);
+		sandbox->envs = sandboxParseEnvs(sandbox, envsJ);
 		if (!sandbox->envs)
 			goto OnErrorExit;
 	}
 
 	/* ? */
 	if (aclsJ) {
-		sandbox->acls = sandboxParseAcls(spawnapi->api, sandbox, aclsJ);
+		sandbox->acls = sandboxParseAcls(sandbox, aclsJ);
 		if (!sandbox->acls)
 			goto OnErrorExit;
 	}
 	else {
 		if (utilsTaskPrivileged()) {
-			AFB_API_ERROR(spawnapi->api, "[security-error] ### privilege mode uid='%s' requirer acls->user=xxxx ###", sandbox->uid);
+			AFB_ERROR("[security-error] ### privilege mode uid='%s' requirer acls->user=xxxx ###", sandbox->uid);
 			goto OnErrorExit;
 		}
 	}
 
 	if (capsJ) {
-		sandbox->caps = sandboxParseCaps(spawnapi->api, sandbox, capsJ);
+		sandbox->caps = sandboxParseCaps(sandbox, capsJ);
 		if (!sandbox->caps)
 			goto OnErrorExit;
 	}
 
 	if (seccompJ) {
-		sandbox->seccomp = sandboxParseSecRules(spawnapi->api, sandbox, seccompJ);
+		sandbox->seccomp = sandboxParseSecRules(sandbox, seccompJ);
 		if (!sandbox->seccomp)
 			goto OnErrorExit;
 	}
 
 	if (cgroupsJ) {
 		if (!utilsTaskPrivileged()) {
-			AFB_API_NOTICE(spawnapi->api, "[cgroups ignored] sandbox=%s user=%d not privileged (sandboxLoadOne)", sandbox->uid, getuid());
+			AFB_NOTICE("[cgroups ignored] sandbox=%s user=%d not privileged (sandboxLoadOne)", sandbox->uid, getuid());
 		}
 		else {
-			sandbox->cgroups = sandboxParseCgroups(spawnapi->api, sandbox, cgroupsJ);
+			sandbox->cgroups = sandboxParseCgroups(sandbox, cgroupsJ);
 			if (!sandbox->cgroups)
 				goto OnErrorExit;
 		}
@@ -328,7 +328,7 @@ static int sandboxLoadOne(spawnBindingT *spawnapi, sandBoxT *sandbox, json_objec
 
 	// if namespace defined parse try to parse it
 	if (namespaceJ) {
-		sandbox->namespace = sandboxParseNamespace (spawnapi->api, sandbox, namespaceJ);
+		sandbox->namespace = sandboxParseNamespace (sandbox, namespaceJ);
 		if (!sandbox->namespace)
 			goto OnErrorExit;
 	}
