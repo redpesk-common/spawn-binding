@@ -1,0 +1,55 @@
+SEND-CALL basic/ping true
+ON-REPLY 1:basic/ping: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":"pong=1"
+}
+SEND-CALL basic/info true
+ON-REPLY 2:basic/info: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "groups":[
+      {
+        "uid":"sandbox-basic",
+        "info":"minimal demo [no acls, no namespace]",
+        "verbs":[
+          {
+            "uid":"distro",
+            "verb":"distro",
+            "info":"return server Linux version",
+            "usage":{
+              "action":[
+                "start",
+                "stop"
+              ]
+            }
+          },
+          {
+            "uid":"sync",
+            "verb":"sync",
+            "info":"return stdout/err in synchronous mode",
+            "usage":{
+              "action":[
+                "start",
+                "stop"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "metadata":{
+      "uid":"spawn-basic",
+      "version":"1.0"
+    }
+  }
+}
