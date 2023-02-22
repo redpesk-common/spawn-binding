@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "uid": "spawn-basic",
+    "api": "basic",
+    "version": "1.0"
+  },
+  "sandboxes": {
+      "uid": "sandbox-basic",
+      "info": "minimal demo [no acls, no namespace]",
+      "commands": [
+        {
+          "uid": "distro",
+          "info" : "return server Linux version",
+          "exec": {"cmdpath": "/usr/bin/lsb_release", "args": ["-a"]}
+        },
+        {
+            "uid": "sync",
+            "encoder": "sync",
+            "info" : "return stdout/err in synchronous mode",
+            "exec": {"cmdpath": "/usr/bin/lsb_release", "args": ["-a"]}
+        }  
+      ]
+    }
+}

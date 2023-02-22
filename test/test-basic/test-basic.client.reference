@@ -1,0 +1,74 @@
+SEND-CALL basic/ping true
+ON-REPLY 1:basic/ping: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":"pong=1"
+}
+SEND-CALL basic/distro {"action":"start"}
+ON-REPLY 2:basic/distro: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "data":{
+      "api":"basic",
+      "sandbox":"sandbox-basic",
+      "command":"distro",
+    }
+  }
+}
+SEND-CALL basic/sync {"action":"start"}
+ON-EVENT basic/distro:
+{
+  "jtype":"afb-event",
+  "event":"basic/distro",
+  "data":{
+    "cmd":"distro",
+    "status":{
+      "exit":0
+    },
+    "stdout":[
+      "Distributor ID:",
+      "Debian",
+      "Description:",
+      "Debian GNU/Linux bookworm/sid",
+      "Release:",
+      "n/a",
+      "Codename:",
+      "bookworm"
+    ]
+  }
+}
+ON-REPLY 3:basic/sync: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "data":{
+      "cmd":"sync",
+      "status":{
+        "exit":0
+      },
+      "stdout":[
+        "Distributor ID:",
+        "Debian",
+        "Description:",
+        "Debian GNU/Linux bookworm/sid",
+        "Release:",
+        "n/a",
+        "Codename:",
+        "bookworm"
+      ]
+    }
+  }
+}
