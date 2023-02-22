@@ -8,5 +8,6 @@
         "libcap",
         "redpesk",
         "seccomp"
-    ]
+],
+"C_Cpp.autoAddFileAssociations": false
 }

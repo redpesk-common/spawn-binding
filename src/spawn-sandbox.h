@@ -154,6 +154,7 @@ struct shellCmdS
 	taskIdT *tids;
 	pthread_rwlock_t sem;
 	int single;
+        afb_auth_t authent;
 };
 
 // spawn-sandbox.c

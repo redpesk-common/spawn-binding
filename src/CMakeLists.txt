@@ -18,8 +18,32 @@
 PROJECT_TARGET_ADD(spawn)
 
 	# compile any C file starting with a lower case
-	file(GLOB CSOURCES [a-z]*.c)
-	file(GLOB CHEADERS [a-z]*.h)
+        set(CSOURCES
+                ctl-lib.c
+                spawn-childexec.c
+                spawn-encoders.c
+                spawn-expand.c
+                spawn-sandbox.c
+                spawn-utils.c
+                spawn-binding.c
+                spawn-config.c
+                spawn-enums.c
+                spawn-expand-defs.c
+                spawn-subtask.c
+                )
+        set(CMAKE_HEADERS
+                spawn-binding.h
+                spawn-config.h
+                spawn-defaults.h
+                spawn-encoders.h
+                spawn-encoders-plugins.h
+                spawn-enums.h
+                spawn-expand.h
+                spawn-sandbox.h
+                spawn-subtask.h
+                spawn-subtask-internal.h
+                spawn-utils.h
+                )
 
 	# Define project Targets
 	add_library(${TARGET_NAME} MODULE  ${CSOURCES})
