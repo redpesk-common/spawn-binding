@@ -55,6 +55,9 @@ typedef struct {
 	taskIdT *gtids;
 	pthread_rwlock_t sem;
 	ctl_metadata_t metadata;
+	ctl_actionset_t onstart;
+	ctl_actionset_t onevent;
+	ctl_actionset_t extra;
 	json_object *config;
 	sandBoxT *sandboxes;
 } spawnBindingT;

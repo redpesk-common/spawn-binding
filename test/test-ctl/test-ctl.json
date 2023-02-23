@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "uid": "spawn-ctl",
+    "api": "ctl",
+    "version": "1.0",
+    "require": "monitor"
+  },
+  "plugins": [
+	{
+		"uid": "plugctl",
+		"spath": "../../build:../test/test-clt:test/test-ctl:.",
+		"libs": [ "toto", "foo", "test-ctl-plug", "bar" ]
+	}
+  ],
+  "sandboxes": {
+      "uid": "sandbox-basic",
+      "info": "minimal demo [no acls, no namespace]",
+      "commands": [
+        {
+          "uid": "distro",
+          "info" : "return server Linux version",
+          "exec": {"cmdpath": "/usr/bin/echo", "args": ["Hello"]}
+        },
+        {
+            "uid": "sync",
+            "encoder": "sync",
+            "info" : "return stdout/err in synchronous mode",
+            "exec": {"cmdpath": "/usr/bin/echo", "args": ["World!"]}
+        }  
+      ]
+    },
+    "onload": [
+	],
+    "extra": [
+		{
+			"uid": "call",
+			"info": "make call",
+			"action": "plugin://plugctl#on_call",
+			"args": { "action": "start" }
+		},
+		{
+			"uid": "subcall",
+			"info": "make subcall",
+			"action": "plugin://plugctl#on_subcall"
+		},
+		{
+			"uid": "exit",
+			"info": "exiting the binder",
+			"action": "plugin://plugctl#my_exit"
+		}
+	]
+}

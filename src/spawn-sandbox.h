@@ -103,22 +103,22 @@ typedef struct {
 } confNamespaceT;
 
 struct sandBoxS {
-  spawnMagicT magic;
-  const char *uid;
-  const char *info;
-  int verbose;
-  const char *privilege;
-  const char *prefix;
-  confAclT *acls;
-  confCapT *caps;
-  confEnvT *envs;
-  int *filefds;
-  confCgroupT *cgroups;
-  confSeccompT *seccomp;
-  confNamespaceT *namespace;
-  void *context;
-  spawnBindingT *binding;
-  shellCmdT *cmds;
+	spawnMagicT magic;
+	const char *uid;
+	const char *info;
+	int verbose;
+	const char *privilege;
+	const char *prefix;
+	confAclT *acls;
+	confCapT *caps;
+	confEnvT *envs;
+	int *filefds;
+	confCgroupT *cgroups;
+	confSeccompT *seccomp;
+	confNamespaceT *namespace;
+	void *context;
+	spawnBindingT *binding;
+	shellCmdT *cmds;
 };
 
 /**

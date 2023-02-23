@@ -24,118 +24,276 @@
 #define CTL_LIB_H
 
 /*
-* This file is a compatibility wrapper for accompagning
-* transition from the older controler to the world without it.
-*
-* First of all, the type CtlConfigT is emulated by the
-* type ctl_metadata_t that hold meta data of the configuration file.
+* includes
 */
-typedef struct ctl_metadata_s ctl_metadata_t;
-typedef ctl_metadata_t CtlConfigT;
-/*
-*
-*/
+#include <stdbool.h>
 #include <json-c/json.h>
+#include <afb-helpers4/plugin-store.h>
+#include <rp-utils/rp-path-search.h>
 
+/*
+* predeclare types
+*/
+typedef struct ctl_metadata_s  ctl_metadata_t;
+typedef struct ctl_action_s    ctl_action_t;
+typedef struct ctl_actionset_s ctl_actionset_t;
+
+/***************************************************************************/
+/***************************************************************************/
+/**** METADATA                                                          ****/
+/***************************************************************************/
+/***************************************************************************/
 /**
 * metadata of the configuration file
 */
-struct ctl_metadata_s {
+struct ctl_metadata_s
+{
+        /** uid */
+	const char *uid;
+
+        /** name of the api */
 	const char *api;
-	const char *uid;
+
+        /** optional info */
 	const char *info;
+
+        /** optional version */
 	const char *version;
+
+        /** optional author */
 	const char *author;
+
+        /** option date */
 	const char *date;
+
+        /** holds the config, allowing reference to strings of subobjects */
 	json_object *configJ;
+
+        /** object holding requirements of the api */
 	json_object *requireJ;
-/*
-	CtlSectionT *sections;
-	CtlPluginT *ctlPlugins;
+};
+
+/**
+* Reads in the metadata object 'meta' from the JSON-C object 'metaobj'.
+* 'metaobj' should at least contain the strings of keys "uid" and "api".
+*
+* @param meta    the meta structure to fill
+* @param metaobj the configuration object to read
+*
+* @return 0 on success or a negative error code
 */
-	void *external;
-};
+extern int ctl_read_metadata(ctl_metadata_t *meta, json_object *metaobj);
 
-
-extern int ctl_metadata_read_json(ctl_metadata_t *meta, json_object *rootdesc);
-
-
-typedef struct {
-	const char *uid;
-	const char *info;
-/*
-	const char *privileges;
-	json_object *argsJ;
-	afb_api_t api;
-	CtlActionTypeT type;
-	union {
-		struct {
-			const char* api;
-			const char* verb;
-		} subcall;
-
-		struct {
-			const char* plugin;
-			const char* funcname;
-		} lua;
-
-		struct {
-			const char* funcname;
-			int (*callback)(CtlSourceT *source, json_object *argsJ, json_object *queryJ);
-			CtlPluginT *plugin;
-		} cb;
-	} exec;
+/**
+* Reads in the metadata object 'meta' from the subobject of JSON-C object 'rootdesc'
+* of key "metadata". For short, calls 'ctl_read_metadata' on subobject of key "metadata"
+* if present.
+*
+* @param meta     the meta structure to fill
+* @param rootdesc the root configuration object
+* @param optional tells if metaobject is optional or not
+*
+* @return 0 on success or a negative error code
 */
-} CtlActionT;
+extern int ctl_subread_metadata(ctl_metadata_t *meta, json_object *rootdesc, bool optional);
 
+/**
+* Look in the meta and if requirement are set, calls the function
+* 'afb_api_require_api' accordingly.
+*
+* @param meta the meta object
+* @param api  the api to setup
+*
+* @return 0 on success or a negative error code
+*/
+extern int ctl_set_requires(ctl_metadata_t *meta, afb_api_t api);
 
-
-
-
-
-
-
-
-
-
-
-
-
-typedef struct ctl_action_s ctl_action_t;
-typedef struct ctl_actionner_s ctl_actionner_t;
-
-struct ctl_actionner_s
+/***************************************************************************/
+/***************************************************************************/
+/**** ACTIONSETS                                                        ****/
+/***************************************************************************/
+/***************************************************************************/
+/**
+* the action set record actions
+*/
+struct ctl_actionset_s
 {
-	int (*apply)(ctl_action_t*);
-	int (*free)(ctl_action_t*);
-	int (*create)(ctl_action_t*);
-	const char *prefix;
+	/** count of actions */
+	unsigned count;
+
+	/** the actions */
+	ctl_action_t *actions;
 };
 
-struct ctl_action_s
-{
-	/** the actionner */
-	ctl_actionner_t *actionner;
+/**
+* initializer of the actionset
+*/
+#define CTL_ACTIONSET_INITIALIZER  ((struct ctl_actionset_s){ .count = 0, .actions = NULL })
 
-	/** data of the actionner */
-	void *data;
+/**
+* Free the content of the given actionset
+*
+* @param actionset the actionset to free
+*/
+extern void ctl_actionset_free(ctl_actionset_t *actionset);
 
-	/** uid of the action */
-	const char *uid;
+/**
+* Extend the actionset with the actions described by actionsJ
+*
+* @param actionset the actionset to extend
+* @param actionsJ description of the actions to add
+*
+* @return 0 on success or a negative error code
+*/
+extern int ctl_read_actionset_extend(ctl_actionset_t *actionset, json_object *actionsJ);
 
-	/** info about the action or NULL */
-	const char *info;
+/**
+* Extend the actionset with the actions described by the subobject
+* of key in config.
+*
+* Alias of ctl_read_actionset_add
+*
+* @param actionset the actionset to extend
+* @param config    main config object
+* @param key       key of the subobject holding actions descrption
+*
+* @return 0 on success or a negative error code
+*/
+extern int ctl_subread_actionset(ctl_actionset_t *actionset, json_object *config, const char *key);
 
-	/** required privilege */
-	const char *privilege;
-};
+/**
+* Add to api all the verbs described by the actions of the actionset
+* When the action requires a plugin, it is searched in pstore and data is the closure
+*
+* @param actionset the actionset
+* @param api       the api where verbs are added
+* @param pstore    the plugin store
+* @param data      a closure for the plugins callbacks
+*
+* @return 0 on success or a negative error code
+*/
+extern int ctl_actionset_add_verbs(ctl_actionset_t *actionset, afb_api_t api, plugin_store_t pstore, void *data);
 
-extern int ctl_action_actionner_allow_std_api();
-extern int ctl_action_actionner_register(ctl_actionner_t *actionner);
+/**
+* Add to api the event handlers described by the actions of the actionset
+* When the handler requires a plugin, it is searched in pstore and data is the closure
+*
+* @param actionset the actionset
+* @param api       the api handling events
+* @param pstore    the plugin store
+* @param data      a closure for the plugins callbacks
+*
+* @return 0 on success or a negative error code
+*/
+extern int ctl_actionset_add_events(ctl_actionset_t *actionset, afb_api_t api, plugin_store_t pstore, void *data);
 
-int ctl_action_exec(ctl_action_t *action);
+/**
+* execute within the api all the actions of the actionset
+* When the action requires a plugin, it is searched in pstore and data is the closure
+*
+* @param actionset the actionset
+* @param api       the api for binding calls
+* @param pstore    the plugin store
+* @param data      a closure for the plugins callbacks
+*
+* @return 0 on success or a negative error code
+*/
+extern int ctl_actionset_exec(ctl_actionset_t *actionset, afb_api_t api, plugin_store_t pstore, void *data);
 
-int ctl_action_exec(ctl_action_t *action);
+/***************************************************************************/
+/***************************************************************************/
+/**** ACTIONS                                                           ****/
+/***************************************************************************/
+/***************************************************************************/
 
+/**
+* search the action of given uid and returns it pointer
+*
+* @param aset the actionset to search
+* @param uid  the uid to search
+*
+* @return the pointer to the action found or NULL if not found
+*/
+extern ctl_action_t *ctl_actionset_search(ctl_actionset_t *aset, const char *uid);
+
+/**
+* Add to api the verb described by the action
+* When the action requires a plugin, it is searched in pstore and data is the closure
+*
+* @param action the action
+* @param api    the api where verbs are added
+* @param pstore the plugin store
+* @param data   a closure for the plugins callbacks
+*
+* @return 0 on success or a negative error code
+*/
+extern int ctl_action_add_verb(ctl_action_t *action, afb_api_t api, plugin_store_t pstore, void *data);
+
+/**
+* Add to api the event handler described by the action
+* When the handler requires a plugin, it is searched in pstore and data is the closure
+*
+* @param action the action
+* @param api    the api handling events
+* @param pstore the plugin store
+* @param data   a closure for the plugins callbacks
+*
+* @return 0 on success or a negative error code
+*/
+extern int ctl_action_add_event(ctl_action_t *action, afb_api_t api, plugin_store_t pstore, void *data);
+
+/**
+* execute within the api all the given action
+* When the action requires a plugin, it is searched in pstore and data is the closure
+*
+* @param actionset the actionset
+* @param api       the api for binding calls
+* @param pstore    the plugin store
+* @param data      a closure for the plugins callbacks
+*
+* @return 0 on success or a negative error code
+*/
+extern int ctl_action_exec(ctl_action_t *action, afb_api_t api, plugin_store_t pstore, void *data);
+
+/***************************************************************************/
+/***************************************************************************/
+/**** PLUGINS                                                           ****/
+/***************************************************************************/
+/***************************************************************************/
+
+/**
+* Extend the plugin store with the plugins described in pluginsJ.
+* Effective plugin libraries are searched in the given search path.
+*
+* @param plugins  the plugin store to extend
+* @param pluginsJ description of the plugins to add
+* @param path     the search path (or NULL for the default one)
+*
+* @return 0 on success or a negative error code
+*/
+extern int ctl_read_plugins_extend(plugin_store_t *plugins, json_object *pluginsJ, rp_path_search_t *path);
+
+/**
+* Extend the plugin store with the plugins described by the subobject of config of the given key.
+* Effective plugin libraries are searched in the given search path.
+*
+* @param plugins  the plugin store to extend
+* @param config   description of the plugins to add
+* @param path     the search path (or NULL for the default one)
+* @param key      key of the subobject in config haloding the plugin description
+*
+* @return 0 on success or a negative error code
+*/
+extern int ctl_subread_plugins(plugin_store_t *plugins, json_object *config, rp_path_search_t *path, const char *key);
+
+/**
+* make the path search object for serching files in the given subdir
+*
+* @param ps     pointer for the result
+* @param subdir sub directory of search or NULL if none
+*
+* @return 0 and *ps on success or a negative error code
+*/
+extern int ctl_default_path_search(rp_path_search_t **ps, const char *subdir);
 
 #endif  /* CTL_LIB_H */

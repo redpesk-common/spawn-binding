@@ -26,13 +26,68 @@
 
 #include <afb/afb-binding.h>
 #include <rp-utils/rp-jsonc.h>
-#include <afb-helpers4/afb-data-utils.h>
 #include <rp-utils/rp-expand-vars.h>
+#include <afb-helpers4/afb-data-utils.h>
 
 #include "spawn-binding.h"
 #include "spawn-sandbox.h"
 #include "spawn-config.h"
 #include "spawn-subtask.h"
+
+/* plugins */
+static plugin_store_t  plugins = PLUGIN_STORE_INITIAL;
+
+/*
+* predeclaration of the function that initialize the spawn binding
+*/
+static int initialiaze_spawn_binding(
+	afb_api_t rootapi,
+	const char *path,
+	const char *uid,
+	json_object *config
+	);
+
+
+/**
+* This is the main entry of the spawn binding
+* it only calls call the function initialiaze_spawn_binding
+*/
+int afbBindingEntry(afb_api_t rootapi, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *userdata)
+{
+	switch (ctlid)
+	{
+	/** called on root entries, the entries not linked to an API */
+	case afb_ctlid_Root_Entry:
+		return initialiaze_spawn_binding(rootapi, ctlarg->root_entry.path,
+				ctlarg->root_entry.uid, ctlarg->root_entry.config);
+
+	/** called for the preinit of an API, has a companion argument */
+	case afb_ctlid_Pre_Init:
+		break;
+
+	/** called for init */
+	case afb_ctlid_Init:
+		break;
+
+	/** called when required classes are ready */
+	case afb_ctlid_Class_Ready:
+		break;
+
+	/** called when an event is not handled */
+	case afb_ctlid_Orphan_Event:
+		break;
+
+	/** called when shuting down */
+	case afb_ctlid_Exiting:
+		break;
+	}
+	return 0;
+}
+
+
+
+
+
 
 /* basic implementation of ping */
 static void PingTest (afb_req_t request, unsigned naparam, afb_data_t const params[])
@@ -117,6 +172,27 @@ static void cmdApiRequest(afb_req_t request, unsigned naparam, afb_data_t const 
 	}
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #if 0
 
 
@@ -139,7 +215,7 @@ static int AutostartConfig(afb_api_t api, CtlSectionT *section, json_object *onl
 
 
 static int add_verb(
-        spawnBindingT *spawn,
+	afb_api_t api,
 	const char *verb,
 	const char *info,
 	afb_req_callback_t callback,
@@ -147,33 +223,45 @@ static int add_verb(
 	const struct afb_auth *auth,
 	uint32_t session
 ) {
-        int rc = afb_api_add_verb(spawn->api, verb, info, callback, vcbdata, auth, session, 0);
+        int rc = afb_api_add_verb(api, verb, info, callback, vcbdata, auth, session, 0);
         if (rc < 0)
-                AFB_API_ERROR(spawn->api, "failed to register verb %s", verb);
+                AFB_API_ERROR(api, "failed to register verb %s", verb);
         return rc;
 }
 
 
-static int init_spawn_api(spawnBindingT *spawn)
+static int pre_init_api_spawn(afb_api_t api, spawnBindingT *spawn)
 {
         shellCmdT *cmd;
 	sandBoxT *sandbox;
        	afb_auth_t *authent;
 
-
         // add static controls verbs
-        int rc = add_verb(spawn, "ping", "ping test", PingTest, NULL, NULL, 0);
+        int rc = add_verb(api, "ping", "ping test", PingTest, NULL, NULL, 0);
         if (rc >= 0)
-                rc = add_verb(spawn, "info", "info about sandboxes", Infosandbox, spawn, NULL, 0);
+                rc = add_verb(api, "info", "info about sandboxes", Infosandbox, spawn, NULL, 0);
 
         // dynamic verbs
-        for (sandbox = spawn->sandboxes ; rc >= 0 && sandbox->uid != NULL ; sandbox++) {
+        for (sandbox = spawn->sandboxes ; sandbox && rc >= 0 && sandbox->uid != NULL ; sandbox++) {
                 for (cmd = sandbox->cmds ; rc >= 0 && cmd->uid != NULL ; cmd++) {
-                        cmd->api = spawn->api;
+                        cmd->api = api;
                         authent = cmd->authent.type == afb_auth_Yes ? NULL : &cmd->authent;
-                        rc = add_verb(spawn, cmd->apiverb, cmd->info, cmdApiRequest, cmd, authent, 0);
+                        rc = add_verb(api, cmd->apiverb, cmd->info, cmdApiRequest, cmd, authent, 0);
                 }
         }
+
+	if (rc >= 0)
+		rc = ctl_actionset_add_verbs(&spawn->extra, api, plugins, spawn);
+	if (rc >= 0)
+		rc = ctl_actionset_add_events(&spawn->onevent, api, plugins, spawn);
+        return rc;
+}
+
+static int init_api_spawn(afb_api_t api, spawnBindingT *spawn)
+{
+	int rc = ctl_set_requires(&spawn->metadata, api);
+	if (rc >= 0)
+		rc = ctl_actionset_exec(&spawn->onstart, api, plugins, spawn);
         return rc;
 }
 
@@ -194,11 +282,11 @@ static int main_api_ctl(
 	/** called for the preinit of an API, has a companion argument */
 	case afb_ctlid_Pre_Init:
         	spawn->api = api;
-		return init_spawn_api(spawn);
+		return pre_init_api_spawn(api, spawn);
 
 	/** called for init */
 	case afb_ctlid_Init:
-		break;
+		return init_api_spawn(api, spawn);
 
 	/** called when required classes are ready */
 	case afb_ctlid_Class_Ready:
@@ -215,26 +303,60 @@ static int main_api_ctl(
 	return 0;
 }
 
-int apply_spawn_config(spawnBindingT *spawn)
-{
-        afb_api_t api;
-	return afb_create_api(&api, spawn->metadata.api, spawn->metadata.info, 1, main_api_ctl, spawn);
-}
-
 /* create one API per config file object */
-static int apply_one_config(void *closure, json_object *rootdesc)
+static int process_one_config(void *closure, json_object *rootdesc)
 {
 	int rc;
 	spawnBindingT *spawn;
 	afb_api_t api;
 
-
-        rc = read_spawn_config(&spawn, rootdesc);
-	if (rc == 0) {
-		rc = afb_create_api(&api, spawn->metadata.api, spawn->metadata.info, 1, main_api_ctl, spawn);
-		if (rc < 0)
-			AFB_ERROR("creation of api %s failed: %d", spawn->metadata.api, rc);
+	/* allocates */
+        spawn = calloc(1, sizeof *spawn);
+	if (spawn == NULL) {
+		AFB_ERROR("out of memory");
+		rc = -1;
+        }
+	else {
+		spawn->onstart = CTL_ACTIONSET_INITIALIZER;
+		spawn->onevent = CTL_ACTIONSET_INITIALIZER;
+		spawn->extra = CTL_ACTIONSET_INITIALIZER;
+		spawn->config = rootdesc;
+        	/* read metadata */
+		rc = ctl_subread_metadata(&spawn->metadata, rootdesc, true);
+		if (rc >= 0)
+			rc = ctl_subread_plugins(&plugins, rootdesc, NULL, "plugins");
+                if (rc >= 0)
+                        /* read onload actions */
+			rc = ctl_subread_actionset(&spawn->onstart, rootdesc, "onload");
+                if (rc >= 0)
+                        /* read onload actions */
+			rc = ctl_subread_actionset(&spawn->onstart, rootdesc, "onstart");
+                if (rc >= 0)
+                        /* read event actions */
+			rc = ctl_subread_actionset(&spawn->onevent, rootdesc, "events");
+                if (rc >= 0)
+                        /* read event actions */
+			rc = ctl_subread_actionset(&spawn->extra, rootdesc, "extra");
+                if (rc >= 0)
+                        /* read sandboxes */
+                        rc = spawn_config_read(spawn, rootdesc);
+		if (rc >= 0) {
+			rc = afb_create_api(&api, spawn->metadata.api, spawn->metadata.info, 1, main_api_ctl, spawn);
+			if (rc < 0)
+				AFB_ERROR("creation of api %s failed: %d", spawn->metadata.api, rc);
+		}
 	}
+
+	/* clean or freeze */
+	if (rc >= 0)
+		json_object_get(rootdesc);
+	else {
+		if (spawn != NULL) {
+			ctl_actionset_free(&spawn->onstart);
+			ctl_actionset_free(&spawn->onevent);
+		}
+                free(spawn);
+        }
 	return rc;
 }
 
@@ -283,7 +405,17 @@ static int iter_root_configs(
 	return rc;
 }
 
-static int initialize_binding(
+/**
+* initialize the spawn binding
+*
+* @param rootapi the root api
+* @param path    the path of the binding
+* @param uid     the uid of the binding (or NULL)
+* @param config  the configuration of the binding (or NULL)
+*
+* @return 0 on success or a negative number on failure
+*/
+static int initialiaze_spawn_binding(
 	afb_api_t rootapi,
 	const char *path,
 	const char *uid,
@@ -291,47 +423,11 @@ static int initialize_binding(
 ) {
 	int rc;
 
-	AFB_API_NOTICE(rootapi, "Initialisation of Spawn Binding");
 	AFB_API_INFO(rootapi, "Initialisation of Spawn Binding uid=%s path=%s config=%s",uid?:"",path,json_object_to_json_string(config));
 
 	// register builtin encoders before plugin get load
 	rc = encoderInit();
 	if (rc == 0)
-		rc = iter_root_configs(rootapi, path, uid, config, apply_one_config, NULL);
+		rc = iter_root_configs(rootapi, path, uid, config, process_one_config, NULL);
 	return rc;
 }
-
-
-int afbBindingEntry(afb_api_t rootapi, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *userdata)
-{
-	switch (ctlid)
-	{
-	/** called on root entries, the entries not linked to an API */
-	case afb_ctlid_Root_Entry:
-		return initialize_binding(rootapi, ctlarg->root_entry.path,
-				ctlarg->root_entry.uid, ctlarg->root_entry.config);
-
-	/** called for the preinit of an API, has a companion argument */
-	case afb_ctlid_Pre_Init:
-		break;
-
-	/** called for init */
-	case afb_ctlid_Init:
-		break;
-
-	/** called when required classes are ready */
-	case afb_ctlid_Class_Ready:
-		break;
-
-	/** called when an event is not handled */
-	case afb_ctlid_Orphan_Event:
-		break;
-
-	/** called when shuting down */
-	case afb_ctlid_Exiting:
-		break;
-	}
-	return 0;
-}
-
-

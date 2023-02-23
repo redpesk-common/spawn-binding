@@ -35,6 +35,55 @@
 #include "spawn-utils.h"
 #include "spawn-expand.h"
 
+struct jsonc_optarray_process_s
+{
+        int (*callback)(void*,void*,struct json_object*);
+        void *closure;
+        size_t szelem;
+        void *array;
+        void *iter;
+};
+
+static int jsonc_optarray_process_cb(void *closure, struct json_object *object)
+{
+        struct jsonc_optarray_process_s *jop = closure;
+        void *ptr = jop->iter;
+        jop->iter = ptr + jop->szelem;
+        return jop->callback(jop->closure, ptr, object);
+}
+
+int jsonc_optarray_process(
+                void **result,
+                struct json_object *object,
+                int (*callback)(void*,void*,struct json_object*),
+                void *closure,
+                size_t szelem
+) {
+        int rc;
+        struct jsonc_optarray_process_s jop;
+        size_t count;
+
+        count = json_object_is_type(object, json_type_array) ? (size_t)json_object_array_length(object) : 1;
+        jop.array = calloc(1 + count, szelem);
+        if (jop.array == NULL) {
+		AFB_ERROR("out of memory");
+                rc = -1;
+        }
+        else {
+                jop.iter = jop.array;
+                jop.callback = callback;
+                jop.closure = closure;
+                jop.szelem = szelem;
+                rc = rp_jsonc_optarray_until(object, jsonc_optarray_process_cb, &jop);
+                if (rc < 0) {
+                        free(jop.array);
+                        jop.array = NULL;
+                }
+        }
+        *result = jop.array;
+        return rc;
+}
+
 
 static int read_one_command_config(sandBoxT *sandbox, shellCmdT *cmd, json_object *cmdJ)
 {
@@ -115,13 +164,19 @@ OnErrorExit:
 	return 1;
 }
 
-static int read_one_sandbox_config(spawnBindingT *spawn, sandBoxT *sandbox, json_object *sandboxJ, int forceprefix)
+struct read_one_sandbox_config_closure_s
+{
+        spawnBindingT *spawn;
+        int forceprefix;
+};
+
+static int read_one_sandbox_config(struct read_one_sandbox_config_closure_s *roscc, sandBoxT *sandbox, json_object *sandboxJ)
 {
 	int err = 0;
 	json_object *cmdsJ, *namespaceJ=NULL, *capsJ=NULL, *aclsJ=NULL, *cgroupsJ=NULL, *envsJ=NULL, *seccompJ=NULL;
 
 	sandbox->magic = MAGIC_SPAWN_SBOX;
-	sandbox->binding = spawn;
+	sandbox->binding = roscc->spawn;
 	sandbox->namespace = NULL;
 	sandbox->caps = NULL;
 	sandbox->acls = NULL;
@@ -151,7 +206,7 @@ static int read_one_sandbox_config(spawnBindingT *spawn, sandBoxT *sandbox, json
 		utilsExpandJsonDebug(); // in verbose test parsing before forking a child
 
         // force prefix if required
-        if (forceprefix && sandbox->prefix == NULL)
+        if (roscc->forceprefix && sandbox->prefix == NULL)
                 sandbox->prefix = sandbox->uid;
 
 	/* get environment */
@@ -204,25 +259,15 @@ static int read_one_sandbox_config(spawnBindingT *spawn, sandBoxT *sandbox, json
 			goto OnErrorExit;
 	}
 
-	// loop on cmds
-	if (json_object_is_type(cmdsJ, json_type_array)) {
-		int count = (int)json_object_array_length(cmdsJ);
-		sandbox->cmds= (shellCmdT*)calloc(count+1, sizeof (shellCmdT));
-
-		for (int idx = 0; idx < count; idx++) {
-			json_object *cmdJ = json_object_array_get_idx(cmdsJ, idx);
-			err = read_one_command_config(sandbox, &sandbox->cmds[idx], cmdJ);
-			if (err)
-				goto OnErrorExit;
-		}
-	}
-	else {
-		sandbox->cmds= (shellCmdT*) calloc(2, sizeof(shellCmdT));
-		err = read_one_command_config(sandbox, &sandbox->cmds[0], cmdsJ);
-		if (err)
-			goto OnErrorExit;
-	}
-
+        /* read commands */
+        err = jsonc_optarray_process(
+                (void **)&sandbox->cmds,
+                cmdsJ,
+                (int (*)(void*,void*,json_object*))read_one_command_config,
+                sandbox,
+                sizeof(*sandbox->cmds));
+        if (err)
+                goto OnErrorExit;
 	return 0;
 
 OnErrorExit:
@@ -232,82 +277,35 @@ OnErrorExit:
 	return -1;
 }
 
-static int read_sandboxes_config(spawnBindingT *spawn, json_object *configJ)
+int spawn_config_read(spawnBindingT *spawn, json_object *configJ)
 {
 	int rc;
-	unsigned sbidx, sbcnt, nncnt;
-	sandBoxT *sandboxes;
-	json_object *sandboxJ, *sandboxesJ;
+        struct read_one_sandbox_config_closure_s roscc;
+	json_object *sandboxesJ;
+        unsigned count = 1;
 
 	/* get the count of sandboxes and the first item */
 	sandboxesJ = json_object_object_get(configJ, "sandboxes");
 	switch(json_object_get_type(sandboxesJ)) {
 	case json_type_array:
-		sbcnt = (unsigned)json_object_array_length(sandboxesJ);
-		sandboxJ = sbcnt ? json_object_array_get_idx(sandboxesJ, 0) : NULL;
-		break;
+                count = (unsigned)json_object_array_length(sandboxesJ);
+                /*@fallthrough@*/
 	case json_type_object:
-		sbcnt = 1;
-		sandboxJ = sandboxesJ;
+		roscc.spawn = spawn;
+		roscc.spawn->config = configJ;
+                roscc.forceprefix = count > 1;
+                rc = jsonc_optarray_process(
+                        (void **)&roscc.spawn->sandboxes,
+                        sandboxesJ,
+                        (int (*)(void*,void*,json_object*))read_one_sandbox_config,
+                        &roscc,
+                        sizeof(*roscc.spawn->sandboxes));
 		break;
 	default:
 		AFB_NOTICE("no sandbox");
-		return 0;
+		rc = 0;
+		break;
 	}
-
-	/* allocates the sandboxes */
-       	sandboxes = (sandBoxT*) calloc(sbcnt + 1, sizeof (sandBoxT));
-	if (sandboxes == NULL) {
-		AFB_ERROR("out of memory");
-		return -1;
-	}
-
-	/* load the sandboxes */
-	for (nncnt = sbidx = rc = 0 ;;) {
-		if (sandboxJ != NULL) {
-			rc = read_one_sandbox_config(spawn, &sandboxes[nncnt], sandboxJ, sbcnt > 1);
-			nncnt += rc >= 0;
-		}
-		if (rc < 0 || ++sbidx >= sbcnt)
-			break;
-		sandboxJ = json_object_array_get_idx(sandboxesJ, sbidx);
-	}
-	if (rc >= 0) {
-               	spawn->sandboxes = sandboxes;
-		return 0;
-	}
-
-	free(sandboxes);
-	return -1;
-}
-
-int read_spawn_config(spawnBindingT **result, json_object *configJ)
-{
-	int rc;
-	spawnBindingT *spawn;
-
-	/* allocates */
- 	spawn = calloc(1, sizeof *spawn);
-	if (spawn == NULL) {
-		AFB_ERROR("out of memory");
-		rc = -1;
-        }
-	else {
-        	/* read metadata */
-		rc = ctl_metadata_read_json(&spawn->metadata, configJ);
-                if (rc >= 0)
-                        /* read sandboxes */
-                        rc = read_sandboxes_config(spawn, configJ);
-	}
-
-	/* clean or freeze */
-	if (rc == 0)
-		spawn->config = json_object_get(configJ);
-	else {
-		free(spawn);
-                spawn = NULL;
-        }
-        *result = spawn;
 
 	return rc;
 }

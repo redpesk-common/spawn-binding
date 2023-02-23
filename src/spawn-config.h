@@ -25,6 +25,6 @@
 #ifndef _SPAWN_CONFIG_INCLUDE_
 #define _SPAWN_CONFIG_INCLUDE_
 
-extern int read_spawn_config(spawnBindingT **spawn, json_object *configJ);
+extern int spawn_config_read(spawnBindingT *spawn, json_object *configJ);
 
 #endif /* _SPAWN_CONFIG_INCLUDE_ */
