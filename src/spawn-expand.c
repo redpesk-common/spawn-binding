@@ -185,27 +185,6 @@ const char *utilsExpandKeyCtx (const char* src, void *ctx) {
     return NULL;
 }
 
-
-// utilsExpandJson is call within forked process, let's keep a test instance within main process for debug purpose
-void utilsExpandJsonDebug (void) {
-    const char *response;
-
-    json_object *tokenJ1= json_tokener_parse("{'dirname':'/my/test/sample'}"); assert(tokenJ1);
-    json_object *tokenJ2= json_tokener_parse("{ 'filename': '/etc/passwd' }"); assert(tokenJ2);
-
-    // should work
-    response= utilsExpandJson ("%filename%", tokenJ2);    assert(response);
-    response= utilsExpandJson ("--%dirname%--", tokenJ1);    assert(response);
-    response= utilsExpandJson ("--%dirname%--", tokenJ1);   assert(response);
-    response= utilsExpandJson ("--notexpanded=%%dirname%% expanded=%dirname%", tokenJ1);  assert(response);
-    response= utilsExpandJson ("/home/test/fulup", tokenJ1);   assert(response);
-
-    // should fail
-    response= utilsExpandJson ("--notfound=%filename%%", tokenJ1);  assert(!response);
-
-    return (void)response; //Useless, this is just to avoid warnings
-}
-
 // replace any %key% with its coresponding json value (warning: json is case sensitive)
 const char *utilsExpandJson (const char* src, json_object *keysJ) {
     int srcIdx, destIdx=0, labelIdx, expanded=0;

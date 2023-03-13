@@ -201,10 +201,6 @@ static int read_one_sandbox_config(struct read_one_sandbox_config_closure_s *ros
 		goto OnErrorExit;
 	}
 
-	// if verbose is 5 then check string expansion works
-	if (sandbox->verbose)
-		utilsExpandJsonDebug(); // in verbose test parsing before forking a child
-
         // force prefix if required
         if (roscc->forceprefix && sandbox->prefix == NULL)
                 sandbox->prefix = sandbox->uid;
