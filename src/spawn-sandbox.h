@@ -117,7 +117,7 @@ struct sandBoxS {
 	confSeccompT *seccomp;
 	confNamespaceT *namespace;
 	void *context;
-	spawnBindingT *binding;
+	spawnApiT *binding;
 	shellCmdT *cmds;
 };
 

@@ -30,13 +30,13 @@
 // spawn-subtask.c
 void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ);
 int spawnParse (shellCmdT *cmd, json_object *execJ);
-void spawnChildUpdateStatus (afb_api_t api,  spawnBindingT *binding, taskIdT *taskId);
+void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId);
 void taskPushResponse (taskIdT *taskId);
 void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId);
 
 #if 0
 int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* context);
-int spawnChildMonitor (afb_api_t api, sd_event_io_handler_t callback, spawnBindingT *binding);
+int spawnChildMonitor (afb_api_t api, sd_event_io_handler_t callback, spawnApiT *binding);
 #endif
 
 // spawn-childexec.c

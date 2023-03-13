@@ -464,7 +464,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
             pthread_rwlock_unlock(&cmd->sem);
         }
 
-        spawnBindingT *binding= cmd->sandbox->binding;
+        spawnApiT *binding= cmd->sandbox->binding;
         if (! pthread_rwlock_wrlock(&binding->sem)) {
             HASH_ADD(gtidsHash, binding->gtids, pid, sizeof(pid_t), taskId);
             pthread_rwlock_unlock(&binding->sem);

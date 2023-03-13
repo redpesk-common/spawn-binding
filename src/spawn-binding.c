@@ -129,7 +129,7 @@ static void Infosandbox (afb_req_t request, unsigned naparam, afb_data_t const p
 {
         afb_data_t repldata;
         json_object *responseJ, *sandboxJ, *sandboxesJ;
-        spawnBindingT *spawn = (spawnBindingT*)afb_req_get_vcbdata(request);
+        spawnApiT *spawn = (spawnApiT*)afb_req_get_vcbdata(request);
         sandBoxT *sandbox = spawn->sandboxes;
 
         // loop on shell command sandboxes
@@ -230,7 +230,7 @@ static int add_verb(
 }
 
 
-static int pre_init_api_spawn(afb_api_t api, spawnBindingT *spawn)
+static int pre_init_api_spawn(afb_api_t api, spawnApiT *spawn)
 {
         shellCmdT *cmd;
 	sandBoxT *sandbox;
@@ -257,7 +257,7 @@ static int pre_init_api_spawn(afb_api_t api, spawnBindingT *spawn)
         return rc;
 }
 
-static int init_api_spawn(afb_api_t api, spawnBindingT *spawn)
+static int init_api_spawn(afb_api_t api, spawnApiT *spawn)
 {
 	int rc = ctl_set_requires(&spawn->metadata, api);
 	if (rc >= 0)
@@ -271,7 +271,7 @@ static int main_api_ctl(
 		afb_ctlarg_t ctlarg,
 		void *userdata
 ) {
-	spawnBindingT *spawn = userdata;
+	spawnApiT *spawn = userdata;
 
 	switch (ctlid)
 	{
@@ -307,7 +307,7 @@ static int main_api_ctl(
 static int process_one_config(void *closure, json_object *rootdesc)
 {
 	int rc;
-	spawnBindingT *spawn;
+	spawnApiT *spawn;
 	afb_api_t api;
 
 	/* allocates */

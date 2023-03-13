@@ -166,7 +166,7 @@ OnErrorExit:
 
 struct read_one_sandbox_config_closure_s
 {
-        spawnBindingT *spawn;
+        spawnApiT *spawn;
         int forceprefix;
 };
 
@@ -277,7 +277,7 @@ OnErrorExit:
 	return -1;
 }
 
-int spawn_config_read(spawnBindingT *spawn, json_object *configJ)
+int spawn_config_read(spawnApiT *spawn, json_object *configJ)
 {
 	int rc;
         struct read_one_sandbox_config_closure_s roscc;

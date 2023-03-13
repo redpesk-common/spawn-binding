@@ -49,8 +49,8 @@ typedef struct {
   spawnMagicT magic;
 } spawnObjectT;
 
+// 
 typedef struct {
-	spawnMagicT magic;
 	afb_api_t api;
 	taskIdT *gtids;
 	pthread_rwlock_t sem;
@@ -60,7 +60,7 @@ typedef struct {
 	ctl_actionset_t extra;
 	json_object *config;
 	sandBoxT *sandboxes;
-} spawnBindingT;
+} spawnApiT;
 
 
 

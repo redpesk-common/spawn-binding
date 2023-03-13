@@ -330,7 +330,7 @@ OnErrorExit:
 }
 
 // search taskId from child pid within global binding gtids
-static taskIdT *spawnChildGetTaskId (spawnBindingT *binding, int childPid) {
+static taskIdT *spawnChildGetTaskId (spawnApiT *binding, int childPid) {
     taskIdT *taskId = NULL;
 
     // search if PID is present within binding list
@@ -342,7 +342,7 @@ static taskIdT *spawnChildGetTaskId (spawnBindingT *binding, int childPid) {
     return taskId;
 }
 
-void spawnChildUpdateStatus (afb_api_t api,  spawnBindingT *binding, taskIdT *taskId) {
+void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId) {
     int childPid, childStatus;
     int expectPid=0; // wait for any child whose process group ID is equal to calling process
     shellCmdT *cmd;
@@ -396,7 +396,7 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnBindingT *binding, taskIdT *ta
 
 #if 0
 int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* context) {
-    spawnBindingT *binding= (spawnBindingT*)context;
+    spawnApiT *binding= (spawnApiT*)context;
     assert(binding->magic == MAGIC_SPAWN_BDING);
 
     // Ignore termination child signal outside of stdout pipe handup
@@ -407,7 +407,7 @@ int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* 
 }
 
 // register a callback to monitor sigchild events
-int spawnChildMonitor (afb_api_t api, sd_event_io_handler_t callback, spawnBindingT *binding) {
+int spawnChildMonitor (afb_api_t api, sd_event_io_handler_t callback, spawnApiT *binding) {
     sigset_t sigMask;
     afb_evfd_t efd;
 
