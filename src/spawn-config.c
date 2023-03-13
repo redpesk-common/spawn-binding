@@ -63,13 +63,13 @@ int jsonc_optarray_process(
         struct jsonc_optarray_process_s jop;
         size_t count;
 
-        count = json_object_is_type(object, json_type_array) ? (size_t)json_object_array_length(object) : 1;
+        count = json_object_is_type(object, json_type_array) ? (size_t)json_object_array_length(object) : object != NULL;
         jop.array = calloc(1 + count, szelem);
         if (jop.array == NULL) {
 		AFB_ERROR("out of memory");
                 rc = -1;
         }
-        else {
+        else if (object != NULL) {
                 jop.iter = jop.array;
                 jop.callback = callback;
                 jop.closure = closure;
@@ -182,7 +182,7 @@ static int read_one_sandbox_config(struct read_one_sandbox_config_closure_s *ros
 	sandbox->acls = NULL;
 
 	// user 'O' to force json objects not to be released
-	err = rp_jsonc_unpack(sandboxJ, "{ss,s?s,s?s,s?s,s?i,s?o,s?o,s?o,s?o,s?o,s?o,so !}"
+	err = rp_jsonc_unpack(sandboxJ, "{ss,s?s,s?s,s?s,s?i,s?o,s?o,s?o,s?o,s?o,s?o,s?o}"
 			,"uid", &sandbox->uid
 			,"info", &sandbox->info
 			,"privilege", &sandbox->privilege
