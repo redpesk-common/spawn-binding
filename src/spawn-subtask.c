@@ -278,7 +278,7 @@ int spawnParse (shellCmdT *cmd, json_object *execJ)
 		goto OnErrorExit;
 	}
 
-	cmd->cli = utilsExpandKeyCtx(cmd->cli, (void*)cmd);  // expand env $keys
+	cmd->cli = utilsExpandKeyCmd(cmd->cli, cmd);  // expand env $keys
 	if (!utilsFileModeIs(cmd->cli, S_IXUSR)) {
 		AFB_API_ERROR(cmd->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
 		goto OnErrorExit;
@@ -288,7 +288,7 @@ int spawnParse (shellCmdT *cmd, json_object *execJ)
 	if (!argsJ) {
 		cmd->argc = 2;
 		cmd->argv = calloc (cmd->argc, sizeof (char*));
-		cmd->argv[0] = utilsExpandKeyCtx(cmd->cli, (void*)cmd);
+		cmd->argv[0] = utilsExpandKeyCmd(cmd->cli, cmd);
 		if (!cmd->argv[0]) {
 			AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
 			goto OnErrorExit;
@@ -302,7 +302,7 @@ int spawnParse (shellCmdT *cmd, json_object *execJ)
 			cmd->argv[0] = cmd->uid;
 			for (idx = 1; idx < cmd->argc-1; idx++) {
 				param = json_object_get_string (json_object_array_get_idx(argsJ, idx - 1));
-				cmd->argv[idx] = utilsExpandKeyCtx(param, (void*)cmd);
+				cmd->argv[idx] = utilsExpandKeyCmd(param, cmd);
 				if (!cmd->argv[idx]) {
 					AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, param);
 					goto OnErrorExit;
@@ -315,7 +315,7 @@ int spawnParse (shellCmdT *cmd, json_object *execJ)
 			cmd->argc = 3;
 			cmd->argv = calloc(cmd->argc, sizeof (char*));
 			cmd->argv[0] = cmd->uid;
-			cmd->argv[1] = utilsExpandKeyCtx(param, (void*)cmd);
+			cmd->argv[1] = utilsExpandKeyCmd(param, cmd);
 			if (!cmd->argv[1]) {
 				AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->cli, param);
 				goto OnErrorExit;

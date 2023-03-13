@@ -39,6 +39,7 @@ PROJECT_TARGET_ADD(spawn)
                 spawn-encoders-plugins.h
                 spawn-enums.h
                 spawn-expand.h
+                spawn-expand-defs.h
                 spawn-sandbox.h
                 spawn-subtask.h
                 spawn-subtask-internal.h

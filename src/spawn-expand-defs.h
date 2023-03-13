@@ -22,16 +22,22 @@
 */
 
 
-#ifndef _SPAWN_EXPAND_INCLUDE_
-#define _SPAWN_EXPAND_INCLUDE_
+#ifndef _SPAWN_EXPAND_DEFS_INCLUDE_
+#define _SPAWN_EXPAND_DEFS_INCLUDE_
 
-#include <json-c/json.h>
+typedef enum {
+    SPAWN_MEM_STATIC = 0,
+    SPAWN_MEM_DYNAMIC,
+} spawnMemDefaultsE;
 
-#include "spawn-sandbox.h"
+typedef char*(*spawnGetDefaultCbT)(const char *label, void *ctx, void *userdata);
+typedef struct {
+    const char *label;
+    spawnGetDefaultCbT callback;
+    spawnMemDefaultsE  allocation;
+    void *ctx;
+} spawnDefaultsT;
 
-const char *utilsExpandKeySandbox (const char* src, sandBoxT *sandbox);
-const char *utilsExpandKeyCmd (const char* src, shellCmdT *cmd);
-const char* utilsExpandKey (const char* inputString);
-const char* utilsExpandJson (const char* src, json_object *keysJ);
+extern spawnDefaultsT spawnVarDefaults[];
 
-#endif /* _SPAWN_EXPAND_INCLUDE_ */
+#endif /* _SPAWN_EXPAND_DEFS_INCLUDE_ */

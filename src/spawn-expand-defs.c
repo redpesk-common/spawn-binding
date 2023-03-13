@@ -35,9 +35,10 @@
 
 // we need AFB definition to access binder config API
 #include <afb/afb-binding.h>
+#include "spawn-sandbox.h"
 
 #include "spawn-expand.h"
-#include "spawn-sandbox.h"
+#include "spawn-expand-defs.h"
 
 
 static char*GetEnviron(const char *label, void *dflt, void *userdata) {

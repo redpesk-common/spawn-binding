@@ -38,6 +38,7 @@
 
 #include "spawn-defaults.h"
 #include "spawn-expand.h"
+#include "spawn-expand-defs.h"
 
 
 // Extract $KeyName and replace with $Key Env or default Value
@@ -166,23 +167,23 @@ const char *utilsExpandString (spawnDefaultsT *defaults, const char* inputS, con
 }
 
 // default basic string expansion
-const char *utilsExpandKey (const char* src) {
-    if (!src) goto OnErrorExit;
-    const char *outputString= utilsExpandString (spawnVarDefaults, src, NULL, NULL, NULL);
-    return outputString;
-
-  OnErrorExit:
-    return NULL;
+static const char *utilsExpandKeyCtx (const char* src, void *ctx) {
+    return src ? utilsExpandString (spawnVarDefaults, src, NULL, NULL, ctx) : NULL;
 }
 
 // default basic string expansion
-const char *utilsExpandKeyCtx (const char* src, void *ctx) {
-    if (!src) goto OnErrorExit;
-    const char *outputString= utilsExpandString (spawnVarDefaults, src, NULL, NULL, ctx);
-    return outputString;
+const char *utilsExpandKey (const char* src) {
+    return utilsExpandKeyCtx(src, NULL);
+}
 
-  OnErrorExit:
-    return NULL;
+const char *utilsExpandKeySandbox (const char* src, sandBoxT *sandbox)
+{
+	return utilsExpandKeyCtx (src, sandbox);
+}
+
+const char *utilsExpandKeyCmd (const char* src, shellCmdT *cmd)
+{
+	return utilsExpandKeyCtx (src, cmd);
 }
 
 // replace any %key% with its coresponding json value (warning: json is case sensitive)

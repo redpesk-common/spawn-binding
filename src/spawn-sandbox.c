@@ -118,7 +118,7 @@ static int nsParseOneMount (sandBoxT *sandbox, json_object *mountJ, confMountT *
 
     // if source is defined try to expand $KEY
     if (mount->source) {
-        mount->source= utilsExpandKeyCtx(mount->source, (void*)sandbox);
+        mount->source= utilsExpandKeySandbox(mount->source, sandbox);
         if (!mount->source) goto OnErrorExit;
     }
 
@@ -578,7 +578,7 @@ confSeccompT *sandboxParseSecRules(sandBoxT *sandbox, json_object *seccompJ) {
     }
 
     if (seccomp->rulespath) {
-        const char*rulespath= utilsExpandKeyCtx(seccomp->rulespath, (void*)sandbox); // expand keys
+        const char*rulespath = utilsExpandKeySandbox(seccomp->rulespath, sandbox); // expand keys
         if (!rulespath) {
             AFB_ERROR("[expand-fail-$ENV-key] sandbox='%s' rulepath='%s'", sandbox->uid, seccomp->rulespath);
             goto OnErrorExit;

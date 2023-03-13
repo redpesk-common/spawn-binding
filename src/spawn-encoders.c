@@ -676,8 +676,8 @@ static int encoderInitLog (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
         }
 
         // if decicate log file are given open them now
-        if (fileout) opts->fileout= fopen (utilsExpandKeyCtx(fileout, cmd), "a");
-        if (fileerr) opts->fileerr= fopen (utilsExpandKeyCtx(fileerr,cmd), "a");
+        if (fileout) opts->fileout= fopen (utilsExpandKeyCmd(fileout, cmd), "a");
+        if (fileerr) opts->fileerr= fopen (utilsExpandKeyCmd(fileerr, cmd), "a");
         if (!opts->fileout || !opts->fileerr) {
             AFB_API_ERROR(cmd->api, "[invalid logfile] sandbox=%s cmd=%s opts=%s err=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ), strerror(errno));
             goto OnErrorExit;
