@@ -23,29 +23,18 @@
 
 #define _GNU_SOURCE
 
-#include <errno.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <ctype.h>
-#include <seccomp.h>        // high level api
-#include <linux/seccomp.h>  // low level api
-#include <linux/filter.h>
-#include <sys/prctl.h>
 #include <assert.h>
-#include <strings.h>
-#include <stdio.h>
 #include <pthread.h>
 #include <signal.h>
+#include <sys/wait.h>
 
+#include <afb/afb-binding.h>
 #include <rp-utils/rp-jsonc.h>
 #include <afb-helpers4/afb-data-utils.h>
 #include <afb-helpers4/afb-req-utils.h>
 
 #include "spawn-binding.h"
-#include "spawn-expand.h"
 #include "spawn-utils.h"
-#include "spawn-enums.h"
 #include "spawn-sandbox.h"
 #include "spawn-subtask.h"
 #include "spawn-subtask-internal.h"
@@ -80,19 +69,19 @@ void taskPushResponse (taskIdT *taskId) {
         }
         else {
 	    afb_data_t data = afb_data_json_c_hold(taskId->responseJ);
-	    count= afb_event_push(taskId->event, 1, &data);
+	    count = afb_event_push(taskId->event, 1, &data);
 	}
-        taskId->responseJ=NULL;
-        taskId->statusJ=NULL;
-        taskId->errorJ=NULL;
-        if (!count && taskId->verbose >4) AFB_API_NOTICE(taskId->cmd->api, "uid='%s' no client listening",  taskId->uid);
+        taskId->responseJ = NULL;
+        taskId->statusJ = NULL;
+        taskId->errorJ = NULL;
+        if (!count && taskId->verbose > 4)
+	    AFB_API_NOTICE(taskId->cmd->api, "uid='%s' no client listening",  taskId->uid);
     }
 }
 
 extern void end_timeout_monitor(taskIdT *taskId);
 
 void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
-    assert (taskId->magic == MAGIC_SPAWN_TASKID);
 
     // mark taskId as invalid
     taskId->pid=0;
@@ -114,12 +103,14 @@ static void taskPushFinalResponse (taskIdT *taskId) {
     shellCmdT *cmd=taskId->cmd;
 
     // try to read any remaining data before building exit status
-    if (taskId->verbose >2) AFB_API_INFO (taskId->cmd->api, "taskPushFinalResponse: uid=%s pid=%d [step-1: collect remaining data]", taskId->uid, taskId->pid);
+    if (taskId->verbose > 2)
+        AFB_API_INFO (taskId->cmd->api, "taskPushFinalResponse: uid=%s pid=%d [step-1: collect remaining data]", taskId->uid, taskId->pid);
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDERR, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
 
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STOP, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
-    if (taskId->verbose >2) AFB_API_INFO (taskId->cmd->api, "taskPushFinalResponse: uid=%s pid=%d [step-2: collect child status=%s]", taskId->uid, taskId->pid, json_object_get_string(taskId->statusJ));
+    if (taskId->verbose > 2)
+        AFB_API_INFO (taskId->cmd->api, "taskPushFinalResponse: uid=%s pid=%d [step-2: collect child status=%s]", taskId->uid, taskId->pid, json_object_get_string(taskId->statusJ));
 
     taskPushResponse (taskId);
     spawnFreeTaskId(cmd->api, taskId);
@@ -127,7 +118,6 @@ static void taskPushFinalResponse (taskIdT *taskId) {
 
 
 static int taskCtrlOne (afb_req_t request, taskIdT *taskId, taskActionE action, int signal, json_object **responseJ) {
-    assert (taskId->magic == MAGIC_SPAWN_TASKID);
     int err;
 
     if (taskId->verbose>1) AFB_REQ_INFO (request, "taskCtrlOne: sandbox=%s cmd=%s pid=%d action=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid, action);
@@ -263,72 +253,6 @@ OnErrorExit:
     return;
 }
 
-/**
-*/
-int spawnParse (shellCmdT *cmd, json_object *execJ)
-{
-	int idx, err;
-	json_object *argsJ = NULL;
-	const char*param;
-
-	/* get the command and its arguments */
-	err = rp_jsonc_unpack(execJ, "{ss s?o !}", "cmdpath", &cmd->cli, "args", &argsJ);
-	if (err) {
-		AFB_API_ERROR(cmd->api, "[fail-parsing] cmdpath sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
-		goto OnErrorExit;
-	}
-
-	cmd->cli = utilsExpandKeyCmd(cmd->cli, cmd);  // expand env $keys
-	if (!utilsFileModeIs(cmd->cli, S_IXUSR)) {
-		AFB_API_ERROR(cmd->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
-		goto OnErrorExit;
-	}
-
-	// prepare arguments list, they will still need to be expanded before execution
-	if (!argsJ) {
-		cmd->argc = 2;
-		cmd->argv = calloc (cmd->argc, sizeof (char*));
-		cmd->argv[0] = utilsExpandKeyCmd(cmd->cli, cmd);
-		if (!cmd->argv[0]) {
-			AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
-			goto OnErrorExit;
-		}
-	}
-	else {
-		switch (json_object_get_type(argsJ)) {
-		case json_type_array:
-			cmd->argc = (int)json_object_array_length(argsJ) + 2;
-			cmd->argv = calloc (cmd->argc, sizeof (char*));
-			cmd->argv[0] = cmd->uid;
-			for (idx = 1; idx < cmd->argc-1; idx++) {
-				param = json_object_get_string (json_object_array_get_idx(argsJ, idx - 1));
-				cmd->argv[idx] = utilsExpandKeyCmd(param, cmd);
-				if (!cmd->argv[idx]) {
-					AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, param);
-					goto OnErrorExit;
-				}
-			}
-			break;
-
-		default:
-			param = json_object_get_string (argsJ);
-			cmd->argc = 3;
-			cmd->argv = calloc(cmd->argc, sizeof (char*));
-			cmd->argv[0] = cmd->uid;
-			cmd->argv[1] = utilsExpandKeyCmd(param, cmd);
-			if (!cmd->argv[1]) {
-				AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->cli, param);
-				goto OnErrorExit;
-			}
-			break;
-		}
-	}
-	return 0;
-
-OnErrorExit:
-	return 1;
-}
-
 // search taskId from child pid within global binding gtids
 static taskIdT *spawnChildGetTaskId (spawnApiT *binding, int childPid) {
     taskIdT *taskId = NULL;
@@ -338,7 +262,6 @@ static taskIdT *spawnChildGetTaskId (spawnApiT *binding, int childPid) {
         HASH_FIND (gtidsHash, binding->gtids, &childPid, sizeof(int), taskId);
         pthread_rwlock_unlock(&binding->sem);
     }
-    assert (taskId->magic == MAGIC_SPAWN_TASKID);
     return taskId;
 }
 
@@ -352,27 +275,28 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId
 
     // we known what we're looking for
     if (taskId) {
-        if (taskId->verbose >2) AFB_API_INFO (api, "spawnChildUpdateStatus: uid=%s pid=%d [step-1 wait sigchild]", taskId->uid, taskId->pid);
-        expectPid=taskId->pid;
+        if (taskId->verbose > 2)
+            AFB_API_INFO (api, "spawnChildUpdateStatus: uid=%s pid=%d [step-1 wait sigchild]", taskId->uid, taskId->pid);
+        expectPid = taskId->pid;
     }
 
     // retreive every child status as many child may share the same signal
     while ((childPid = waitpid (expectPid, &childStatus, 0 /* Fulup removed WNOHANG ??? */)) > 0) {
 
-        // anonymous childs signal should be check agains global binding taskid
-        if (!taskId) taskId= spawnChildGetTaskId (binding, childPid);
-
+        // anonymous childs signal should be check against global binding taskid
+        if (!taskId)
+		taskId= spawnChildGetTaskId (binding, childPid);
         if (!taskId) {
             AFB_API_NOTICE(api, "[sigchild-unknown] igoring childPid=%d exit status=%d (spawnChildUpdateStatus)", childPid, childStatus);
             continue;
         }
+
         // remove task from both global & cmd tids
-        cmd=taskId->cmd;
+        cmd = taskId->cmd;
         if (! pthread_rwlock_wrlock(&cmd->sem)) {
             HASH_DELETE(tidsHash, cmd->tids, taskId);
             pthread_rwlock_unlock(&cmd->sem);
         }
-
         if (! pthread_rwlock_wrlock(&binding->sem)) {
             HASH_DELETE(gtidsHash, binding->gtids, taskId);
             pthread_rwlock_unlock(&binding->sem);
@@ -388,7 +312,8 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId
         }
 
         // push final respond to every taskId subscriber
-        if (taskId->verbose >2) AFB_API_INFO (api, "spawnChildUpdateStatus: uid=%s pid=%d [step-2 got sigchild status=%d]", taskId->uid, taskId->pid, childStatus);
+        if (taskId->verbose > 2)
+            AFB_API_INFO (api, "spawnChildUpdateStatus: uid=%s pid=%d [step-2 got sigchild status=%d]", taskId->uid, taskId->pid, childStatus);
         taskPushFinalResponse (taskId);
 
     } // end while
@@ -397,7 +322,6 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId
 #if 0
 int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* context) {
     spawnApiT *binding= (spawnApiT*)context;
-    assert(binding->magic == MAGIC_SPAWN_BDING);
 
     // Ignore termination child signal outside of stdout pipe handup
     /* if (binding->verbose >2) */ AFB_API_NOTICE(binding->api, "[child-gtids-signal] (spawnChildSignalCB)");

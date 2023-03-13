@@ -26,5 +26,6 @@
 #define _SPAWN_CONFIG_INCLUDE_
 
 extern int spawn_config_read(spawnApiT *spawn, json_object *configJ);
+extern int spawn_config_read_one_command(sandBoxT *sandbox, shellCmdT *cmd, json_object *cmdJ);
 
 #endif /* _SPAWN_CONFIG_INCLUDE_ */

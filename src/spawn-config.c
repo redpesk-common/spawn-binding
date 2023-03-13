@@ -32,8 +32,8 @@
 #include "spawn-config.h"
 #include "spawn-sandbox.h"
 #include "spawn-subtask.h"
-#include "spawn-utils.h"
 #include "spawn-expand.h"
+#include "spawn-utils.h"
 
 struct jsonc_optarray_process_s
 {
@@ -84,8 +84,73 @@ int jsonc_optarray_process(
         return rc;
 }
 
+/**
+*/
+static int parse_prepare_command (shellCmdT *cmd, json_object *execJ)
+{
+	int idx, err;
+	json_object *argsJ = NULL;
+	const char*param;
 
-static int read_one_command_config(sandBoxT *sandbox, shellCmdT *cmd, json_object *cmdJ)
+	/* get the command and its arguments */
+	err = rp_jsonc_unpack(execJ, "{ss s?o !}", "cmdpath", &cmd->cli, "args", &argsJ);
+	if (err) {
+		AFB_API_ERROR(cmd->api, "[fail-parsing] cmdpath sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
+		goto OnErrorExit;
+	}
+
+	cmd->cli = utilsExpandKeyCmd(cmd->cli, cmd);  // expand env $keys
+	if (access(cmd->cli, X_OK|R_OK)) {
+		AFB_API_ERROR(cmd->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
+		goto OnErrorExit;
+	}
+
+	// prepare arguments list, they will still need to be expanded before execution
+	if (!argsJ) {
+		cmd->argc = 2;
+		cmd->argv = calloc (cmd->argc, sizeof (char*));
+		cmd->argv[0] = utilsExpandKeyCmd(cmd->cli, cmd);
+		if (!cmd->argv[0]) {
+			AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
+			goto OnErrorExit;
+		}
+	}
+	else {
+		switch (json_object_get_type(argsJ)) {
+		case json_type_array:
+			cmd->argc = (int)json_object_array_length(argsJ) + 2;
+			cmd->argv = calloc (cmd->argc, sizeof (char*));
+			cmd->argv[0] = cmd->uid;
+			for (idx = 1; idx < cmd->argc-1; idx++) {
+				param = json_object_get_string (json_object_array_get_idx(argsJ, idx - 1));
+				cmd->argv[idx] = utilsExpandKeyCmd(param, cmd);
+				if (!cmd->argv[idx]) {
+					AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, param);
+					goto OnErrorExit;
+				}
+			}
+			break;
+
+		default:
+			param = json_object_get_string (argsJ);
+			cmd->argc = 3;
+			cmd->argv = calloc(cmd->argc, sizeof (char*));
+			cmd->argv[0] = cmd->uid;
+			cmd->argv[1] = utilsExpandKeyCmd(param, cmd);
+			if (!cmd->argv[1]) {
+				AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->cli, param);
+				goto OnErrorExit;
+			}
+			break;
+		}
+	}
+	return 0;
+
+OnErrorExit:
+	return 1;
+}
+
+int spawn_config_read_one_command(sandBoxT *sandbox, shellCmdT *cmd, json_object *cmdJ)
 {
 	int err = 0;
 	const char *privilege = NULL;
@@ -140,7 +205,7 @@ static int read_one_command_config(sandBoxT *sandbox, shellCmdT *cmd, json_objec
 		cmd->timeout = sandbox->acls->timeout;
 
 	// pre-parse command to boost runtime execution
-	err = spawnParse (cmd, execJ);
+	err = parse_prepare_command (cmd, execJ);
 	if (err)
 		goto OnErrorExit;
 
@@ -259,7 +324,7 @@ static int read_one_sandbox_config(struct read_one_sandbox_config_closure_s *ros
         err = jsonc_optarray_process(
                 (void **)&sandbox->cmds,
                 cmdsJ,
-                (int (*)(void*,void*,json_object*))read_one_command_config,
+                (int (*)(void*,void*,json_object*))spawn_config_read_one_command,
                 sandbox,
                 sizeof(*sandbox->cmds));
         if (err)
