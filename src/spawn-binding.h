@@ -49,18 +49,36 @@ typedef struct {
   spawnMagicT magic;
 } spawnObjectT;
 
-// 
+/**
+* structure holding one api
+*/
 typedef struct {
+	/** the API */
 	afb_api_t api;
+
 	taskIdT *gtids;
+
 	pthread_rwlock_t sem;
+
+	/** meta data from controller */
 	ctl_metadata_t metadata;
+
+	/** on-start controller actions */
 	ctl_actionset_t onstart;
+
+	/** on-events controller actions */
 	ctl_actionset_t onevent;
+
+	/** extra verbs of controller actions */
 	ctl_actionset_t extra;
+
+	/** holder for the configuration */
 	json_object *config;
+
+	/** the sandboxes*/
 	sandBoxT *sandboxes;
-} spawnApiT;
+}
+	spawnApiT;
 
 
 
