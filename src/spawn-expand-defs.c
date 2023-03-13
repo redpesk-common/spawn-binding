@@ -40,8 +40,13 @@
 #include "spawn-expand.h"
 #include "spawn-expand-defs.h"
 
+enum what_is_wanted {
+    WANT_SANDBOX_UID,
+    WANT_COMMAND_UID,
+    WANT_API_NAME,
+};
 
-static char*GetEnviron(const char *label, void *dflt, void *userdata) {
+static char*GetEnviron(const char *label, void *dflt, spawnExpandSpecificT *specific) {
     const char*key= dflt;
     const char*value;
 
@@ -58,7 +63,7 @@ static char*GetEnviron(const char *label, void *dflt, void *userdata) {
     return (char*)value;
 }
 
-static char*GetUuidString(const char *label, void *dflt, void *userdata) {
+static char*GetUuidString(const char *label, void *dflt, spawnExpandSpecificT *specific) {
     char *uuid = malloc(37);
     uuid_t binuuid;
 
@@ -67,7 +72,7 @@ static char*GetUuidString(const char *label, void *dflt, void *userdata) {
     return uuid;
 }
 
-static char*GetDateString(const char *label, void *dflt, void *userdata) {
+static char*GetDateString(const char *label, void *dflt, spawnExpandSpecificT *specific) {
     #define MAX_DATE_LEN 80
     time_t now= time(NULL);
     char *date= malloc(MAX_DATE_LEN);
@@ -77,93 +82,82 @@ static char*GetDateString(const char *label, void *dflt, void *userdata) {
     return date;
 }
 
-static char*GetUid(const char *label, void *dflt, void *userdata) {
+static char*GetUid(const char *label, void *dflt, spawnExpandSpecificT *specific) {
     char string[10];
     uid_t uid= getuid();
     snprintf (string, sizeof(string), "%d",uid);
     return strdup(string);
 }
 
-static char*GetGid(const char *label, void *dflt, void *userdata) {
+static char*GetGid(const char *label, void *dflt, spawnExpandSpecificT *specific) {
     char string[10];
     gid_t gid= getgid();
     snprintf (string, sizeof(string), "%d",gid);
     return strdup(string);
 }
 
-static char*GetPid(const char *label, void *dflt, void *userdata) {
+static char*GetPid(const char *label, void *dflt, spawnExpandSpecificT *specific) {
     char string[10];
     pid_t pid= getpid();
     snprintf (string, sizeof(string), "%d",pid);
     return strdup(string);
 }
 
-static char*GetBindingRoot(const char *label, void *dflt, void *userdata) {
+static char*GetBindingRoot(const char *label, void *dflt, spawnExpandSpecificT *specific) {
     const char *rootdir= getenv("AFB_ROOTDIR") ?: ".";
     return (char*)rootdir;
 }
 
-static char*GetBindingSettings(const char *label, void *dflt, void *userdata) {
+static char*GetBindingSettings(const char *label, void *dflt, spawnExpandSpecificT *specific) {
     json_object *settings= afb_api_settings(afbBindingRoot);
     const char *value= json_object_get_string(settings);
     return (char*)value;
 }
 
-static char*GetObjectUid(const char *label, void *ctx, void *userdata) {
-    spawnMagicT request= (spawnMagicT)  ctx;
-    spawnObjectT *data= (spawnObjectT*) userdata;
-    if (!data) return NULL;
-    switch (data->magic) {
-        case MAGIC_SPAWN_SBOX: {
-            sandBoxT *sandbox= (sandBoxT*) userdata;
+static char*GetObjectUid(const char *label, void *ctx, spawnExpandSpecificT *specific) {
+    enum what_is_wanted request= (enum what_is_wanted)(intptr_t)ctx;
+    if (specific) {
+        switch (specific->type) {
+        case expand_sandbox:
             switch (request) {
-                case  MAGIC_SPAWN_SBOX:
-                    return (char*)(sandbox->uid);
-                    break;
-                case  MAGIC_SPAWN_BDING:
-                    return (char*)(afb_api_name(sandbox->binding->api));
-                    break;
-                default:
-                    return NULL;
+            case  WANT_SANDBOX_UID:
+                return (char*)(specific->value.sandbox->uid);
+            case  WANT_API_NAME:
+                return (char*)(afb_api_name(specific->value.sandbox->binding->api));
+            default:
+                break;
             }
             break;
-        }
-        case MAGIC_SPAWN_CMD: {
-            shellCmdT *cmd =(shellCmdT*)userdata;
+        case expand_cmd:
             switch (request) {
-                case  MAGIC_SPAWN_CMD:
-                    return (char*)(cmd->uid);
-                    break;
-                case  MAGIC_SPAWN_SBOX:
-                    return (char*)(cmd->sandbox->uid);
-                    break;
-                case  MAGIC_SPAWN_BDING:
-                    return (char*)(afb_api_name(cmd->api));
-                    break;
-                default:
-                    return NULL;
+            case  WANT_COMMAND_UID:
+                return (char*)(specific->value.cmd->uid);
+            case  WANT_SANDBOX_UID:
+                return (char*)(specific->value.cmd->sandbox->uid);
+            case  WANT_API_NAME:
+                return (char*)(afb_api_name(specific->value.cmd->api));
+            default:
+                break;
             }
             break;
-        }
         default:
-            return NULL;
+            break;
+        }
     }
     return NULL;
 }
 
-
 // return user id as defined within sandbox
-static char*GetSandBoxUser(const char *label, void *dflt, void *userdata) {
-    sandBoxT *sandbox= (sandBoxT*) userdata;
-    if (sandbox->magic != MAGIC_SPAWN_SBOX || !sandbox->acls) return NULL;
-
+static char*GetSandBoxUser(const char *label, void *dflt, spawnExpandSpecificT *specific) {
     char string[10];
-    snprintf (string, sizeof(string), "%d", sandbox->acls->uid);
+    if (!specific || specific->type != expand_sandbox || !specific->value.sandbox->acls)
+        return NULL;
+    snprintf (string, sizeof(string), "%d", specific->value.sandbox->acls->uid);
     return strdup(string);
 }
 
 // check if system file exit in /sbin otherwise prefix '/sbin' with '/usr'
-static char*SelectSbinPath(const char *label, void *dflt, void *userdata) {
+static char*SelectSbinPath(const char *label, void *dflt, spawnExpandSpecificT *specific) {
     const char *filepath = (const char*) dflt;
     struct stat statbuf;
     int err = lstat(filepath, &statbuf);
@@ -177,7 +171,7 @@ static char*SelectSbinPath(const char *label, void *dflt, void *userdata) {
     return "/sbin";
 }
 
-static char*GetBinderMidName(const char *label, void *dflt, void *userdata) {
+static char*GetBinderMidName(const char *label, void *dflt, spawnExpandSpecificT *specific) {
     const char *rootdir = getenv("AFB_NAME") ?: "spawn-binding";
     return (char*)rootdir;
 }
@@ -193,9 +187,9 @@ spawnDefaultsT spawnVarDefaults[]= {
     {"AFB_CONFIG"     , GetBindingSettings, SPAWN_MEM_STATIC, NULL},
     {"AFB_NAME"       , GetBinderMidName, SPAWN_MEM_STATIC, NULL},
 
-    {"SANDBOX_UID"    , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_SBOX},
-    {"COMMAND_UID"    , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_CMD},
-    {"API_NAME"       , GetObjectUid, SPAWN_MEM_STATIC, (void*)MAGIC_SPAWN_BDING},
+    {"SANDBOX_UID"    , GetObjectUid, SPAWN_MEM_STATIC, (void*)(intptr_t)WANT_SANDBOX_UID},
+    {"COMMAND_UID"    , GetObjectUid, SPAWN_MEM_STATIC, (void*)(intptr_t)WANT_COMMAND_UID},
+    {"API_NAME"       , GetObjectUid, SPAWN_MEM_STATIC, (void*)(intptr_t)WANT_API_NAME},
 
     {"SBINDIR"        , SelectSbinPath, SPAWN_MEM_STATIC, "/sbin/mkfs"},
 
@@ -206,5 +200,5 @@ spawnDefaultsT spawnVarDefaults[]= {
     {"TODAY"          , GetDateString, SPAWN_MEM_DYNAMIC, NULL},
     {"UUID"           , GetUuidString, SPAWN_MEM_DYNAMIC, NULL},
 
-    {NULL, GetEnviron, SPAWN_MEM_STATIC, NULL} /* sentinel and default callback */
+    {NULL             , GetEnviron, SPAWN_MEM_STATIC, NULL} /* sentinel and default callback */
 };

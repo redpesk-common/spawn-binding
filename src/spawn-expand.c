@@ -42,7 +42,7 @@
 
 
 // Extract $KeyName and replace with $Key Env or default Value
-static int utilExpandEnvKey (spawnDefaultsT *defaults, int *idxIn, const char *inputS, int *idxOut, char *outputS, int maxlen, void *userdata) {
+static int utilExpandEnvKey (spawnDefaultsT *defaults, int *idxIn, const char *inputS, int *idxOut, char *outputS, int maxlen, spawnExpandSpecificT *specific) {
     char envkey[SPAWN_MAX_ARG_LABEL];
     char *envval=NULL;
     int index;
@@ -64,7 +64,7 @@ static int utilExpandEnvKey (spawnDefaultsT *defaults, int *idxIn, const char *i
     // Search for a default key
     for (index=0; defaults[index].label; index++) {
         if (!strcmp (envkey, defaults[index].label)) {
-            envval = (*(spawnGetDefaultCbT)defaults[index].callback) (defaults[index].label, defaults[index].ctx, userdata);
+            envval = defaults[index].callback(defaults[index].label, defaults[index].ctx, specific);
             if (!envval) goto OnErrorExit;
             for (int jdx=0; envval[jdx]; jdx++) {
                 if (*idxOut >= maxlen) goto OnErrorExit;
@@ -76,7 +76,7 @@ static int utilExpandEnvKey (spawnDefaultsT *defaults, int *idxIn, const char *i
 
     // if label was not found but default callback is defined Warning default should use static memory
     if (!envval && defaults[index].callback) {
-        envval = (*(spawnGetDefaultCbT)defaults[index].callback) (defaults[index].label, defaults[index].ctx, userdata);
+        envval = defaults[index].callback(defaults[index].label, defaults[index].ctx, specific);
         if (envval) {
             for (int jdx=0; envval[jdx]; jdx++) {
                 if (*idxOut >= maxlen) goto OnErrorExit;
@@ -115,7 +115,7 @@ OnErrorExit:
     }
 }
 
-const char *utilsExpandString (spawnDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer, void *userdata) {
+const char *utilsExpandString (spawnDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer, spawnExpandSpecificT *specific) {
     int count=0, idxIn, idxOut=0;
     char outputS[SPAWN_MAX_ARG_LEN];
     int err;
@@ -137,7 +137,7 @@ const char *utilsExpandString (spawnDefaultsT *defaults, const char* inputS, con
 
         } else {
             if (count == SPAWN_MAX_ARG_LABEL) goto OnErrorExit;
-            err=utilExpandEnvKey (defaults, &idxIn, inputS, &idxOut, outputS, SPAWN_MAX_ARG_LEN, userdata);
+            err = utilExpandEnvKey (defaults, &idxIn, inputS, &idxOut, outputS, SPAWN_MAX_ARG_LEN, specific);
             if (err) {
                 fprintf (stderr, "ERROR: [utilsExpandString] ==> %s <== (check xxxx-defaults.c)\n", outputS);
                 goto OnErrorExit;
@@ -178,12 +178,14 @@ const char *utilsExpandKey (const char* src) {
 
 const char *utilsExpandKeySandbox (const char* src, sandBoxT *sandbox)
 {
-	return utilsExpandKeyCtx (src, sandbox);
+	spawnExpandSpecificT specific = { .type = expand_sandbox, .value = { .sandbox = sandbox }};
+	return utilsExpandKeyCtx (src, &specific);
 }
 
 const char *utilsExpandKeyCmd (const char* src, shellCmdT *cmd)
 {
-	return utilsExpandKeyCtx (src, cmd);
+	spawnExpandSpecificT specific = { .type = expand_cmd, .value = { .cmd = cmd }};
+	return utilsExpandKeyCtx (src, &specific);
 }
 
 // replace any %key% with its coresponding json value (warning: json is case sensitive)
