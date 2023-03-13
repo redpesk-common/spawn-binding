@@ -31,7 +31,7 @@
 void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ);
 void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId);
 void taskPushResponse (taskIdT *taskId);
-void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId);
+void spawnFreeTaskId  (taskIdT *taskId);
 
 #if 0
 int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* context);

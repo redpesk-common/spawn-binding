@@ -81,7 +81,25 @@ void taskPushResponse (taskIdT *taskId) {
 
 extern void end_timeout_monitor(taskIdT *taskId);
 
-void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
+void spawnFreeTaskId  (taskIdT *taskId) {
+
+    taskIdT *t;
+    shellCmdT *cmd = taskId->cmd;
+    spawnApiT *binding = cmd ? cmd->sandbox->binding : NULL;
+
+    if (binding && !pthread_rwlock_wrlock(&binding->sem)) {
+        HASH_FIND(gtidsHash, binding->gtids, &taskId->pid, sizeof(int), t);
+        if (t == taskId)
+            HASH_DELETE(gtidsHash, binding->gtids, taskId);
+        pthread_rwlock_unlock(&binding->sem);
+    }
+
+    if (cmd && !pthread_rwlock_wrlock(&cmd->sem)) {
+        HASH_FIND(tidsHash, cmd->tids, &taskId->pid, sizeof(int), t);
+        if (t == taskId)
+            HASH_DELETE(tidsHash, cmd->tids, taskId);
+        pthread_rwlock_unlock(&cmd->sem);
+    }
 
     // mark taskId as invalid
     taskId->pid=0;
@@ -95,7 +113,8 @@ void spawnFreeTaskId  (afb_api_t api, taskIdT *taskId) {
     // TimerEvtStop stop+free timer handle
     end_timeout_monitor(taskId);
 
-    if (taskId->uid) free(taskId->uid);
+    if (taskId->uid)
+        free(taskId->uid);
     free(taskId);
 }
 
@@ -113,7 +132,7 @@ static void taskPushFinalResponse (taskIdT *taskId) {
         AFB_API_INFO (taskId->cmd->api, "taskPushFinalResponse: uid=%s pid=%d [step-2: collect child status=%s]", taskId->uid, taskId->pid, json_object_get_string(taskId->statusJ));
 
     taskPushResponse (taskId);
-    spawnFreeTaskId(cmd->api, taskId);
+    spawnFreeTaskId(taskId);
 }
 
 
@@ -268,7 +287,6 @@ static taskIdT *spawnChildGetTaskId (spawnApiT *binding, int childPid) {
 void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId) {
     int childPid, childStatus;
     int expectPid=0; // wait for any child whose process group ID is equal to calling process
-    shellCmdT *cmd;
 
     // taskId status was already collected
     if (taskId && !taskId->pid) return;
@@ -289,17 +307,6 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId
         if (!taskId) {
             AFB_API_NOTICE(api, "[sigchild-unknown] igoring childPid=%d exit status=%d (spawnChildUpdateStatus)", childPid, childStatus);
             continue;
-        }
-
-        // remove task from both global & cmd tids
-        cmd = taskId->cmd;
-        if (! pthread_rwlock_wrlock(&cmd->sem)) {
-            HASH_DELETE(tidsHash, cmd->tids, taskId);
-            pthread_rwlock_unlock(&cmd->sem);
-        }
-        if (! pthread_rwlock_wrlock(&binding->sem)) {
-            HASH_DELETE(gtidsHash, binding->gtids, taskId);
-            pthread_rwlock_unlock(&binding->sem);
         }
 
         // update child taskId status

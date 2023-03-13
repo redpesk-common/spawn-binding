@@ -248,7 +248,8 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         if(asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid)<0){
             goto OnErrorExit;
         }
-        if (verbose) AFB_API_NOTICE (api, "[taskid-created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
+        if (verbose)
+            AFB_REQ_NOTICE (request, "[taskid-created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
 
         // create task event
         err = afb_api_new_event(api, taskId->cmd->apiverb, &taskId->event);
@@ -305,16 +306,16 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         return 0;
 
 OnErrorExit:
-        spawnFreeTaskId (api, taskId);
+        spawnFreeTaskId (taskId);
 
-        AFB_API_ERROR (api, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
+        AFB_REQ_ERROR (request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
         afb_req_fail_f (request, "start-error", "fail to start sandbox=%s cmd=%s (%s)", cmd->sandbox->uid, cmd->uid, reasonE);
 
-        if (sonPid>0) kill(-sonPid, SIGTERM);
+        kill(-sonPid, SIGTERM);
         return 1;
 }
 
-static void start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, char* const* params)
+static int start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, char* const* params)
 {
     int   err;
 
@@ -451,6 +452,8 @@ static void start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, cha
 
         // not reached upon success
         fprintf (stderr, "HOOPS: spawnTaskStart execve return cmd->cli=%s error=%s\n", cmd->cli, strerror(errno));
+	_exit(1);
+	return 1;
 }
 
 int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose)
@@ -513,9 +516,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
 	}
 
 	// run the child
-	start_in_child (cmd, argsJ, verbose, params);
-	_exit(1);
-	return -1;
+	return start_in_child (cmd, argsJ, verbose, params);
     } else {
 	// close unused pipes
         close (stderrP[1]);
