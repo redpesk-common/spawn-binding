@@ -229,65 +229,107 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
     return (char* const*)params;
 } // end childBuildArgv
 
-int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose) {
-    assert(cmd);
+static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose, pid_t sonPid, int outfd, int errfd) {
+
     json_object *responseJ;
-    pid_t sonPid = -1;
-    char* const* params = NULL;
     afb_api_t api = cmd->api;
-    int   stdoutP[2];
-    int   stderrP[2];
     int   err;
     taskIdT *taskId = NULL;
     char* reasonE = "Internal error";
 
-    if (cmd->single) {
-        if (HASH_CNT(tidsHash, cmd->tids) > 0) {
-            reasonE = "Can only spawn one instance of this command";
-            AFB_API_ERROR (api, "%s", reasonE);
-            goto OnErrorExitNoFree;
+        // create task context
+        taskId = (taskIdT*) calloc (1, sizeof(taskIdT));
+        taskId->magic = MAGIC_SPAWN_TASKID;
+        taskId->pid= sonPid;
+        taskId->cmd= cmd;
+        taskId->verbose= verbose;
+        taskId->outfd= outfd;
+        taskId->errfd= errfd;
+        if(asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid)<0){
+            goto OnErrorExit;
         }
-    }
+        if (verbose) AFB_API_NOTICE (api, "[taskid-created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
 
-    // create pipes FD to retreive son stdout/stderr
-    if(pipe (stdoutP)<0){
-        goto OnErrorExit;
-    }
-    if(pipe (stderrP)<0){
-        goto OnErrorExit;
-    }
+        // create task event
+        err = afb_api_new_event(api, taskId->cmd->apiverb, &taskId->event);
+        if (err < 0) goto OnErrorExit;
 
-    // if verbose > 8 try to build argument within main process to enable gdb
-    if (verbose > 8) params= childBuildArgv (cmd, argsJ, verbose);
+        err=afb_req_subscribe(request, taskId->event);
+        if (err) {
+            afb_req_fail_f (request, "subscribe-error","spawnTaskStart: fail to subscribe sandbox=%s cmd=%s", cmd->sandbox->uid, cmd->uid);
+            goto OnErrorExit;
+        }
 
-    // fork son process
-    sonPid= fork();
-    if (sonPid < 0) goto OnErrorExit;
+        // main process register son stdout/err into event mainloop
+        if (cmd->timeout > 0)
+		make_timeout_monitor(taskId, cmd->timeout);
 
-    if (sonPid == 0) {
+        // initilise cmd->cli corresponding output formater buffer
+        err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_START, ENCODER_OPS_STD, cmd->encoder->fmtctx);
+        if (err) goto OnErrorExit;
+
+        // set pipe fd into noblock mode
+        err= fcntl (taskId->outfd, F_SETFL, O_NONBLOCK);
+        if (err) goto OnErrorExit;
+
+        err= fcntl (taskId->errfd, F_SETFL, O_NONBLOCK);
+        if (err) goto OnErrorExit;
+
+        // register stdout/err piped FD within mainloop
+        err = afb_evfd_create(&taskId->srcout, taskId->outfd, EPOLLIN|EPOLLHUP, on_pipe_out, taskId, 0, 1);
+        if (err) goto OnErrorExit;
+        err = afb_evfd_create(&taskId->srcerr, taskId->errfd, EPOLLIN|EPOLLHUP, on_pipe_err, taskId, 0, 1);
+        if (err) goto OnErrorExit;
+
+        // update command anf binding global tids hashtable
+        if (! pthread_rwlock_wrlock(&cmd->sem)) {
+            HASH_ADD(tidsHash, cmd->tids, pid, sizeof(pid_t), taskId);
+            pthread_rwlock_unlock(&cmd->sem);
+        }
+
+        spawnApiT *binding= cmd->sandbox->binding;
+        if (! pthread_rwlock_wrlock(&binding->sem)) {
+            HASH_ADD(gtidsHash, binding->gtids, pid, sizeof(pid_t), taskId);
+            pthread_rwlock_unlock(&binding->sem);
+        }
+
+        // build responseJ & update call tid
+        if (taskId->cmd->encoder->synchronous) {
+            taskId->request= request; // save request for later synchronous responses
+            afb_req_addref(request);
+        } else {
+            rp_jsonc_pack (&responseJ, "{ss ss* ss si}", "api", afb_api_name(api), "sandbox", taskId->cmd->sandbox->uid, "command", taskId->cmd->uid, "pid", taskId->pid);
+            afb_req_success(request, responseJ, NULL);
+        }
+
+        return 0;
+
+OnErrorExit:
+        spawnFreeTaskId (api, taskId);
+
+        AFB_API_ERROR (api, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
+        afb_req_fail_f (request, "start-error", "fail to start sandbox=%s cmd=%s (%s)", cmd->sandbox->uid, cmd->uid, reasonE);
+
+        if (sonPid>0) kill(-sonPid, SIGTERM);
+        return 1;
+}
+
+static void start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, char* const* params)
+{
+    int   err;
+
 
         setpgid(0,0);
 
         // detach from afb_binder signal handler
         utilsResetSigals();
 
-        // forked son process attach stdout/stderr to father pipes
-        close (STDIN_FILENO);
-        close (stdoutP[0]);
-        close (stderrP[0]);
         int isPrivileged= utilsTaskPrivileged();
         confAclT *acls= cmd->sandbox->acls;
         confCapT *caps= cmd->sandbox->caps;
 
-        if (verbose > 8) fprintf (stderr, "**** [child start] sandbox=%s cmd=%s pid=%d\n", cmd->sandbox->uid, cmd->uid, getpid());
-
-        // redirect stdout/stderr on binding pipes
-        err= dup2(stdoutP[1], STDOUT_FILENO);
-        err=+dup2(stderrP[1], STDERR_FILENO);
-        if (err < 0) {
-            fprintf (stderr, "[fail to dup stdout/err] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
-            exit (1);
-        }
+        if (verbose > 8)
+           fprintf (stderr, "**** [child start] sandbox=%s cmd=%s pid=%d\n", cmd->sandbox->uid, cmd->uid, getpid());
 
         // if we have some fileexec reset them to start
         if (cmd->sandbox->filefds) {
@@ -402,93 +444,94 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
         }
 
         // if cmd->cli is not executable try /bin/sh
-        if (cmd->sandbox->namespace) err= execv(cmd->sandbox->namespace->opts.bwrap, params);
-        else err= execv(cmd->cli,params);
+        if (cmd->sandbox->namespace)
+            err= execv(cmd->sandbox->namespace->opts.bwrap, params);
+        else
+            err = execv(cmd->cli,params);
 
         // not reached upon success
-
         fprintf (stderr, "HOOPS: spawnTaskStart execve return cmd->cli=%s error=%s\n", cmd->cli, strerror(errno));
-        exit(1);
+}
 
+int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose)
+{
+    pid_t sonPid = -1;
+    char* const* params = NULL;
+    int   stdoutP[2];
+    int   stderrP[2];
+    int   err;
+    char* reasonE = "Internal error";
+
+
+    if (cmd->single) {
+	pthread_rwlock_rdlock(&cmd->sem);
+        if (HASH_CNT(tidsHash, cmd->tids) > 0) {
+            pthread_rwlock_unlock(&cmd->sem);
+            reasonE = "Can only spawn one instance of this command";
+            AFB_REQ_ERROR (request, "%s", reasonE);
+            goto OnErrorExit;
+        }
+        pthread_rwlock_unlock(&cmd->sem);
+    }
+
+    // create pipes FD to retreive son stdout/stderr
+    if(pipe (stdoutP) < 0)
+        goto OnErrorExit;
+    if(pipe (stderrP) < 0)
+        goto OnErrorExit2;
+
+    // if verbose > 8 try to build argument within main process to enable gdb
+    if (verbose > 8)
+	params = childBuildArgv (cmd, argsJ, verbose);
+
+    // fork son process
+    sonPid= fork();
+    if (sonPid < 0)
+	goto OnErrorExit3;
+
+    if (sonPid == 0) {
+
+	// setup input, output and error files
+        close (STDIN_FILENO);
+        close (stdoutP[0]);
+        close (stderrP[0]);
+	if (stdoutP[1] != STDOUT_FILENO) {
+        	err = dup2(stdoutP[1], STDOUT_FILENO);
+                if (err < 0) {
+                    fprintf (stderr, "[fail to dup stdout] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
+                    exit (1);
+                }
+		close(stdoutP[1]);
+	}
+	if (stderrP[1] != STDERR_FILENO) {
+        	err = dup2(stderrP[1], STDERR_FILENO);
+                if (err < 0) {
+                    fprintf (stderr, "[fail to dup stdout] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
+                    exit (1);
+                }
+		close(stderrP[1]);
+	}
+
+	// run the child
+	start_in_child (cmd, argsJ, verbose, params);
+	_exit(1);
+	return -1;
     } else {
+	// close unused pipes
         close (stderrP[1]);
         close (stdoutP[1]);
-
-        // create task context
-        taskId = (taskIdT*) calloc (1, sizeof(taskIdT));
-        taskId->magic = MAGIC_SPAWN_TASKID;
-        taskId->pid= sonPid;
-        taskId->cmd= cmd;
-        taskId->verbose= verbose;
-        taskId->outfd= stdoutP[0];
-        taskId->errfd= stderrP[0];
-        if(asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid)<0){
-            goto OnErrorExit;
-        }
-        if (verbose) AFB_API_NOTICE (api, "[taskid-created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
-
-        // create task event
-        err = afb_api_new_event(api, taskId->cmd->apiverb, &taskId->event);
-        if (err < 0) goto OnErrorExit;
-
-        err=afb_req_subscribe(request, taskId->event);
-        if (err) {
-            afb_req_fail_f (request, "subscribe-error","spawnTaskStart: fail to subscribe sandbox=%s cmd=%s", cmd->sandbox->uid, cmd->uid);
-            goto OnErrorExit;
-        }
-
-        // main process register son stdout/err into event mainloop
-        if (cmd->timeout > 0)
-		make_timeout_monitor(taskId, cmd->timeout);
-
-        // initilise cmd->cli corresponding output formater buffer
-        err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_START, ENCODER_OPS_STD, cmd->encoder->fmtctx);
-        if (err) goto OnErrorExit;
-
-        // set pipe fd into noblock mode
-        err= fcntl (taskId->outfd, F_SETFL, O_NONBLOCK);
-        if (err) goto OnErrorExit;
-
-        err= fcntl (taskId->errfd, F_SETFL, O_NONBLOCK);
-        if (err) goto OnErrorExit;
-
-        // register stdout/err piped FD within mainloop
-        err = afb_evfd_create(&taskId->srcout, taskId->outfd, EPOLLIN|EPOLLHUP, on_pipe_out, taskId, 0, 1);
-        if (err) goto OnErrorExit;
-        err = afb_evfd_create(&taskId->srcerr, taskId->errfd, EPOLLIN|EPOLLHUP, on_pipe_err, taskId, 0, 1);
-        if (err) goto OnErrorExit;
-
-        // update command anf binding global tids hashtable
-        if (! pthread_rwlock_wrlock(&cmd->sem)) {
-            HASH_ADD(tidsHash, cmd->tids, pid, sizeof(pid_t), taskId);
-            pthread_rwlock_unlock(&cmd->sem);
-        }
-
-        spawnApiT *binding= cmd->sandbox->binding;
-        if (! pthread_rwlock_wrlock(&binding->sem)) {
-            HASH_ADD(gtidsHash, binding->gtids, pid, sizeof(pid_t), taskId);
-            pthread_rwlock_unlock(&binding->sem);
-        }
-
-        // build responseJ & update call tid
-        if (taskId->cmd->encoder->synchronous) {
-            taskId->request= request; // save request for later synchronous responses
-            afb_req_addref(request);
-        } else {
-            rp_jsonc_pack (&responseJ, "{ss ss* ss si}", "api", afb_api_name(api), "sandbox", taskId->cmd->sandbox->uid, "command", taskId->cmd->uid, "pid", taskId->pid);
-            afb_req_success(request, responseJ, NULL);
-        }
-
-        return 0;
-
-OnErrorExit:
-        spawnFreeTaskId (api, taskId);
-
-OnErrorExitNoFree:
-        AFB_API_ERROR (api, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
-        afb_req_fail_f (request, "start-error", "fail to start sandbox=%s cmd=%s (%s)", cmd->sandbox->uid, cmd->uid, reasonE);
-
-        if (sonPid>0) kill(-sonPid, SIGTERM);
-        return 1;
+	return start_in_parent (request, cmd, argsJ, verbose, sonPid, stdoutP[0], stderrP[0]);
     }
-} //end spawnTaskStart
+
+OnErrorExit3:
+    close(stderrP[0]);
+    close(stderrP[1]);
+OnErrorExit2:
+    close(stdoutP[0]);
+    close(stdoutP[1]);
+OnErrorExit:
+    AFB_REQ_ERROR (request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
+    afb_req_fail_f (request, "start-error", "fail to start sandbox=%s cmd=%s (%s)", cmd->sandbox->uid, cmd->uid, reasonE);
+    return -1;
+} //end start_command
+
