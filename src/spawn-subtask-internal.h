@@ -25,11 +25,13 @@
 #define _SPAWN_SUBTASK_INTERNAL_INCLUDE_
 
 #include <uthash.h>
+#include <afb/afb-binding.h>
 
 struct taskIdS {
   spawnMagicT magic;
   pid_t pid; // hashtable key
   char *uid;
+  int synchronous;
   int verbose;
   int outfd;
   int errfd;

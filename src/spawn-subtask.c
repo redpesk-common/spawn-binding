@@ -23,6 +23,7 @@
 
 #define _GNU_SOURCE
 
+#include <stdio.h>
 #include <assert.h>
 #include <pthread.h>
 #include <signal.h>
@@ -59,18 +60,15 @@ typedef enum {
 
 
 void taskPushResponse (taskIdT *taskId) {
-    int count=0;
 
     // push event if not one listen just stop pushing
     if (taskId->responseJ) {
-        if (taskId->request) {
-            afb_req_success(taskId->request, taskId->responseJ, NULL);
-            afb_req_unref(taskId->request);
-        }
-        else {
-	    afb_data_t data = afb_data_json_c_hold(taskId->responseJ);
+	int count = 1;
+        afb_data_t data = afb_data_json_c_hold(taskId->responseJ);
+        if (taskId->synchronous)
+            afb_req_reply(taskId->request, 0, 1, &data);
+        else
 	    count = afb_event_push(taskId->event, 1, &data);
-	}
         taskId->responseJ = NULL;
         taskId->statusJ = NULL;
         taskId->errorJ = NULL;
@@ -102,7 +100,7 @@ void spawnFreeTaskId  (taskIdT *taskId) {
     }
 
     // mark taskId as invalid
-    taskId->pid=0;
+    taskId->pid = 0;
 
     // release source to prevent any further notification
     if (taskId->srcout)
@@ -112,6 +110,9 @@ void spawnFreeTaskId  (taskIdT *taskId) {
 
     // TimerEvtStop stop+free timer handle
     end_timeout_monitor(taskId);
+
+    if (taskId->request)
+        afb_req_unref(taskId->request);
 
     if (taskId->uid)
         free(taskId->uid);
@@ -142,7 +143,8 @@ static int taskCtrlOne (afb_req_t request, taskIdT *taskId, taskActionE action, 
     if (taskId->verbose>1) AFB_REQ_INFO (request, "taskCtrlOne: sandbox=%s cmd=%s pid=%d action=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid, action);
     switch (action) {
         case SPAWN_ACTION_STOP:
-            kill (-taskId->pid, signal);
+            if (taskId->pid)
+                kill (-taskId->pid, signal);
             break;
         case SPAWN_ACTION_SUBSCRIBE:
             err=afb_req_subscribe(request, taskId->event);
@@ -167,6 +169,7 @@ OnErrorExit:
 static int spawnTaskControl (afb_req_t request, shellCmdT *cmd, taskActionE action, json_object *argsJ, int verbose) {
     taskIdT *taskId, *tidNext;
     json_object *responseJ;
+    afb_data_t data;
     int err=0;
     int taskPid=0;
     int signal= SIGINT;
@@ -174,22 +177,18 @@ static int spawnTaskControl (afb_req_t request, shellCmdT *cmd, taskActionE acti
 
     // if not argument kill all task attache to this cmd->cli
     if (argsJ) {
-        err= rp_jsonc_unpack (argsJ, "{s?i s?o !}", "pid", &taskPid, "signal", &signalJ);
-        if (err || (!taskPid && !signalJ)) {
-            afb_req_fail_f (request, "task-ctrl-fail","[missing pid|signal] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
-            goto OnErrorExit;
-        }
+        err = rp_jsonc_unpack (argsJ, "{s?i s?o !}", "pid", &taskPid, "signal", &signalJ);
+        if (err || (!taskPid && !signalJ))
+		goto InvalidRequest;
     }
 
     if (signalJ) {
         if (json_object_is_type (signalJ, json_type_int)) {
-            signal= json_object_get_int(signalJ);
+            signal = json_object_get_int(signalJ);
         } else {
-            signal= enumMapValue(shSignals, json_object_get_string(signalJ));
-            if (!signal) {
-                afb_req_fail_f (request, "task-ctrl-fail","[invalid signal] sandbox=%s cmd=%s signal=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(signalJ));
-                goto OnErrorExit;
-            }
+            signal = enumMapValue(shSignals, json_object_get_string(signalJ));
+            if (!signal)
+		goto InvalidRequest;
         }
     }
 
@@ -200,7 +199,7 @@ static int spawnTaskControl (afb_req_t request, shellCmdT *cmd, taskActionE acti
 
         // scan tids hashtable and stop every task
         err=pthread_rwlock_rdlock(&cmd->sem);
-        if (err) goto OnErrorExit;
+        if (err) goto InternalError;
         HASH_ITER(tidsHash, cmd->tids, taskId, tidNext) {
             err= taskCtrlOne (request, taskId, action, signal, &statusJ);
             if (!err) {
@@ -212,20 +211,24 @@ static int spawnTaskControl (afb_req_t request, shellCmdT *cmd, taskActionE acti
     } else {
 
         err=pthread_rwlock_rdlock(&cmd->sem);
-        if (err) goto OnErrorExit;
+        if (err) goto InternalError;
         HASH_FIND(tidsHash, cmd->tids, &taskPid, sizeof(int), taskId);
         pthread_rwlock_unlock(&cmd->sem);
         if (taskId) {
             taskCtrlOne (request, taskId, action, signal, &responseJ);
         }else {
-            goto OnErrorExit;
+            goto InvalidRequest;
         }
     }
-    afb_req_success_f(request, responseJ, NULL);
+    data = afb_data_json_c_hold(responseJ);
+    afb_req_reply(request, 0, 1, &data);
     return 0;
 
-OnErrorExit:
-    afb_req_fail_f (request, "task-ctrl-fail","[unknown pid signal] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
+InternalError:
+    afb_req_reply(request, AFB_ERRNO_INTERNAL_ERROR, 0, NULL);
+    return 1;
+InvalidRequest:
+    afb_req_reply(request, AFB_ERRNO_INVALID_REQUEST, 0, NULL);
     return 1;
 } // end spawnTaskStop
 
@@ -260,7 +263,10 @@ void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ) {
         if (err) goto OnErrorExit;
 
     } else {
-        afb_req_fail_f (request, "syntax-error", "spawnTaskVerb: unknown action='%s' sandbox=%s cmd=%s", action, cmd->sandbox->uid, cmd->uid);
+	char *text = NULL;
+	int len = asprintf(&text, "unknown action='%s'", action);
+	afb_data_t data = afb_data_string_hold(text, len > 0 ? (size_t)len : 0);
+        afb_req_reply(request, AFB_ERRNO_INVALID_REQUEST, 1, &data);
         goto OnErrorExit;
     }
 

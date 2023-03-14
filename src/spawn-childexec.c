@@ -236,7 +236,7 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
     afb_api_t api = cmd->api;
     int   err;
     taskIdT *taskId = NULL;
-    char* reasonE = "Internal error";
+    spawnApiT *binding= cmd->sandbox->binding;
 
         // create task context
         taskId = (taskIdT*) calloc (1, sizeof(taskIdT));
@@ -246,42 +246,38 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         taskId->verbose= verbose;
         taskId->outfd= outfd;
         taskId->errfd= errfd;
-        if(asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid)<0){
-            goto OnErrorExit;
-        }
+	taskId->request= afb_req_addref(request); // save request for later logging and response
+	taskId->synchronous = taskId->cmd->encoder->synchronous;
+
+        if(asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid)<0)
+            goto InternalError;
+
         if (verbose)
-            AFB_REQ_NOTICE (request, "[taskid-created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
+            AFB_REQ_INFO (request, "[taskid-created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
 
         // create task event
         err = afb_api_new_event(api, taskId->cmd->apiverb, &taskId->event);
-        if (err < 0) goto OnErrorExit;
+        if (err < 0) goto InternalError;
 
-        err=afb_req_subscribe(request, taskId->event);
-        if (err) {
-            afb_req_fail_f (request, "subscribe-error","spawnTaskStart: fail to subscribe sandbox=%s cmd=%s", cmd->sandbox->uid, cmd->uid);
-            goto OnErrorExit;
-        }
-
-        // main process register son stdout/err into event mainloop
-        if (cmd->timeout > 0)
-		make_timeout_monitor(taskId, cmd->timeout);
+        err = afb_req_subscribe(request, taskId->event);
+        if (err) goto InternalError;
 
         // initilise cmd->cli corresponding output formater buffer
         err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_START, ENCODER_OPS_STD, cmd->encoder->fmtctx);
-        if (err) goto OnErrorExit;
+        if (err) goto InternalError;
 
         // set pipe fd into noblock mode
         err= fcntl (taskId->outfd, F_SETFL, O_NONBLOCK);
-        if (err) goto OnErrorExit;
+        if (err) goto InternalError;
 
         err= fcntl (taskId->errfd, F_SETFL, O_NONBLOCK);
-        if (err) goto OnErrorExit;
+        if (err) goto InternalError;
 
         // register stdout/err piped FD within mainloop
         err = afb_evfd_create(&taskId->srcout, taskId->outfd, EPOLLIN|EPOLLHUP, on_pipe_out, taskId, 0, 1);
-        if (err) goto OnErrorExit;
+        if (err) goto InternalError;
         err = afb_evfd_create(&taskId->srcerr, taskId->errfd, EPOLLIN|EPOLLHUP, on_pipe_err, taskId, 0, 1);
-        if (err) goto OnErrorExit;
+        if (err) goto InternalError;
 
         // update command and binding global tids hashtable
         if (! pthread_rwlock_wrlock(&cmd->sem)) {
@@ -289,31 +285,30 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
             pthread_rwlock_unlock(&cmd->sem);
         }
 
-        spawnApiT *binding= cmd->sandbox->binding;
         if (! pthread_rwlock_wrlock(&binding->sem)) {
             HASH_ADD(gtidsHash, binding->gtids, pid, sizeof(pid_t), taskId);
             pthread_rwlock_unlock(&binding->sem);
         }
 
         // build responseJ & update call tid
-        if (taskId->cmd->encoder->synchronous) {
-            taskId->request= request; // save request for later synchronous responses
-            afb_req_addref(request);
-        } else {
+        if (!taskId->synchronous) {
             rp_jsonc_pack (&responseJ, "{ss ss* ss si}", "api", afb_api_name(api), "sandbox", taskId->cmd->sandbox->uid, "command", taskId->cmd->uid, "pid", taskId->pid);
-            afb_req_success(request, responseJ, NULL);
+            afb_data_t data = afb_data_json_c_hold(responseJ);
+            afb_req_reply(taskId->request, 0, 1, &data);
         }
+
+        // main process register son stdout/err into event mainloop
+        if (cmd->timeout > 0)
+		make_timeout_monitor(taskId, cmd->timeout);
 
         return 0;
 
-OnErrorExit:
-        spawnFreeTaskId (taskId);
-
-        AFB_REQ_ERROR (request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
-        afb_req_fail_f (request, "start-error", "fail to start sandbox=%s cmd=%s (%s)", cmd->sandbox->uid, cmd->uid, reasonE);
-
-        kill(-sonPid, SIGTERM);
-        return 1;
+InternalError:
+    AFB_REQ_ERROR(request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
+    afb_req_reply(request, AFB_ERRNO_INTERNAL_ERROR, 0, NULL);
+    kill(-sonPid, SIGTERM);
+    spawnFreeTaskId (taskId);
+    return 1;
 }
 
 static void child_exit(int code)
@@ -540,8 +535,8 @@ OnErrorExit2:
     close(stdoutP[0]);
     close(stdoutP[1]);
 OnErrorExit:
-    AFB_REQ_ERROR (request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
-    afb_req_fail_f (request, "start-error", "fail to start sandbox=%s cmd=%s (%s)", cmd->sandbox->uid, cmd->uid, reasonE);
+    AFB_REQ_ERROR(request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d reason=%s error=%s", cmd->uid, cmd->cli, sonPid, reasonE, strerror(errno));
+    afb_req_reply(request, AFB_ERRNO_INTERNAL_ERROR, 0, NULL);
     return -1;
 } //end start_command
 

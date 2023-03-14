@@ -17,11 +17,9 @@ ON-REPLY 2:basic/distro: OK
     "code":0
   },
   "response":{
-    "data":{
-      "api":"basic",
-      "sandbox":"sandbox-basic",
-      "command":"distro",
-    }
+    "api":"basic",
+    "sandbox":"sandbox-basic",
+    "command":"distro",
   }
 }
 SEND-CALL basic/sync {"action":"start"}
@@ -54,21 +52,19 @@ ON-REPLY 3:basic/sync: OK
     "code":0
   },
   "response":{
-    "data":{
-      "cmd":"sync",
-      "status":{
-        "exit":0
-      },
-      "stdout":[
-        "Distributor ID:",
-        "Debian",
-        "Description:",
-        "Debian GNU/Linux bookworm/sid",
-        "Release:",
-        "n/a",
-        "Codename:",
-        "bookworm"
-      ]
-    }
+    "cmd":"sync",
+    "status":{
+      "exit":0
+    },
+    "stdout":[
+      "Distributor ID:",
+      "Debian",
+      "Description:",
+      "Debian GNU/Linux bookworm/sid",
+      "Release:",
+      "n/a",
+      "Codename:",
+      "bookworm"
+    ]
   }
 }
