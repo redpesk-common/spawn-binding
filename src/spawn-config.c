@@ -147,7 +147,7 @@ static int parse_prepare_command (shellCmdT *cmd, json_object *execJ)
 	return 0;
 
 OnErrorExit:
-	return 1;
+	return -1;
 }
 
 int spawn_config_read_one_command(sandBoxT *sandbox, shellCmdT *cmd, json_object *cmdJ)
@@ -226,7 +226,7 @@ int spawn_config_read_one_command(sandBoxT *sandbox, shellCmdT *cmd, json_object
 	return 0;
 
 OnErrorExit:
-	return 1;
+	return -1;
 }
 
 struct read_one_sandbox_config_closure_s
