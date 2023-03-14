@@ -61,30 +61,30 @@ static pthread_mutex_t timeout_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct timeout_data
 {
 	taskIdT *taskId;
+	int jobid;
 };
 
 static void on_timeout_expired(int signum, void *arg)
 {
-	taskIdT *taskId;
-	pid_t pid;
 	struct timeout_data *data = arg;
 	pthread_mutex_lock(&timeout_mutex);
-	taskId = data->taskId;
-	if (taskId == NULL)
-		pthread_mutex_unlock(&timeout_mutex);
-	else {
-		data->taskId = NULL;
-		taskId->timeout = NULL;
-		pid = taskId->pid;
-		if (pid == 0)
-			pthread_mutex_unlock(&timeout_mutex);
-		else {
-			AFB_NOTICE("Terminating task uid=%s", taskId->uid);
-			taskId->cmd->encoder->actionsCB (taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, taskId->cmd->encoder->fmtctx);
-			pthread_mutex_unlock(&timeout_mutex);
-			kill(-pid, SIGKILL);
+	data->jobid = 0;
+	if (signum == 0) {
+		pid_t pid = 0;
+		taskIdT *taskId;
+		taskId = data->taskId;
+		if (taskId != NULL) {
+			data->taskId = NULL;
+			taskId->timeout = NULL;
+			pid = taskId->pid;
+			if (pid != 0) {
+				AFB_REQ_NOTICE(taskId->request, "Terminating task uid=%s", taskId->uid);
+				taskId->cmd->encoder->actionsCB (taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, taskId->cmd->encoder->fmtctx);
+				kill(-pid, SIGKILL);
+			}
 		}
 	}
+	pthread_mutex_unlock(&timeout_mutex);
 	free(arg);
 }
 
@@ -95,9 +95,14 @@ static int make_timeout_monitor(taskIdT *taskId, int timeout)
 		return -1;
 	pthread_mutex_lock(&timeout_mutex);
 	data->taskId = taskId;
+	data->jobid = afb_job_post(timeout * 1000, 0, on_timeout_expired, data, NULL);
+	if (data->jobid < 0) {
+		free(data);
+		pthread_mutex_unlock(&timeout_mutex);
+		return -1;
+	}
 	taskId->timeout = data;
 	pthread_mutex_unlock(&timeout_mutex);
-	afb_job_post(timeout * 1000, 0, on_timeout_expired, data, NULL);
 	return 0;
 }
 
@@ -107,8 +112,8 @@ void end_timeout_monitor(taskIdT *taskId)
 	pthread_mutex_lock(&timeout_mutex);
 	data = taskId->timeout;
 	taskId->timeout = NULL;
-	if (data != NULL)
-		data->taskId = NULL;
+	if (data != NULL && data->jobid)
+		afb_job_abort(data->jobid);
 	pthread_mutex_unlock(&timeout_mutex);
 }
 

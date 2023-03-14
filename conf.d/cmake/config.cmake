@@ -74,7 +74,7 @@ set (PKG_REQUIRED_LIST
     json-c
     libcap-ng
     libseccomp
-    afb-binding
+    afb-binding>=4.1.2
     librp-utils-static
     afb-helpers4>=10.0.2
     libsystemd

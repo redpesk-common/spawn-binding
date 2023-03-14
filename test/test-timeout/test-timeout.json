@@ -1,0 +1,20 @@
+{
+  "metadata": {
+    "uid": "spawn-timeout",
+    "api": "timeout",
+    "version": "1.0"
+  },
+  "sandboxes": {
+      "uid": "sandbox-timeout",
+      "info": "minimal demo [no acls, no namespace]",
+      "commands": [
+        {
+          "uid": "timeout",
+          "info" : "sleep six seconds with a timeout of 2 seconds",
+	  "encoder": "sync",
+	  "timeout": 2,
+          "exec": {"cmdpath": "/usr/bin/sleep", "args": [ "6" ] }
+        }  
+      ]
+    }
+}
