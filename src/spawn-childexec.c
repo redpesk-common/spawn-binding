@@ -161,8 +161,6 @@ static void on_pipe_err(afb_evfd_t efd, int fd, uint32_t revents, void *closure)
 	on_pipe(efd, fd, revents, taskId, 0);
 }
 
-
-
 static void childDumpArgv (shellCmdT *cmd, const char **params)
 {
 	int argcount;
@@ -179,14 +177,16 @@ static void childDumpArgv (shellCmdT *cmd, const char **params)
 
 // Build Child execv argument list. Argument list is compose of expanded argument from config + namespace specific one.
 // Note that argument expansion is done after fork(). Modifiing config RAM structure has no impact on afb-binder/binding
-static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int verbose) {
+static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int verbose)
+{
     const char **params;
     int argcount, argsize;
 
     // if no argument to expand and not namespace use directly the config argument list.
     if (!argsJ && !cmd->sandbox->namespace) {
         params= cmd->argv;
-    } else {
+    }
+    else {
 
         // total arguments list is namespace+cmd argv
         if (cmd->sandbox->namespace) {
@@ -215,7 +215,7 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
         for (int idx=1; cmd->argv[idx]; idx++) {
 
             // if needed expand arguments replacing all $UPERCASE by json field
-            params[argcount++]= utilsExpandJson (cmd->argv[idx], argsJ);
+            params[argcount++] = utilsExpandJson (cmd->argv[idx], argsJ);
             if (!params[argcount-1]) {
                 fprintf (stderr, "[fail expanding] sandbox=%s cmd='%s' config:args='%s' query:args=%s\n", cmd->sandbox->uid, cmd->uid, cmd->argv[idx], json_object_get_string(argsJ));
                 exit (1);
@@ -224,7 +224,8 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
         }
         params[argcount]=NULL;
     }
-    if (verbose > 2) childDumpArgv (cmd, params);
+    if (verbose > 2)
+    	childDumpArgv (cmd, params);
 
     return (char* const*)params;
 } // end childBuildArgv
@@ -282,7 +283,7 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         err = afb_evfd_create(&taskId->srcerr, taskId->errfd, EPOLLIN|EPOLLHUP, on_pipe_err, taskId, 0, 1);
         if (err) goto OnErrorExit;
 
-        // update command anf binding global tids hashtable
+        // update command and binding global tids hashtable
         if (! pthread_rwlock_wrlock(&cmd->sem)) {
             HASH_ADD(tidsHash, cmd->tids, pid, sizeof(pid_t), taskId);
             pthread_rwlock_unlock(&cmd->sem);
@@ -315,6 +316,13 @@ OnErrorExit:
         return 1;
 }
 
+static void child_exit(int code)
+{
+	fflush(stderr);
+	fflush(stdout);
+	_exit(code);
+}
+
 static int start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, char* const* params)
 {
     int   err;
@@ -339,7 +347,7 @@ static int start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, char
                 off_t offset= lseek (filefds[idx], 0, SEEK_SET);
                 if (offset <0) {
                     fprintf (stderr, "[fail lseek execfd=%d error=%s\n",filefds[idx], strerror(errno));
-                    exit(1);
+                    child_exit(1);
                 }
             }
         }
@@ -349,7 +357,7 @@ static int start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, char
             err= utilsFileAddControl (NULL, cmd->sandbox->uid, cmd->sandbox->cgroups->pidgroupFd, "cgroup.procs", "0");
             if (err) {
                 fprintf (stderr, "[capabilities is privileged]\n");
-                exit(1);
+                child_exit(1);
             }
         }
 
@@ -379,7 +387,7 @@ static int start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, char
                 err = capng_change_id(acls->uid, acls->gid, CAPNG_DROP_SUPP_GRP | CAPNG_CLEAR_BOUNDING);
                 if (err) {
                     fprintf (stderr, "[capabilities set fail] sandbox=%s cmd=%s\n", cmd->sandbox->uid, cmd->uid);
-                    exit (1);
+                    child_exit(1);
                 }
                 isPrivileged=0;
 
@@ -411,7 +419,8 @@ static int start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, char
         }
 
         // build command arguments
-        if (!params) params= childBuildArgv (cmd, argsJ, verbose);
+        if (!params)
+		params = childBuildArgv (cmd, argsJ, verbose);
 
         // finish by seccomp syscall filter as potentially this may prevent previous action to appen. (seccomp do not require privilege)
         if (cmd->sandbox->seccomp) {
@@ -422,7 +431,7 @@ static int start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, char
                 err= prctl (PR_SET_SECCOMP, SECCOMP_MODE_FILTER, seccomp->fsock);
                 if (err) {
                     fprintf (stderr, "[invalid seccomp] sandbox='%s' cmd='%s' seccomp='%s' err=%s\n", cmd->sandbox->uid, cmd->uid, seccomp->rulespath, strerror(errno));
-                    exit(1);
+                    child_exit(1);
                 }
             } else {
                 if (seccomp->locked) {
@@ -446,13 +455,13 @@ static int start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, char
 
         // if cmd->cli is not executable try /bin/sh
         if (cmd->sandbox->namespace)
-            err= execv(cmd->sandbox->namespace->opts.bwrap, params);
+            err = execv(cmd->sandbox->namespace->opts.bwrap, params);
         else
-            err = execv(cmd->cli,params);
+            err = execv(cmd->cli, params);
 
         // not reached upon success
         fprintf (stderr, "HOOPS: spawnTaskStart execve return cmd->cli=%s error=%s\n", cmd->cli, strerror(errno));
-	_exit(1);
+	child_exit(1);
 	return 1;
 }
 
@@ -488,7 +497,7 @@ int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int v
 	params = childBuildArgv (cmd, argsJ, verbose);
 
     // fork son process
-    sonPid= fork();
+    sonPid = fork();
     if (sonPid < 0)
 	goto OnErrorExit3;
 
