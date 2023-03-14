@@ -29,14 +29,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <uuid/uuid.h>
 #include <time.h>
 #include <sys/stat.h>
 
 // we need AFB definition to access binder config API
 #include <afb/afb-binding.h>
-#include "spawn-sandbox.h"
+#include <rp-utils/rp-uuid.h>
 
+#include "spawn-sandbox.h"
 #include "spawn-expand.h"
 #include "spawn-expand-defs.h"
 
@@ -64,11 +64,8 @@ static char*GetEnviron(const char *label, void *dflt, spawnExpandSpecificT *spec
 }
 
 static char*GetUuidString(const char *label, void *dflt, spawnExpandSpecificT *specific) {
-    char *uuid = malloc(37);
-    uuid_t binuuid;
-
-    uuid_generate_random(binuuid);
-    uuid_unparse_lower(binuuid, uuid);
+    char *uuid = malloc(RP_UUID_STRINGZ_LENGTH);
+    rp_uuid_new_stringz(uuid);
     return uuid;
 }
 
