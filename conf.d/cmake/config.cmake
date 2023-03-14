@@ -76,7 +76,7 @@ set (PKG_REQUIRED_LIST
     libseccomp
     afb-binding>=4.1.2
     librp-utils-static
-    afb-helpers4>=10.0.2
+    afb-helpers4>=10.0.3
     libsystemd
 )
 

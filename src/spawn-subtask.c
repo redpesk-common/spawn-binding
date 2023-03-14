@@ -178,8 +178,10 @@ static int spawnTaskControl (afb_req_t request, shellCmdT *cmd, taskActionE acti
     // if not argument kill all task attache to this cmd->cli
     if (argsJ) {
         err = rp_jsonc_unpack (argsJ, "{s?i s?o !}", "pid", &taskPid, "signal", &signalJ);
-        if (err || (!taskPid && !signalJ))
-		goto InvalidRequest;
+        if (err || (!taskPid && !signalJ)) {
+            afb_req_reply(request, AFB_ERRNO_INVALID_REQUEST, 0, NULL);
+            return 1;
+	}
     }
 
     if (signalJ) {
@@ -187,8 +189,10 @@ static int spawnTaskControl (afb_req_t request, shellCmdT *cmd, taskActionE acti
             signal = json_object_get_int(signalJ);
         } else {
             signal = enumMapValue(shSignals, json_object_get_string(signalJ));
-            if (!signal)
-		goto InvalidRequest;
+            if (!signal) {
+                afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "invalid signal");
+                return 1;
+	    }
         }
     }
 
@@ -217,7 +221,8 @@ static int spawnTaskControl (afb_req_t request, shellCmdT *cmd, taskActionE acti
         if (taskId) {
             taskCtrlOne (request, taskId, action, signal, &responseJ);
         }else {
-            goto InvalidRequest;
+            afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "invalid pid");
+            return 1;
         }
     }
     data = afb_data_json_c_hold(responseJ);
@@ -226,9 +231,6 @@ static int spawnTaskControl (afb_req_t request, shellCmdT *cmd, taskActionE acti
 
 InternalError:
     afb_req_reply(request, AFB_ERRNO_INTERNAL_ERROR, 0, NULL);
-    return 1;
-InvalidRequest:
-    afb_req_reply(request, AFB_ERRNO_INVALID_REQUEST, 0, NULL);
     return 1;
 } // end spawnTaskStop
 
@@ -263,10 +265,7 @@ void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ) {
         if (err) goto OnErrorExit;
 
     } else {
-	char *text = NULL;
-	int len = asprintf(&text, "unknown action='%s'", action);
-	afb_data_t data = afb_data_string_hold(text, len > 0 ? (size_t)len : 0);
-        afb_req_reply(request, AFB_ERRNO_INVALID_REQUEST, 1, &data);
+        afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "invalid action");
         goto OnErrorExit;
     }
 
