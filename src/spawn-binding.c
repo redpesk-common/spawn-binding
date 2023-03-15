@@ -23,11 +23,13 @@
 #define _GNU_SOURCE
 
 #include <stdio.h>
+#include <strings.h>
 
 #include <afb/afb-binding.h>
 #include <rp-utils/rp-jsonc.h>
 #include <rp-utils/rp-expand-vars.h>
 #include <afb-helpers4/afb-data-utils.h>
+#include <afb-helpers4/afb-req-utils.h>
 
 #include "spawn-binding.h"
 #include "spawn-sandbox.h"
@@ -172,26 +174,172 @@ static void cmdApiRequest(afb_req_t request, unsigned naparam, afb_data_t const 
 	}
 }
 
+/**
+* structure holding dynamic commands during their
+* life.
+*/
+struct dynexec
+{
+	/** the parameters */
+	json_object *params;
 
+	/** the command object */
+	shellCmdT cmd;
+};
 
+/**
+* free the content of a command
+*/
+static void free_cmd_content(shellCmdT *cmd)
+{
+	int idx = cmd->argc;
+	if (cmd->apiverb != cmd->uid)
+		free((void*)cmd->apiverb);
+	if (idx) /* don't free the first */
+		while (--idx)
+			free((void*)cmd->argv[idx]);
+	free(cmd->argv);
+}
 
+/**
+* free the dynexec value
+*/
+static void free_dynexec(struct dynexec *dynex)
+{
+	free_cmd_content(&dynex->cmd);
+	json_object_put(dynex->params);
+	free(dynex);
+}
 
+/**
+* Launch the dynexec command
+*/
+static void dynexec_process(struct dynexec *dynex, afb_req_t request)
+{
+	spawnTaskVerb (request, &dynex->cmd, NULL);
+}
 
+#if defined(SPAWN_EXEC_PERMISSION)
+/**
+* callback of checking EXEC permission
+*/
+static void dynexec_check_exec_permission_cb(void *closure, int status, afb_req_t request)
+{
+	if (status < 0)
+		afb_req_reply(request, AFB_ERRNO_INSUFFICIENT_SCOPE, 0, NULL);
+	else
+		dynexec_process(closure, request);
+}
 
+/**
+* enforce to check exec permission by substituting dynexec_process function
+*/
+#define dynexec_process(dynex,request) \
+	afb_req_check_permission(request, SPAWN_EXEC_PERMISSION, \
+				dynexec_check_exec_permission_cb, dynex);
 
+#endif
 
+/**
+* calback of checking permission of
+*/
+static void dynexec_check_permission_cb(void *closure, int status, afb_req_t request)
+{
+	if (status < 0)
+		afb_req_reply(request, AFB_ERRNO_INSUFFICIENT_SCOPE, 0, NULL);
+	else
+		dynexec_process(closure, request);
+}
 
+/**
+* search for the sandbox of given uid
+*/
+static sandBoxT *spawner_search_sandbox(spawnApiT *spawner, const char *searched_uid)
+{
+	sandBoxT *sandbox = spawner->sandboxes;
+	while (sandbox->uid && strcasecmp(sandbox->uid, searched_uid))
+		sandbox++;
+	return sandbox->uid ? sandbox : NULL;
+}
 
+/**
+* implementation of 'exec' verb
+*/
+static void on_request_execute(afb_req_t request, unsigned naparam, afb_data_t const params[])
+{
+	int rc;
+	afb_data_t arg;
+	json_object *query, *exec;
+	json_object *uid = NULL, *timeout = NULL, *verbose = NULL, *encoder = NULL;
+	spawnApiT *spawner;
+	const char *sandbox_uid;
+	sandBoxT *sandbox;
+	struct dynexec *dynex;
 
+	/* get the JSON query */
+	rc = afb_req_param_convert(request, 0, AFB_PREDEFINED_TYPE_JSON_C, &arg);
+	if (rc < 0) {
+		afb_req_reply(request, AFB_ERRNO_INVALID_REQUEST, 0, NULL);
+		return;
+	}
+	query = (json_object*)afb_data_ro_pointer(arg);
 
+	/* extract arguments */
+	rc = rp_jsonc_unpack(query, "{ss so s?o s?o s?o s?o}",
+		"sandbox", &sandbox_uid,
+		"exec",    &exec,
+		"uid",     &uid,
+		"timeout", &timeout,
+		"verbose", &verbose,
+		"encoder", &encoder);
+	if (rc < 0) {
+		afb_req_reply(request, AFB_ERRNO_INVALID_REQUEST, 0, NULL);
+		return;
+	}
 
+	/* extract the sandbox */
+	spawner = (spawnApiT*)afb_req_get_vcbdata(request);
+	sandbox = spawner_search_sandbox(spawner, sandbox_uid);
+	if (sandbox == NULL) {
+		afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "invalid sandbox uid");
+		return;
+	}
 
+	/* ensure command uid and make the dynexec structure */
+	uid = uid == NULL ? json_object_new_string("dynamic") : json_object_get(uid),
+	dynex = uid == NULL ? NULL : calloc(1, sizeof *dynex);
+	if (dynex == NULL) {
+		afb_req_reply(request, AFB_ERRNO_OUT_OF_MEMORY, 0, NULL);
+		return;
+	}
+	afb_req_set_userdata(request, dynex, (void (*)(void*))free_dynexec);
 
+	/* wrap the arguments */
+	rc = rp_jsonc_pack(&dynex->params, "{so sO* sO* sO* sO}",
+		"uid",     uid == NULL ? json_object_new_string("dynamic") : json_object_get(uid),
+		"timeout", timeout,
+		"verbose", verbose,
+		"encoder", encoder,
+		"exec",    exec);
+	if (rc) {
+		afb_req_reply(request, AFB_ERRNO_INTERNAL_ERROR, 0, NULL);
+		return;
+	}
 
+	/* parse the command */
+	rc = spawn_config_read_one_command(sandbox, &dynex->cmd, dynex->params);
+	if (rc < 0) {
+		afb_req_reply(request, AFB_ERRNO_INVALID_REQUEST, 0, NULL);
+		return;
+	}
 
-
-
-
+	/* check the privilege if any */
+	if (sandbox->privilege)
+		afb_req_check_permission(request, sandbox->privilege,
+					dynexec_check_permission_cb, dynex);
+	else
+		dynexec_process(dynex, request);
+}
 
 #if 0
 
@@ -240,6 +388,8 @@ static int pre_init_api_spawn(afb_api_t api, spawnApiT *spawn)
         int rc = add_verb(api, "ping", "ping test", PingTest, NULL, NULL, 0);
         if (rc >= 0)
                 rc = add_verb(api, "info", "info about sandboxes", Infosandbox, spawn, NULL, 0);
+        if (rc >= 0)
+                rc = add_verb(api, "exec", "execute a command", on_request_execute, spawn, NULL, 0);
 
         // dynamic verbs
         for (sandbox = spawn->sandboxes ; sandbox && rc >= 0 && sandbox->uid != NULL ; sandbox++) {
