@@ -26,7 +26,7 @@
 #define _SPAWN_BINDING_INCLUDE_
 
 #include <afb/afb-binding.h>
-#include "ctl-lib.h"
+#include <afb-helpers4/ctl-lib.h>
 
 // anonymous type definition to allow anonymous type in .h
 typedef struct shellCmdS shellCmdT;

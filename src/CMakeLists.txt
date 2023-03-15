@@ -19,7 +19,6 @@ PROJECT_TARGET_ADD(spawn)
 
 	# compile any C file starting with a lower case
         set(CSOURCES
-                ctl-lib.c
                 spawn-childexec.c
                 spawn-encoders.c
                 spawn-expand.c

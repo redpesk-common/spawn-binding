@@ -2,7 +2,7 @@
 
 #define AFB_BINDING_VERSION 4
 #include <afb/afb-binding.h>
-#include "ctl-lib-plugin.h"
+#include <afb-helpers4/ctl-lib-plugin.h>
 
 
 CTL_PLUGIN_DECLARE("test-ctl-plug", "simple test plugin");
