@@ -322,7 +322,7 @@ static int encoderLineParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len,
             err= callback(taskId, docId, 0, json_object_new_string ("line too long truncated with '\\'"), context);
             if (err) goto OnErrorExit;
         } else {
-            if (docId->data[docId->index++] > '\r') docId->index++; // if last char is not a newline keep it
+            if ((unsigned char)docId->data[docId->index++] > '\r') docId->index++; // if last char is not a newline keep it
             docId->data[docId->index++] = '\0';
             err= callback(taskId, docId, 0, NULL, context);
             if (err) goto OnErrorExit;
@@ -337,12 +337,12 @@ static int encoderLineParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len,
         for (idx=docId->index; idx<=(docId->index + len-1); idx++) {
 
             // for every newline close 'C' string and push it to the stdoutJ array
-            if (docId->data[idx] <= '\r') {  // CR ou NL are equivalent
+            if ((unsigned char)docId->data[idx] <= '\r') {  // CR ou NL are equivalent
                 docId->data[idx] = '\0';
                 err= callback (taskId, docId, dataIdx, NULL, context);
                 if (err) goto OnErrorExit;
 
-                for (idx=idx+1; docId->data[idx] <= '\r'; idx++); // remove any trailling cr/nl
+                for (idx=idx+1; (unsigned char)docId->data[idx] <= '\r'; idx++); // remove any trailling cr/nl
                 dataIdx= idx; // next line start
             }
         }
