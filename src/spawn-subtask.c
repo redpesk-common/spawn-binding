@@ -242,8 +242,10 @@ void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ) {
     int err, verbose=-1;
 
     // if not a valid formating then everything is args and action==start
-    err= rp_jsonc_unpack(queryJ, "{s?s s?o s?i !}", "action", &action, "args", &argsJ, "verbose", &verbose);
-    if (err) argsJ=queryJ;
+    if (queryJ) {
+	err= rp_jsonc_unpack(queryJ, "{s?s s?o s?i !}", "action", &action, "args", &argsJ, "verbose", &verbose);
+	if (err) argsJ=queryJ;
+    }
 
     // default is not null but cmd->verbose and query can not set verbosity to more than 4
     if (verbose < 0 || verbose >4) verbose=cmd->sandbox->verbose;
