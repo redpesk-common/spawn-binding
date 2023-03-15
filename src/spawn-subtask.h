@@ -33,11 +33,6 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId
 void taskPushResponse (taskIdT *taskId);
 void spawnFreeTaskId  (taskIdT *taskId);
 
-#if 0
-int spawnChildSignalCB (sd_event_source* source, int fd, uint32_t events, void* context);
-int spawnChildMonitor (afb_api_t api, sd_event_io_handler_t callback, spawnApiT *binding);
-#endif
-
 // spawn-childexec.c
 int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose);
 
