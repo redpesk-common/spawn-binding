@@ -67,14 +67,15 @@ pthread_rwlock_t globtidsem = PTHREAD_RWLOCK_INITIALIZER;
 void taskPushResponse (taskIdT *taskId) {
 
     // push event if not one listen just stop pushing
-    if (taskId->responseJ) {
+    json_object *resp = taskId->responseJ;
+    taskId->responseJ = NULL;
+    if (resp) {
 	int count = 1;
-        afb_data_t data = afb_data_json_c_hold(taskId->responseJ);
+        afb_data_t data = afb_data_json_c_hold(resp);
         if (taskId->synchronous)
             afb_req_reply(taskId->request, 0, 1, &data);
         else
 	    count = afb_event_push(taskId->event, 1, &data);
-        taskId->responseJ = NULL;
         taskId->statusJ = NULL;
         taskId->errorJ = NULL;
         if (!count && taskId->verbose > 4)
