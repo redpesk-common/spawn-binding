@@ -56,12 +56,6 @@ typedef struct {
 	/** the API */
 	afb_api_t api;
 
-	/** running tasks */
-	taskIdT *gtids;
-
-	/** gtids' access protection */
-	pthread_rwlock_t sem;
-
 	/** meta data from controller */
 	ctl_metadata_t metadata;
 

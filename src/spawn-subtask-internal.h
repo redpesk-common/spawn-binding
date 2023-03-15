@@ -48,4 +48,10 @@ struct taskIdS {
   UT_hash_handle tidsHash, gtidsHash;    // makes this structure hashable
 };
 
+/** global running tasks */
+extern taskIdT *globtids;
+
+/** globtids' access protection */
+extern pthread_rwlock_t globtidsem;
+
 #endif /* _SPAWN_SUBTASK_INTERNAL_INCLUDE_ */

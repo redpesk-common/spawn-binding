@@ -241,7 +241,6 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
     afb_api_t api = cmd->sandbox->binding->api;
     int   err;
     taskIdT *taskId = NULL;
-    spawnApiT *binding= cmd->sandbox->binding;
 
         // create task context
         taskId = (taskIdT*) calloc (1, sizeof(taskIdT));
@@ -290,9 +289,9 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
             pthread_rwlock_unlock(&cmd->sem);
         }
 
-        if (! pthread_rwlock_wrlock(&binding->sem)) {
-            HASH_ADD(gtidsHash, binding->gtids, pid, sizeof(pid_t), taskId);
-            pthread_rwlock_unlock(&binding->sem);
+        if (! pthread_rwlock_wrlock(&globtidsem)) {
+            HASH_ADD(gtidsHash, globtids, pid, sizeof(pid_t), taskId);
+            pthread_rwlock_unlock(&globtidsem);
         }
 
         // build responseJ & update call tid

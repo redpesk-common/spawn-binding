@@ -58,6 +58,11 @@ typedef enum {
     SPAWN_ACTION_UNSUBSCRIBE,
 } taskActionE;
 
+/** global running tasks */
+taskIdT *globtids = NULL;
+
+/** globtids' access protection */
+pthread_rwlock_t globtidsem = PTHREAD_RWLOCK_INITIALIZER;
 
 void taskPushResponse (taskIdT *taskId) {
 
@@ -85,11 +90,11 @@ void spawnFreeTaskId  (taskIdT *taskId) {
     shellCmdT *cmd = taskId->cmd;
     spawnApiT *binding = cmd ? cmd->sandbox->binding : NULL;
 
-    if (binding && !pthread_rwlock_wrlock(&binding->sem)) {
-        HASH_FIND(gtidsHash, binding->gtids, &taskId->pid, sizeof(int), t);
+    if (binding && !pthread_rwlock_wrlock(&globtidsem)) {
+        HASH_FIND(gtidsHash, globtids, &taskId->pid, sizeof(int), t);
         if (t == taskId)
-            HASH_DELETE(gtidsHash, binding->gtids, taskId);
-        pthread_rwlock_unlock(&binding->sem);
+            HASH_DELETE(gtidsHash, globtids, taskId);
+        pthread_rwlock_unlock(&globtidsem);
     }
 
     if (cmd && !pthread_rwlock_wrlock(&cmd->sem)) {
@@ -280,13 +285,13 @@ OnErrorExit:
 }
 
 // search taskId from child pid within global binding gtids
-static taskIdT *spawnChildGetTaskId (spawnApiT *binding, int childPid) {
+static taskIdT *spawnChildGetTaskId (int childPid) {
     taskIdT *taskId = NULL;
 
     // search if PID is present within binding list
-    if (! pthread_rwlock_rdlock(&binding->sem)) {
-        HASH_FIND (gtidsHash, binding->gtids, &childPid, sizeof(int), taskId);
-        pthread_rwlock_unlock(&binding->sem);
+    if (! pthread_rwlock_rdlock(&globtidsem)) {
+        HASH_FIND (gtidsHash, globtids, &childPid, sizeof(int), taskId);
+        pthread_rwlock_unlock(&globtidsem);
     }
     return taskId;
 }
@@ -310,7 +315,7 @@ void spawnChildUpdateStatus (taskIdT *taskId) {
 
         // anonymous childs signal should be check against global binding taskid
         if (!taskId)
-		taskId= spawnChildGetTaskId (taskId->cmd->sandbox->binding, childPid);
+		taskId= spawnChildGetTaskId (childPid);
         if (!taskId) {
             AFB_REQ_NOTICE(taskId->request, "[sigchild-unknown] igoring childPid=%d exit status=%d (spawnChildUpdateStatus)", childPid, childStatus);
             continue;
