@@ -95,13 +95,13 @@ static int parse_prepare_command (shellCmdT *cmd, json_object *execJ)
 	/* get the command and its arguments */
 	err = rp_jsonc_unpack(execJ, "{ss s?o !}", "cmdpath", &cmd->cli, "args", &argsJ);
 	if (err) {
-		AFB_API_ERROR(cmd->api, "[fail-parsing] cmdpath sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
+		AFB_API_ERROR(cmd->sandbox->binding->api, "[fail-parsing] cmdpath sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
 		goto OnErrorExit;
 	}
 
 	cmd->cli = utilsExpandKeyCmd(cmd->cli, cmd);  // expand env $keys
 	if (access(cmd->cli, X_OK|R_OK)) {
-		AFB_API_ERROR(cmd->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
+		AFB_API_ERROR(cmd->sandbox->binding->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
 		goto OnErrorExit;
 	}
 
@@ -111,7 +111,7 @@ static int parse_prepare_command (shellCmdT *cmd, json_object *execJ)
 		cmd->argv = calloc (cmd->argc, sizeof (char*));
 		cmd->argv[0] = utilsExpandKeyCmd(cmd->cli, cmd);
 		if (!cmd->argv[0]) {
-			AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
+			AFB_API_ERROR(cmd->sandbox->binding->api, "[unknow-$ENV-key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
 			goto OnErrorExit;
 		}
 	}
@@ -125,7 +125,7 @@ static int parse_prepare_command (shellCmdT *cmd, json_object *execJ)
 				param = json_object_get_string (json_object_array_get_idx(argsJ, idx - 1));
 				cmd->argv[idx] = utilsExpandKeyCmd(param, cmd);
 				if (!cmd->argv[idx]) {
-					AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, param);
+					AFB_API_ERROR(cmd->sandbox->binding->api, "[unknow-$ENV-key] sandbox=%s cmd=%s args=%s", cmd->sandbox->uid, cmd->uid, param);
 					goto OnErrorExit;
 				}
 			}
@@ -138,7 +138,7 @@ static int parse_prepare_command (shellCmdT *cmd, json_object *execJ)
 			cmd->argv[0] = cmd->uid;
 			cmd->argv[1] = utilsExpandKeyCmd(param, cmd);
 			if (!cmd->argv[1]) {
-				AFB_API_ERROR(cmd->api, "[unknow-$ENV-key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->cli, param);
+				AFB_API_ERROR(cmd->sandbox->binding->api, "[unknow-$ENV-key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->cli, param);
 				goto OnErrorExit;
 			}
 			break;

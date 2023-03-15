@@ -73,7 +73,7 @@ void taskPushResponse (taskIdT *taskId) {
         taskId->statusJ = NULL;
         taskId->errorJ = NULL;
         if (!count && taskId->verbose > 4)
-	    AFB_API_NOTICE(taskId->cmd->api, "uid='%s' no client listening",  taskId->uid);
+	    AFB_REQ_NOTICE(taskId->request, "uid='%s' no client listening",  taskId->uid);
     }
 }
 
@@ -124,13 +124,13 @@ static void taskPushFinalResponse (taskIdT *taskId) {
 
     // try to read any remaining data before building exit status
     if (taskId->verbose > 2)
-        AFB_API_INFO (taskId->cmd->api, "taskPushFinalResponse: uid=%s pid=%d [step-1: collect remaining data]", taskId->uid, taskId->pid);
+        AFB_REQ_INFO (taskId->request, "taskPushFinalResponse: uid=%s pid=%d [step-1: collect remaining data]", taskId->uid, taskId->pid);
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDERR, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
 
     (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STOP, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
     if (taskId->verbose > 2)
-        AFB_API_INFO (taskId->cmd->api, "taskPushFinalResponse: uid=%s pid=%d [step-2: collect child status=%s]", taskId->uid, taskId->pid, json_object_get_string(taskId->statusJ));
+        AFB_REQ_INFO (taskId->request, "taskPushFinalResponse: uid=%s pid=%d [step-2: collect child status=%s]", taskId->uid, taskId->pid, json_object_get_string(taskId->statusJ));
 
     taskPushResponse (taskId);
     spawnFreeTaskId(taskId);
@@ -291,7 +291,7 @@ static taskIdT *spawnChildGetTaskId (spawnApiT *binding, int childPid) {
     return taskId;
 }
 
-void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId) {
+void spawnChildUpdateStatus (taskIdT *taskId) {
     int childPid, childStatus;
     int expectPid=0; // wait for any child whose process group ID is equal to calling process
 
@@ -301,7 +301,7 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId
     // we known what we're looking for
     if (taskId) {
         if (taskId->verbose > 2)
-            AFB_API_INFO (api, "spawnChildUpdateStatus: uid=%s pid=%d [step-1 wait sigchild]", taskId->uid, taskId->pid);
+            AFB_REQ_INFO(taskId->request, "spawnChildUpdateStatus: uid=%s pid=%d [step-1 wait sigchild]", taskId->uid, taskId->pid);
         expectPid = taskId->pid;
     }
 
@@ -310,9 +310,9 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId
 
         // anonymous childs signal should be check against global binding taskid
         if (!taskId)
-		taskId= spawnChildGetTaskId (binding, childPid);
+		taskId= spawnChildGetTaskId (taskId->cmd->sandbox->binding, childPid);
         if (!taskId) {
-            AFB_API_NOTICE(api, "[sigchild-unknown] igoring childPid=%d exit status=%d (spawnChildUpdateStatus)", childPid, childStatus);
+            AFB_REQ_NOTICE(taskId->request, "[sigchild-unknown] igoring childPid=%d exit status=%d (spawnChildUpdateStatus)", childPid, childStatus);
             continue;
         }
 
@@ -327,7 +327,7 @@ void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId
 
         // push final respond to every taskId subscriber
         if (taskId->verbose > 2)
-            AFB_API_INFO (api, "spawnChildUpdateStatus: uid=%s pid=%d [step-2 got sigchild status=%d]", taskId->uid, taskId->pid, childStatus);
+            AFB_REQ_INFO(taskId->request, "spawnChildUpdateStatus: uid=%s pid=%d [step-2 got sigchild status=%d]", taskId->uid, taskId->pid, childStatus);
         taskPushFinalResponse (taskId);
 
     } // end while

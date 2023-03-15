@@ -244,7 +244,6 @@ static int pre_init_api_spawn(afb_api_t api, spawnApiT *spawn)
         // dynamic verbs
         for (sandbox = spawn->sandboxes ; sandbox && rc >= 0 && sandbox->uid != NULL ; sandbox++) {
                 for (cmd = sandbox->cmds ; rc >= 0 && cmd->uid != NULL ; cmd++) {
-                        cmd->api = api;
                         authent = cmd->authent.type == afb_auth_Yes ? NULL : &cmd->authent;
                         rc = add_verb(api, cmd->apiverb, cmd->info, cmdApiRequest, cmd, authent, 0);
                 }
@@ -304,7 +303,7 @@ static int main_api_ctl(
 }
 
 /* create one API per config file object */
-static int process_one_config(void *closure, json_object *rootdesc)
+static int process_one_config(void *closure, json_object *rootdesc, afb_api_t rootapi)
 {
 	int rc;
 	spawnApiT *spawn;
@@ -317,6 +316,7 @@ static int process_one_config(void *closure, json_object *rootdesc)
 		rc = -1;
         }
 	else {
+        	spawn->api = rootapi;
 		spawn->onstart = CTL_ACTIONSET_INITIALIZER;
 		spawn->onevent = CTL_ACTIONSET_INITIALIZER;
 		spawn->extra = CTL_ACTIONSET_INITIALIZER;
@@ -365,14 +365,15 @@ static int process_one_config(void *closure, json_object *rootdesc)
  * and call the callback with it. */
 static int call_for_json_path(
 	void *closure,
-	int (*callback)(void*,json_object*),
-	const char *path
+	int (*callback)(void*,json_object*,afb_api_t),
+	const char *path,
+	afb_api_t rootapi
 ) {
 	int rc;
 	char *expath = rp_expand_vars_env_only(path, 0);
 	json_object *json = json_object_from_file(expath ?: path);
 	if (json) {
-		rc = callback(closure, json);
+		rc = callback(closure, json, rootapi);
 		json_object_put(json);
 	}
 	else {
@@ -390,16 +391,16 @@ static int iter_root_configs(
 	const char *path,
 	const char *uid,
 	json_object *config,
-	int (*callback)(void*,json_object*),
+	int (*callback)(void*,json_object*,afb_api_t),
 	void *closure
 ) {
 	char *configpath;
 	int rc;
 
-	rc = config ? callback(closure, config) : 0;
+	rc = config ? callback(closure, config, rootapi) : 0;
 	configpath = getenv("AFB_SPAWN_CONFIG");
 	if (!rc && configpath)
-		rc = call_for_json_path(closure, callback, configpath);
+		rc = call_for_json_path(closure, callback, configpath, rootapi);
 
 	/* TODO */
 	return rc;

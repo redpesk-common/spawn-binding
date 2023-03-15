@@ -148,7 +148,6 @@ struct shellCmdS
 	const encoderCbT *encoder;
 	struct sandBoxS *sandbox;
 	int timeout;
-	afb_api_t api;
 	void *context;
 	void *opts;
 	taskIdT *tids;

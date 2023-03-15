@@ -150,7 +150,7 @@ static void on_pipe(afb_evfd_t efd, int fd, uint32_t revents, taskIdT *taskId, i
 
 	// what ever stdout/err pipe hanghup 1st we close both event sources
 	if (revents & EPOLLHUP) {
-		spawnChildUpdateStatus (cmd->api, cmd->sandbox->binding, taskId);
+		spawnChildUpdateStatus(taskId);
 	}
 }
 
@@ -238,7 +238,7 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
 static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose, pid_t sonPid, int outfd, int errfd) {
 
     json_object *responseJ;
-    afb_api_t api = cmd->api;
+    afb_api_t api = cmd->sandbox->binding->api;
     int   err;
     taskIdT *taskId = NULL;
     spawnApiT *binding= cmd->sandbox->binding;

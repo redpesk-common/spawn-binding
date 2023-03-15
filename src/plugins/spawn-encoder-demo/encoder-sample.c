@@ -138,7 +138,7 @@ static int MyCustomInitCB (shellCmdT *cmd, json_object *optsJ, void* context) {
     if (optsJ) {
         err = rp_jsonc_unpack(optsJ, "{s?i s?i}" ,"blkcount", &opts->blkcount, "maxlen", &opts->maxlen);
         if (err) {
-            AFB_API_ERROR(cmd->api, "MyCustomInitCB: [invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
+            AFB_API_ERROR(cmd->sandbox->binding->api, "MyCustomInitCB: [invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
             goto OnErrorExit;
         }
     }
@@ -175,7 +175,7 @@ static int MyCustomSampleCB (taskIdT *taskId, encoderActionE action, encoderOpsE
         case ENCODER_TASK_STDOUT: {
             err= (*pluginCB->readStream) (taskId, taskId->outfd, taskctx->sout, opts->maxlen, (*pluginCB->textParser), MyCustomStdoutCB, operation, taskctx);
             if (err) {
-                AFB_API_ERROR(cmd->api, "MyCustomSampleCB: [Stdout fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                AFB_REQ_ERROR(taskId->request, "MyCustomSampleCB: [Stdout fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
             }
             break;
@@ -184,7 +184,7 @@ static int MyCustomSampleCB (taskIdT *taskId, encoderActionE action, encoderOpsE
         case ENCODER_TASK_STDERR: {
             err= (*pluginCB->readStream) (taskId, taskId->errfd, taskctx->serr, opts->maxlen, (*pluginCB->textParser), MyCustomStderrCB, operation, taskctx);
             if (err) {
-                AFB_API_ERROR(cmd->api, "MyCustomSampleCB: [Stdout fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                AFB_REQ_ERROR(taskId->request, "MyCustomSampleCB: [Stdout fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
             }
             break;
@@ -214,7 +214,7 @@ static int MyCustomSampleCB (taskIdT *taskId, encoderActionE action, encoderOpsE
         }
 
         default:
-           AFB_API_ERROR(cmd->api, "fmtDocArrayCB: [action fail] sandbox=%s cmd=%s action=%d pid=%d", cmd->sandbox->uid, cmd->uid, action, taskId->pid);
+           AFB_REQ_ERROR(taskId->request, "fmtDocArrayCB: [action fail] sandbox=%s cmd=%s action=%d pid=%d", cmd->sandbox->uid, cmd->uid, action, taskId->pid);
            goto OnErrorExit;
     }
 

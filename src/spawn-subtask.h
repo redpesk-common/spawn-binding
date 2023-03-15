@@ -29,7 +29,7 @@
 
 // spawn-subtask.c
 void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ);
-void spawnChildUpdateStatus (afb_api_t api,  spawnApiT *binding, taskIdT *taskId);
+void spawnChildUpdateStatus (taskIdT *taskId);
 void taskPushResponse (taskIdT *taskId);
 void spawnFreeTaskId  (taskIdT *taskId);
 

@@ -133,7 +133,8 @@ static int encoderJsonParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len,
     // nothing else to read this is our last call
     if (len == 0) {
         if (docId->index == docId->size) {
-            if (taskId->cmd->verbose) AFB_API_NOTICE(taskId->cmd->api, "[json too long] encoderJsonParserCB: sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
+            if (taskId->verbose)
+                AFB_REQ_NOTICE(taskId->request, "[json too long] encoderJsonParserCB: sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
             docId->data[docId->index++] = '\\';
             docId->data[docId->index++] = '\0';
             err= callback(taskId, docId, 0, json_object_new_string ("line(s) too long folded with '\\' [increase {'linemax':xxxx}]"),context);
@@ -259,7 +260,7 @@ static int encoderRawParserCB (taskIdT *taskId, streamBufT *data, ssize_t len, e
             // no more space double buffer size
             data->size = data->size * 2;
             data->data = realloc (data->data, data->size);
-            AFB_API_NOTICE(taskId->cmd->api, "[buffer size doubled] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
+            AFB_REQ_NOTICE(taskId->request, "[buffer size doubled] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
             if (!data->data) goto OnErrorExit;
 
         } else {
@@ -315,7 +316,7 @@ static int encoderLineParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len,
     // nothing else to read this is our last call
     if (len == 0) {
         if (docId->index == docId->size) {
-            AFB_API_NOTICE(taskId->cmd->api, "[line too long] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
+            AFB_REQ_NOTICE(taskId->request, "[line too long] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
             docId->data[docId->index++] = '\\';
             docId->data[docId->index++] = '\0';
             err= callback(taskId, docId, 0, json_object_new_string ("line too long truncated with '\\'"), context);
@@ -419,7 +420,7 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
             if (taskId->verbose >8)  fprintf (stderr, "**** ENCODER_DOC_STDOUT uid=%s pid=%d\n", taskId->uid, taskId->pid);
             err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderLineParserCB, DefaultArrayCB, operation, &taskCtx->stdout);
             if (err) {
-                AFB_API_ERROR(cmd->api, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                AFB_REQ_ERROR(taskId->request, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
             }
             break;
@@ -429,7 +430,7 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
             if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_STDERR uid=%spid=%d\n", taskId->uid, taskId->pid);
             err= encoderReadFd (taskId, taskId->errfd, taskCtx->stderr.buffer, opts->maxlen, encoderLineParserCB, DefaultArrayCB, operation, &taskCtx->stderr);
             if (err) {
-                AFB_API_ERROR(cmd->api, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                AFB_REQ_ERROR(taskId->request, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
             }
             break;
@@ -472,7 +473,7 @@ static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE
         }
 
         default:
-           AFB_API_ERROR(cmd->api, "[action-fail] sandbox=%s cmd=%s action=%d pid=%d", cmd->sandbox->uid, cmd->uid, action, taskId->pid);
+           AFB_REQ_ERROR(taskId->request, "[action-fail] sandbox=%s cmd=%s action=%d pid=%d", cmd->sandbox->uid, cmd->uid, action, taskId->pid);
            goto OnErrorExit;
     }
     return 0;
@@ -495,7 +496,7 @@ static int encoderLineCB (taskIdT *taskId, encoderActionE action, encoderOpsE op
             if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_LINE_STDOUT taskId=0x%p pid=%d\n", taskId, taskId->pid);
             err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderLineParserCB, lineEventCB, operation, &taskCtx->stdout);
             if (err) {
-                AFB_API_ERROR(cmd->api, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                AFB_REQ_ERROR(taskId->request, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
             }
             break;
@@ -526,7 +527,7 @@ static int encoderRawCB (taskIdT *taskId, encoderActionE action, encoderOpsE ope
             if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_RAW_STDOUT taskId=0x%p pid=%d\n", taskId, taskId->pid);
             err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderRawParserCB, rawDataCB, operation, &taskCtx->stdout);
             if (err) {
-                AFB_API_ERROR(cmd->api, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                AFB_REQ_ERROR(taskId->request, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
             }
             break;
@@ -573,7 +574,7 @@ static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE ope
             if (taskId->verbose >8)  fprintf (stderr, "**** encoderLogCB uid=%s pid=%d\n", taskId->uid, taskId->pid);
             err= encoderReadFd (taskId, taskId->outfd, &taskCtx->stdout, opts->maxlen, encoderLineParserCB, logEventCB, operation, (void*)STDOUT_FILENO);
             if (err) {
-                AFB_API_ERROR(cmd->api, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                AFB_REQ_ERROR(taskId->request, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
             }
             break;
@@ -583,7 +584,7 @@ static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE ope
             if (taskId->verbose >8) fprintf (stderr, "**** encoderLogCB uid=%spid=%d\n", taskId->uid, taskId->pid);
             err= encoderReadFd (taskId, taskId->errfd, &taskCtx->stderr, opts->maxlen, encoderLineParserCB, logEventCB, operation, (void*)STDERR_FILENO);
             if (err) {
-                AFB_API_ERROR(cmd->api, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                AFB_REQ_ERROR(taskId->request, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
             }
             break;
@@ -615,7 +616,7 @@ static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE ope
         }
 
         default:
-           AFB_API_ERROR(cmd->api, "[action-fail] sandbox=%s cmd=%s action=%d pid=%d", cmd->sandbox->uid, cmd->uid, action, taskId->pid);
+           AFB_REQ_ERROR(taskId->request, "[action-fail] sandbox=%s cmd=%s action=%d pid=%d", cmd->sandbox->uid, cmd->uid, action, taskId->pid);
            goto OnErrorExit;
     }
     return 0;
@@ -638,7 +639,7 @@ static int encoderJsonCB (taskIdT *taskId, encoderActionE action, encoderOpsE op
             //fprintf (stderr, "**** ENCODER_JSON_STDOUT taskId=0x%p pid=%d\n", taskId, taskId->pid);
             err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderJsonParserCB, jsonEventCB, operation, &taskCtx->stdout);
             if (err) {
-                AFB_API_ERROR(cmd->api, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
+                AFB_REQ_ERROR(taskId->request, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
                 goto OnErrorExit;
             }
             break;
@@ -671,7 +672,7 @@ static int encoderInitLog (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     if (optsJ) {
         err = rp_jsonc_unpack(optsJ, "{s?s s?s s?i !}" ,"stdout", &fileout, "stderr", &fileerr, "maxlen", &opts->maxlen);
         if (err) {
-            AFB_API_ERROR(cmd->api, "[invalid format] sandbox=%s cmd=%s opts=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
+            AFB_API_ERROR(cmd->sandbox->binding->api, "[invalid format] sandbox=%s cmd=%s opts=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
             goto OnErrorExit;
         }
 
@@ -679,7 +680,7 @@ static int encoderInitLog (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
         if (fileout) opts->fileout= fopen (utilsExpandKeyCmd(fileout, cmd), "a");
         if (fileerr) opts->fileerr= fopen (utilsExpandKeyCmd(fileerr, cmd), "a");
         if (!opts->fileout || !opts->fileerr) {
-            AFB_API_ERROR(cmd->api, "[invalid logfile] sandbox=%s cmd=%s opts=%s err=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ), strerror(errno));
+            AFB_API_ERROR(cmd->sandbox->binding->api, "[invalid logfile] sandbox=%s cmd=%s opts=%s err=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ), strerror(errno));
             goto OnErrorExit;
         }
     }
@@ -700,7 +701,7 @@ static int encoderInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     if (optsJ) {
         err = rp_jsonc_unpack(optsJ, "{s?i s?i !}" ,"maxline", &opts->lineCount, "maxlen", &opts->maxlen);
         if (err) {
-            AFB_API_ERROR(cmd->api, "[invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
+            AFB_API_ERROR(cmd->sandbox->binding->api, "[invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
             goto OnErrorExit;
         }
     }
@@ -748,7 +749,6 @@ static int encoderRegisterCB (const char *uid, const encoderCbT *actionsCB) {
 // search for a plugin encoders/decoders CB list
 int encoderFind (shellCmdT *cmd, json_object *encoderJ) {
     char *pluginuid = NULL, *formatuid = NULL;
-    afb_api_t api = cmd->api;
     json_object *optsJ=NULL;
     encoderRegistryT *registryIdx;
     int index, err;
@@ -771,7 +771,7 @@ int encoderFind (shellCmdT *cmd, json_object *encoderJ) {
             ,"opts", &optsJ
             );
         if (err) {
-            AFB_API_ERROR(api, "[invalid-format] sandbox='%s' cmd='%s' not a valid json format='%s'", cmd->sandbox->uid, cmd->uid, json_object_get_string(encoderJ));
+            AFB_API_ERROR(cmd->sandbox->binding->api, "[invalid-format] sandbox='%s' cmd='%s' not a valid json format='%s'", cmd->sandbox->uid, cmd->uid, json_object_get_string(encoderJ));
             goto OnErrorExit;
         }
     }
@@ -782,14 +782,14 @@ int encoderFind (shellCmdT *cmd, json_object *encoderJ) {
             if (registryIdx->uid && !strcasecmp (registryIdx->uid, pluginuid)) break;
         }
         if (!registryIdx->uid) {
-            AFB_API_ERROR(api, "[plugin-not-found] sandbox='%s' cmd='%s' format='%s' plugin=%s", cmd->sandbox->uid, cmd->uid, formatuid, pluginuid);
+            AFB_API_ERROR(cmd->sandbox->binding->api, "[plugin-not-found] sandbox='%s' cmd='%s' format='%s' plugin=%s", cmd->sandbox->uid, cmd->uid, formatuid, pluginuid);
             goto OnErrorExit;
         }
     } else {
         // search for core builtin encoders (registry->uid==NULL)
         for (registryIdx= registryHead; registryIdx->uid && registryIdx->next; registryIdx=registryIdx->next);
         if (registryIdx->uid) {
-            AFB_API_ERROR(api, "[Internal-error] missing builtin core formaters (hoops!!!)");
+            AFB_API_ERROR(cmd->sandbox->binding->api, "[Internal-error] missing builtin core formaters (hoops!!!)");
             goto OnErrorExit;
         }
     }
@@ -801,13 +801,13 @@ int encoderFind (shellCmdT *cmd, json_object *encoderJ) {
     }
 
     if (!encoders[index].uid) {
-        AFB_API_ERROR(api, "[encoder-not-find] sandbox=%s cmd=%s format='%s'", cmd->sandbox->uid, cmd->uid, formatuid);
+        AFB_API_ERROR(cmd->sandbox->binding->api, "[encoder-not-find] sandbox=%s cmd=%s format='%s'", cmd->sandbox->uid, cmd->uid, formatuid);
         goto OnErrorExit;
     }
 
     // every encoder should define its formating callback
     if (!encoders[index].actionsCB) {
-        AFB_API_ERROR(api, "[encoder-invalid] sandbox=%s cmd=%s format=%s (no encoder callback defined !!!)", cmd->sandbox->uid, cmd->uid, encoders[index].uid);
+        AFB_API_ERROR(cmd->sandbox->binding->api, "[encoder-invalid] sandbox=%s cmd=%s format=%s (no encoder callback defined !!!)", cmd->sandbox->uid, cmd->uid, encoders[index].uid);
         goto OnErrorExit;
     }
 

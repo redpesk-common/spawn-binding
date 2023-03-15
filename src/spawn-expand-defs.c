@@ -132,7 +132,7 @@ static char*GetObjectUid(const char *label, void *ctx, spawnExpandSpecificT *spe
             case  WANT_SANDBOX_UID:
                 return (char*)(specific->value.cmd->sandbox->uid);
             case  WANT_API_NAME:
-                return (char*)(afb_api_name(specific->value.cmd->api));
+                return (char*)(afb_api_name(specific->value.cmd->sandbox->binding->api));
             default:
                 break;
             }
