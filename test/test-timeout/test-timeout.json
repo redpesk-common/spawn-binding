@@ -10,11 +10,18 @@
       "commands": [
         {
           "uid": "timeout",
-          "info" : "sleep six seconds with a timeout of 2 seconds",
+          "info" : "sleep six seconds with a timeout of two seconds",
 	  "encoder": "sync",
 	  "timeout": 2,
           "exec": {"cmdpath": "/usr/bin/sleep", "args": [ "6" ] }
-        }  
+        },
+        {
+		"uid": "no-timeout",
+		"info" : "sleep two seconds with a timeout of 6 seconds",
+		"encoder": "sync",
+		"timeout": 6,
+		"exec": {"cmdpath": "/usr/bin/sleep", "args": [ "2" ] }
+	}
       ]
     }
 }

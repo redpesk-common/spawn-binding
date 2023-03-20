@@ -19,6 +19,7 @@ sleep 1
 $CLIENT --sync --echo --human localhost:$PORT/api >& $COUT << EOC
 timeout ping true
 timeout timeout {"action":"start"}
+timeout no-timeout {"action":"start"}
 EOC
 
 sed -i '/"pid"/d' $COUT

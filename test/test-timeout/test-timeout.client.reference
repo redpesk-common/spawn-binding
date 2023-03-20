@@ -24,3 +24,18 @@ ON-REPLY 2:timeout/timeout: OK
     }
   }
 }
+SEND-CALL timeout/no-timeout {"action":"start"}
+ON-REPLY 3:timeout/no-timeout: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "cmd":"no-timeout",
+    "status":{
+      "exit":0
+    }
+  }
+}
