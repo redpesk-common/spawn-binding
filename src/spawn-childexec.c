@@ -173,7 +173,7 @@ static void childDumpArgv (shellCmdT *cmd, const char **params)
 	if (cmd->sandbox->namespace)
 		fprintf(stderr, "child(%s)=> bwrap", cmd->uid);
 	else
-		fprintf(stderr, "command(%s)=> %s", cmd->uid, cmd->cli);
+		fprintf(stderr, "command(%s)=> %s", cmd->uid, cmd->command);
 
 	for (argcount=1; params[argcount]; argcount++)
 		fprintf (stderr, " %s", params[argcount]);
@@ -214,7 +214,7 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
                 if (verbose > 4) fprintf (stderr, "sbox args[%d] params[%d] config=%s\n", idx, argcount-1, cmd->sandbox->namespace->argv[idx]);
             }
             // add cmd execv command as bwrap 1st parameter
-            params[argcount++]=cmd->cli;
+            params[argcount++]=cmd->command;
         }
 
         for (int idx=1; cmd->argv[idx]; idx++) {
@@ -265,7 +265,7 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         err = afb_req_subscribe(request, taskId->event);
         if (err) goto InternalError;
 
-        // initilise cmd->cli corresponding output formater buffer
+        // initilise cmd->command corresponding output formater buffer
         err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_START, ENCODER_OPS_STD, cmd->encoder->fmtctx);
         if (err) goto InternalError;
 
@@ -307,7 +307,7 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         return 0;
 
 InternalError:
-    AFB_REQ_ERROR(request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->cli, sonPid, strerror(errno));
+    AFB_REQ_ERROR(request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->command, sonPid, strerror(errno));
     afb_req_reply(request, AFB_ERRNO_INTERNAL_ERROR, 0, NULL);
     kill(-sonPid, SIGTERM);
     spawnFreeTaskId (taskId);
@@ -451,14 +451,14 @@ static int start_in_child (shellCmdT *cmd, json_object *argsJ, int verbose, char
             }
         }
 
-        // if cmd->cli is not executable try /bin/sh
+        // if cmd->command is not executable try /bin/sh
         if (cmd->sandbox->namespace)
             err = execv(cmd->sandbox->namespace->opts.bwrap, params);
         else
-            err = execv(cmd->cli, params);
+            err = execv(cmd->command, params);
 
         // not reached upon success
-        fprintf (stderr, "HOOPS: spawnTaskStart execve return cmd->cli=%s error=%s\n", cmd->cli, strerror(errno));
+        fprintf (stderr, "HOOPS: spawnTaskStart execve return cmd->command=%s error=%s\n", cmd->command, strerror(errno));
 	child_exit(1);
 	return 1;
 }
@@ -538,7 +538,7 @@ OnErrorExit2:
     close(stdoutP[0]);
     close(stdoutP[1]);
 OnErrorExit:
-    AFB_REQ_ERROR(request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d reason=%s error=%s", cmd->uid, cmd->cli, sonPid, reasonE, strerror(errno));
+    AFB_REQ_ERROR(request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d reason=%s error=%s", cmd->uid, cmd->command, sonPid, reasonE, strerror(errno));
     afb_req_reply(request, AFB_ERRNO_INTERNAL_ERROR, 0, NULL);
     return -1;
 } //end start_command

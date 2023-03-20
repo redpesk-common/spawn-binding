@@ -561,7 +561,7 @@ static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE ope
             taskId->context= taskCtx;
 
             // write start entry into log
-            fprintf (opts->fileout, "[%s] --- start %s [%s]---\n", taskId->uid, taskId->cmd->cli, utilsExpandKey("$TODAY"));
+            fprintf (opts->fileout, "[%s] --- start %s [%s]---\n", taskId->uid, taskId->cmd->command, utilsExpandKey("$TODAY"));
 
             break;
         }

@@ -93,15 +93,15 @@ static int parse_prepare_command (shellCmdT *cmd, json_object *execJ)
 	const char*param;
 
 	/* get the command and its arguments */
-	err = rp_jsonc_unpack(execJ, "{ss s?o !}", "cmdpath", &cmd->cli, "args", &argsJ);
+	err = rp_jsonc_unpack(execJ, "{ss s?o !}", "cmdpath", &cmd->command, "args", &argsJ);
 	if (err) {
 		AFB_API_ERROR(cmd->sandbox->binding->api, "[fail-parsing] cmdpath sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(argsJ));
 		goto OnErrorExit;
 	}
 
-	cmd->cli = utilsExpandKeyCmd(cmd->cli, cmd);  // expand env $keys
-	if (access(cmd->cli, X_OK|R_OK)) {
-		AFB_API_ERROR(cmd->sandbox->binding->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
+	cmd->command = utilsExpandKeyCmd(cmd->command, cmd);  // expand env $keys
+	if (access(cmd->command, X_OK|R_OK)) {
+		AFB_API_ERROR(cmd->sandbox->binding->api, "[file-not-executable] sandbox=%s cmd=%s exec=%s", cmd->sandbox->uid, cmd->uid, cmd->command);
 		goto OnErrorExit;
 	}
 
@@ -109,9 +109,9 @@ static int parse_prepare_command (shellCmdT *cmd, json_object *execJ)
 	if (!argsJ) {
 		cmd->argc = 2;
 		cmd->argv = calloc (cmd->argc, sizeof (char*));
-		cmd->argv[0] = utilsExpandKeyCmd(cmd->cli, cmd);
+		cmd->argv[0] = utilsExpandKeyCmd(cmd->command, cmd);
 		if (!cmd->argv[0]) {
-			AFB_API_ERROR(cmd->sandbox->binding->api, "[unknow-$ENV-key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->cli);
+			AFB_API_ERROR(cmd->sandbox->binding->api, "[unknow-$ENV-key] sandbox=%s cmd=%s cmdpath=%s", cmd->sandbox->uid, cmd->uid, cmd->command);
 			goto OnErrorExit;
 		}
 	}
@@ -138,7 +138,7 @@ static int parse_prepare_command (shellCmdT *cmd, json_object *execJ)
 			cmd->argv[0] = cmd->uid;
 			cmd->argv[1] = utilsExpandKeyCmd(param, cmd);
 			if (!cmd->argv[1]) {
-				AFB_API_ERROR(cmd->sandbox->binding->api, "[unknow-$ENV-key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->cli, param);
+				AFB_API_ERROR(cmd->sandbox->binding->api, "[unknow-$ENV-key] uid=%s cmdpath=%s arg=%s", cmd->uid, cmd->command, param);
 				goto OnErrorExit;
 			}
 			break;

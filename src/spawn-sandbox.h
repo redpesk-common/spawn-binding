@@ -101,6 +101,9 @@ typedef struct {
     confMountT *mounts;
 } confNamespaceT;
 
+/**
+* Structure holding data related to a sandboxing context
+*/
 struct sandBoxS {
 	const char *uid;
 	const char *info;
@@ -130,8 +133,8 @@ struct shellCmdS
 	/** some info */
 	const char *info;
 
-	/** ? */
-	const char *cli;
+	/** full path to the command */
+	const char *command;
 
 	/** */
 	const char *apiverb;
