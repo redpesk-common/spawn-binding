@@ -157,7 +157,6 @@ int spawn_config_read_one_command(sandBoxT *sandbox, shellCmdT *cmd, json_object
 	json_object *execJ = NULL, *encoderJ = NULL;
 
 	cmd->sandbox = sandbox;
-	cmd->magic = MAGIC_SPAWN_CMD;
 
 	// default verbose is sandbox->verbose
 	cmd->verbose = -1;
@@ -240,7 +239,6 @@ static int read_one_sandbox_config(struct read_one_sandbox_config_closure_s *ros
 	int err = 0;
 	json_object *cmdsJ, *namespaceJ=NULL, *capsJ=NULL, *aclsJ=NULL, *cgroupsJ=NULL, *envsJ=NULL, *seccompJ=NULL;
 
-	sandbox->magic = MAGIC_SPAWN_SBOX;
 	sandbox->binding = roscc->spawn;
 	sandbox->namespace = NULL;
 	sandbox->caps = NULL;

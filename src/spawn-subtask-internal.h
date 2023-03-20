@@ -28,7 +28,6 @@
 #include <afb/afb-binding.h>
 
 struct taskIdS {
-  spawnMagicT magic;
   pid_t pid; // hashtable key
   char *uid;
   int synchronous;

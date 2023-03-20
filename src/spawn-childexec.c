@@ -244,7 +244,6 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
 
         // create task context
         taskId = (taskIdT*) calloc (1, sizeof(taskIdT));
-        taskId->magic = MAGIC_SPAWN_TASKID;
         taskId->pid= sonPid;
         taskId->cmd= cmd;
         taskId->verbose= verbose;

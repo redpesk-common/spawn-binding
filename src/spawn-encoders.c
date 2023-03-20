@@ -392,7 +392,6 @@ OnErrorExit:
 
 // Every encoder should have a formating callback supporting switch options.
 static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
-    assert (taskId->magic == MAGIC_SPAWN_TASKID);
     shellCmdT *cmd= taskId->cmd;
     streamOptsT *opts=cmd->encoder->fmtctx;
     docTaskCtxT *taskCtx= taskId->context;
@@ -484,7 +483,6 @@ OnErrorExit:
 
 // Send one event for line on stdout and stderr at the command end
 static int encoderLineCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
-    assert (taskId->magic == MAGIC_SPAWN_TASKID);
     shellCmdT *cmd= taskId->cmd;
     streamOptsT *opts=cmd->encoder->fmtctx;
     docTaskCtxT *taskCtx= (docTaskCtxT*)taskId->context;
@@ -515,7 +513,6 @@ OnErrorExit:
 
 // Send one event for line on stdout and stderr at the command end
 static int encoderRawCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
-    assert (taskId->magic == MAGIC_SPAWN_TASKID);
     shellCmdT *cmd= taskId->cmd;
     streamOptsT *opts=cmd->encoder->fmtctx;
     docTaskCtxT *taskCtx= (docTaskCtxT*)taskId->context;
@@ -546,7 +543,6 @@ OnErrorExit:
 
 // for debug print both stdout & stderr directly on server
 static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
-    assert (taskId->magic == MAGIC_SPAWN_TASKID);
     shellCmdT *cmd= taskId->cmd;
     logOptsT *opts=cmd->encoder->fmtctx;
     logTaskCtxT *taskCtx= (logTaskCtxT*)taskId->context;
@@ -627,7 +623,6 @@ OnErrorExit:
 
 // Send one event json blog and stdout as array when task stop
 static int encoderJsonCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
-    assert (taskId->magic == MAGIC_SPAWN_TASKID);
     shellCmdT *cmd= taskId->cmd;
     streamOptsT *opts=cmd->encoder->fmtctx;
     docTaskCtxT *taskCtx= taskId->context;
@@ -829,7 +824,6 @@ OnErrorExit:
 
 // Default callback structure is passed to plugin at initialisation time
 encoderPluginCbT encoderPluginCb = {
-    .magic=PLUGIN_ENCODER_MAGIC,
     .registrate   = encoderRegisterCB,
     .bufferSet    = encoderBufferSetCB,
     .jsonParser   = encoderJsonParserCB,

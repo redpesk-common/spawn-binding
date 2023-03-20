@@ -92,7 +92,6 @@ typedef struct {
 } confNamespaceTagsT;
 
 typedef struct {
-    spawnMagicT magic;
     const char **argv;
     int argc;
     int secompFD;
@@ -103,7 +102,6 @@ typedef struct {
 } confNamespaceT;
 
 struct sandBoxS {
-	spawnMagicT magic;
 	const char *uid;
 	const char *info;
 	int verbose;
@@ -126,9 +124,6 @@ struct sandBoxS {
 */
 struct shellCmdS
 {
-	/** magic tag */
-	spawnMagicT magic;
-
 	/** identifier */
 	const char *uid;
 

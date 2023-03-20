@@ -632,7 +632,6 @@ OnErrorExit:
 confNamespaceT *sandboxParseNamespace (sandBoxT *sandbox, json_object *namespaceJ) {
     json_object * mountsJ=NULL, *optsJ=NULL, *sharesJ=NULL;
     confNamespaceT *namespace=calloc(1, sizeof(confNamespaceT));
-    namespace->magic= MAGIC_SPAWN_NSPACE;
     int err, count;
 
 

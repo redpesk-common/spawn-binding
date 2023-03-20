@@ -33,22 +33,6 @@ typedef struct shellCmdS shellCmdT;
 typedef struct taskIdS   taskIdT;
 typedef struct sandBoxS  sandBoxT;
 
-
-// few magic to help debugging
-typedef enum {
-    MAGIC_SPAWN_BDING=12345678,
-    MAGIC_SPAWN_SBOX,
-    MAGIC_SPAWN_NSPACE,
-    MAGIC_SPAWN_CMD,
-    MAGIC_SPAWN_TASKID,
-    MAGIC_SPAWN_ENCODER,
-} spawnMagicT;
-
-// dummy object to check magic number
-typedef struct {
-  spawnMagicT magic;
-} spawnObjectT;
-
 /**
 * structure holding one api
 */

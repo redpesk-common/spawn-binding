@@ -150,7 +150,6 @@ static int MyCustomInitCB (shellCmdT *cmd, json_object *optsJ, void* context) {
 
 // Send one event json blog and stdout as array when task stop
 static int MyCustomSampleCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
-    assert (taskId->magic == MAGIC_SPAWN_TASKID);
     shellCmdT *cmd= taskId->cmd;
     MyCmdOpts *opts=cmd->encoder->fmtctx;
     MyTaskCtxT *taskctx= taskId->context;

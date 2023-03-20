@@ -37,10 +37,7 @@ typedef /*const*/ struct {
 
 #define PLUGIN_ENCODER_MAGIC 159357456
 
-#define SPAWN_ENCODER_PLUGIN_MAGIC  267194737
-
 typedef const struct {
-	long magic;
 	int (*entry)(encoderPluginCbT *callbacks);
 	const char *name;
 } encoderMafifestT;
@@ -48,7 +45,6 @@ typedef const struct {
 #define DECLARE_SPAWN_ENCODER_PLUGIN(plugin_name, plugin_entry) \
 		static int plugin_entry(encoderPluginCbT*);     \
 		encoderMafifestT SpawnEncoderManifest = {       \
-			.magic = SPAWN_ENCODER_PLUGIN_MAGIC,    \
 			.entry = plugin_entry,                  \
 			.name  = plugin_name                    \
 		};
