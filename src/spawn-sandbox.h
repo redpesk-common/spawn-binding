@@ -104,26 +104,53 @@ typedef struct {
 /**
 * Structure holding data related to a sandboxing context
 */
-struct sandBoxS {
+struct sandBoxS
+{
+	/** uid of the sandbox */
 	const char *uid;
-	const char *info;
-	int verbose;
-	const char *privilege;
-	const char *prefix;
-	confAclT *acls;
-	confCapT *caps;
-	confEnvT *envs;
-	int *filefds;
-	confCgroupT *cgroups;
-	confSeccompT *seccomp;
-	confNamespaceT *namespace;
-	void *context;
+
+	/** tethred binding */
 	spawnApiT *binding;
+
+	/** intrinsec verbosity of the sandbox */
+	int verbose;
+
+	/** privilege required for the sandbox */
+	const char *privilege;
+
+	/** prefix of the sandbox */
+	const char *prefix;
+
+	/** ACL data */
+	confAclT *acls;
+
+	/** capabilities data */
+	confCapT *caps;
+
+	/** environment data */
+	confEnvT *envs;
+
+	/** for file option of bbwrap */
+	int *filefds;
+
+	/** cgroup data */
+	confCgroupT *cgroups;
+
+	/** seccomp data */
+	confSeccompT *seccomp;
+
+	/** namespace data */
+	confNamespaceT *namespace;
+
+	/** tethered commands */
 	shellCmdT *cmds;
+
+	/** some info about the sandbox */
+	const char *info;
 };
 
 /**
-*
+* The commands
 */
 struct shellCmdS
 {
@@ -136,22 +163,44 @@ struct shellCmdS
 	/** full path to the command */
 	const char *command;
 
-	/** */
-	const char *apiverb;
-	int verbose;
-	json_object *usageJ;
-	json_object *sampleJ;
-	const char **argv;
-	int  argc;
-	const encoderCbT *encoder;
-	struct sandBoxS *sandbox;
-	int timeout;
-	void *context;
-	void *opts;
-	taskIdT *tids;
-	pthread_rwlock_t sem;
+	/** flag if only one instance can run */
 	int single;
+
+	/** timeout in seconds */
+	int timeout;
+
+	/** intrinsec verbosity of the command */
+	int verbose;
+
+	/** count of arguments */
+	int  argc;
+
+	/** array of arguments */
+	const char **argv;
+
+	/** tethering sandbox */
+	struct sandBoxS *sandbox;
+
+	/** the encoder */
+	const encoderCbT *encoder;
+
+	/** instances of the shell command (UTHASH) */
+	taskIdT *tids;
+
+	/** access protection to tids */
+	pthread_rwlock_t sem;
+
+	/** for authorisations */
         afb_auth_t authent;
+
+	/** Name of the verb for the command */
+	const char *apiverb;
+
+	/** short usage */
+	json_object *usageJ;
+
+	/** examples of use */
+	json_object *sampleJ;
 };
 
 // spawn-sandbox.c
