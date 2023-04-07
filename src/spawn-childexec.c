@@ -57,22 +57,26 @@
 
 static pthread_mutex_t timeout_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
+/** time out data */
 struct timeout_data
 {
+	/** the task under timeout */
 	taskIdT *taskId;
+	/** id of the cancellation job */
 	int jobid;
 };
 
+/** cancellation job */
 static void on_timeout_expired(int signum, void *arg)
 {
+	pid_t pid = 0;
 	struct timeout_data *data = arg;
+
 	pthread_mutex_lock(&timeout_mutex);
 	data->jobid = 0;
 	if (signum == 0) {
-		pid_t pid = 0;
-		taskIdT *taskId;
-		taskId = data->taskId;
+		/* timeout case */
+		taskIdT *taskId = data->taskId;
 		if (taskId != NULL) {
 			data->taskId = NULL;
 			taskId->timeout = NULL;
@@ -80,32 +84,45 @@ static void on_timeout_expired(int signum, void *arg)
 			if (pid != 0) {
 				AFB_REQ_NOTICE(taskId->request, "Terminating task uid=%s", taskId->uid);
 				taskId->cmd->encoder->actionsCB (taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, taskId->cmd->encoder->fmtctx);
-				kill(-pid, SIGKILL);
 			}
 		}
 	}
 	pthread_mutex_unlock(&timeout_mutex);
 	free(arg);
+	if (pid != 0)
+		kill(-pid, SIGKILL);
 }
 
+/**
+* Creates a monitoring job managing the timeout of the task
+*/
 static int make_timeout_monitor(taskIdT *taskId, int timeout)
 {
+	/* allocates the structure for monitoring */
 	struct timeout_data *data = malloc(sizeof *data);
 	if (data == NULL)
 		return -1;
+
+	/* within global lock, schedule the job in a given time */
 	pthread_mutex_lock(&timeout_mutex);
 	data->taskId = taskId;
 	data->jobid = afb_job_post(timeout * 1000, 0, on_timeout_expired, data, NULL);
 	if (data->jobid < 0) {
+		/* scheduling the job failed */
 		free(data);
 		pthread_mutex_unlock(&timeout_mutex);
+		AFB_REQ_ERROR(taskId->request, "impossible to setup timeout monitor");
 		return -1;
 	}
+	/* done */
 	taskId->timeout = data;
 	pthread_mutex_unlock(&timeout_mutex);
 	return 0;
 }
 
+/**
+* cancel the running timeout for the job
+*/
 void end_timeout_monitor(taskIdT *taskId)
 {
 	struct timeout_data *data;
@@ -116,7 +133,6 @@ void end_timeout_monitor(taskIdT *taskId)
 		afb_job_abort(data->jobid);
 	pthread_mutex_unlock(&timeout_mutex);
 }
-
 
 /************************************************************************/
 /*  */
