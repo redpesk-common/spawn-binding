@@ -48,8 +48,6 @@ DECLARE_SPAWN_ENCODER_PLUGIN("encoder_sample", encoder_entry)
 #define MY_DEFAULT_blkcount 10   // send one event every 10 lines
 #define MY_DEFAULT_maxlen 512  // any line longer than this will be split
 
-#define MY_CUSTOM_MAGIC_CTX 7553951
-
 // default generic encoder utilities pluginCB
 static encoderPluginCbT *pluginCB;
 
@@ -61,7 +59,6 @@ typedef struct {
 
 // hold per taskId encoder context
 typedef struct {
-    int magic;
     json_object *stdoutJ;
     streamBufT *sout;
     streamBufT *serr;
@@ -74,7 +71,6 @@ typedef struct {
 // group stdout lines into an array and send them only at linecount
 static int MyCustomStdoutCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
     MyTaskCtxT *taskctx = (MyTaskCtxT*)context;
-    assert (taskctx->magic == MY_CUSTOM_MAGIC_CTX);
     int err;
 
     // this is a new new bloc create json_array and initialize line counter
@@ -108,7 +104,6 @@ OnErrorExit:
 // Send each stderr line as a string event
 static int MyCustomStderrCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
     MyTaskCtxT *taskctx = (MyTaskCtxT*)context;
-    assert (taskctx->magic == MY_CUSTOM_MAGIC_CTX);
     int err;
 
     json_object *responseJ;
@@ -161,7 +156,6 @@ static int MyCustomSampleCB (taskIdT *taskId, encoderActionE action, encoderOpsE
 
             // prepare handles to store stdout/err stream
             taskctx= calloc (1, sizeof(MyTaskCtxT));
-            taskctx->magic= MY_CUSTOM_MAGIC_CTX;
             taskctx->sout= (*pluginCB->bufferSet) (NULL, opts->maxlen);
             taskctx->serr= (*pluginCB->bufferSet) (NULL, opts->maxlen);
             taskctx->blockcount= opts->blkcount;

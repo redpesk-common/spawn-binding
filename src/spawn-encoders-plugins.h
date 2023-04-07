@@ -27,15 +27,12 @@
 
 // this structure is used by plugin registration callback
 typedef /*const*/ struct {
-  long magic;
   streamBufT *(*bufferSet) (streamBufT *buffer, ssize_t size);
   int (*registrate) (const char *uid, const encoderCbT *actionsCB);
   int (*jsonParser) (taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
   int (*textParser) (taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
   int (*readStream) (taskIdT *taskId, int pipefd, streamBufT *buffer, ssize_t bufsize, encoderParserCbT parserCB, encoderEventCbT eventCB, encoderOpsE operation, void *userdata);
 } encoderPluginCbT;
-
-#define PLUGIN_ENCODER_MAGIC 159357456
 
 typedef const struct {
 	int (*entry)(encoderPluginCbT *callbacks);
