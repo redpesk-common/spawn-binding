@@ -33,11 +33,8 @@ ON-EVENT basic/distro:
       "exit":0
     },
     "stdout":[
-      "CAUTION",
       "test-basic.binder.reference",
-      "test-basic.binder.result",
       "test-basic.client.reference",
-      "test-basic.client.result",
       "test-basic.json",
       "test-basic.sh"
     ]
@@ -56,11 +53,8 @@ ON-REPLY 3:basic/sync: OK
       "exit":0
     },
     "stdout":[
-      "CAUTION",
       "test-basic.binder.reference",
-      "test-basic.binder.result",
       "test-basic.client.reference",
-      "test-basic.client.result",
       "test-basic.json",
       "test-basic.sh"
     ]

@@ -11,13 +11,13 @@
         {
           "uid": "distro",
           "info" : "return server Linux version",
-          "exec": {"cmdpath": "/usr/bin/ls", "args": ["-1", "${DIRTOLIST}"]}
+          "exec": {"cmdpath": "/usr/bin/sh", "args": ["-c", "/usr/bin/ls -1 ${DIRTOLIST} | /usr/bin/grep -v 'test-basic.*result'"]}
         },
         {
             "uid": "sync",
             "encoder": "sync",
             "info" : "return stdout/err in synchronous mode",
-	    "exec": {"cmdpath": "/usr/bin/ls", "args": ["-1", "${DIRTOLIST}"]}
+	    "exec": {"cmdpath": "/usr/bin/sh", "args": ["-c", "/usr/bin/ls -1 ${DIRTOLIST} | /usr/bin/grep -v 'test-basic.*result'"]}
         }  
       ]
     }
