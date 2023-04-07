@@ -10,7 +10,7 @@ COUT=$HERE/test-basic.client.result
 BREF=$HERE/test-basic.binder.reference
 CREF=$HERE/test-basic.client.reference
 
-$BINDER --binding $SPAWN:$HERE/test-basic.json -p $PORT --trap-faults=off >& $BOUT &
+DIRTOLIST=$HERE $BINDER --binding $SPAWN:$HERE/test-basic.json -p $PORT --trap-faults=off >& $BOUT &
 BPID=$!
 
 trap "kill $BPID" EXIT

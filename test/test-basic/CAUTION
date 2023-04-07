@@ -1,2 +1,2 @@
 This test should be rewritten because hte output of the commands
-depend on the system that runs the test.
+depend on wether the test have already ran.
