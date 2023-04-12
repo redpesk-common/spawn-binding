@@ -848,7 +848,7 @@ encoderPluginCbT encoderPluginCb = {
 };
 
 // register callback and use it to register core encoders
-int encoderInit (void) {
+int encoder_generator_factory_init (void) {
 
   // Builtin Encoder don't have UID
   int status = encoderRegisterCB (NULL, encoderBuiltin);

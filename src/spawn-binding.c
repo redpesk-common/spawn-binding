@@ -577,7 +577,7 @@ static int initialiaze_spawn_binding(
 	AFB_API_INFO(rootapi, "Initialisation of Spawn Binding uid=%s path=%s config=%s",uid?:"",path,json_object_to_json_string(config));
 
 	// register builtin encoders before plugin get load
-	rc = encoderInit();
+	rc = encoder_generator_factory_init();
 	if (rc == 0)
 		rc = iter_root_configs(rootapi, path, uid, config, process_one_config, NULL);
 	return rc;

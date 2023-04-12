@@ -63,7 +63,8 @@ typedef struct {
 typedef int encoderEventCbT (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context);
 typedef int encoderParserCbT(taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
 
-int encoderInit(void);
+
+int encoder_generator_factory_init(void);
 
 //typedef struct encoder_generator encoder_generator_t;
 typedef encoderCbT encoder_generator_t;
