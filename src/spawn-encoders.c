@@ -215,7 +215,6 @@ static int logEventCB (taskIdT *taskId, streamBufT *data, ssize_t start, json_ob
     return 0;
 }
 
-
 // line encoder callback send one event per new line
 static int lineEventCB (taskIdT *taskId, streamBufT *sbuf, ssize_t start, json_object *errorJ, void *context) {
     int err;
@@ -741,84 +740,88 @@ static int encoderRegisterCB (const char *uid, const encoderCbT *actionsCB) {
     return 0;
 }
 
+// search the encoder in the registry
+const encoderCbT *search_encoder(const char *pluginuid, const char *encoderuid)
+{
+	const encoderRegistryT *registry;
+	const encoderCbT *result;
+
+	// search the plugin
+	for (registry = registryHead ; registry ; registry = registry->next) {
+		if (pluginuid == NULL) {
+			if (registry->uid == NULL)
+				break;
+		}
+		else if (registry->uid != NULL && !strcasecmp(registry->uid, pluginuid))
+			break;
+	}
+	if (registry == NULL)
+		return NULL;
+
+	// search the encoder
+	result = registry->encoders;
+	if (encoderuid != NULL) {
+		while (result->uid != NULL && strcasecmp (result->uid, encoderuid))
+			result++;
+		if (result->uid == NULL)
+			return NULL;
+	}
+	return result;
+}
+
 // search for a plugin encoders/decoders CB list
-int encoderFind (shellCmdT *cmd, json_object *encoderJ) {
-    char *pluginuid = NULL, *formatuid = NULL;
-    json_object *optsJ=NULL;
-    encoderRegistryT *registryIdx;
-    int index, err;
+int encoderFind (shellCmdT *cmd, json_object *encoderJ)
+{
+	int err;
+	const encoderCbT *encoder;
+	const char *pluginuid = NULL, *encoderuid = NULL;
+	json_object *optsJ = NULL;
 
-    // if no format defined default is 1st builtin formater
-    if (!encoderJ) {
-        cmd->encoder= &encoderBuiltin[0];
-        err= cmd->encoder->initCB (cmd, NULL, cmd->encoder->fmtctx);
-        if (err) goto OnErrorExit;
-        goto OnFormatExit;
-    }
+	// extract encoder specification
+	if (encoderJ != NULL) {
+		if (json_object_is_type (encoderJ, json_type_string)) {
+			// encoder is a string
+			encoderuid = json_object_get_string(encoderJ);
+		} else {
+			// encoder is a complex object with options
+			err = rp_jsonc_unpack(encoderJ, "{s?s,ss,s?o !}"
+					,"plugin", &pluginuid
+					,"output", &encoderuid
+					,"opts", &optsJ
+			);
+			if (err) {
+				AFB_API_ERROR(cmd->sandbox->binding->api, "[invalid-format] sandbox='%s' cmd='%s' not a valid json format='%s'", cmd->sandbox->uid, cmd->uid, json_object_get_string(encoderJ));
+				goto OnErrorExit;
+			}
+		}
+	}
 
-    // encoder is either a string with formatuid or a complex object with options
-    if (json_object_is_type (encoderJ, json_type_string)) {
-       formatuid= (char*)json_object_get_string(encoderJ);
-    } else {
-        err = rp_jsonc_unpack(encoderJ, "{s?s,ss,s?o !}"
-            ,"plugin", &pluginuid
-            ,"output", &formatuid
-            ,"opts", &optsJ
-            );
-        if (err) {
-            AFB_API_ERROR(cmd->sandbox->binding->api, "[invalid-format] sandbox='%s' cmd='%s' not a valid json format='%s'", cmd->sandbox->uid, cmd->uid, json_object_get_string(encoderJ));
-            goto OnErrorExit;
-        }
-    }
+	// search for an existing encoder
+	encoder = search_encoder(pluginuid, encoderuid);
+	if (encoder == NULL) {
+		AFB_API_ERROR(cmd->sandbox->binding->api, "[encoder-not-found] sandbox='%s' cmd='%s' output='%s' plugin=%s",
+					cmd->sandbox->uid, cmd->uid, encoderuid ?: "(unset)", pluginuid ?: "(unset)");
+		goto OnErrorExit;
+	}
 
-    if (pluginuid) {
-        // search within plugin list
-        for (registryIdx= registryHead; registryIdx->next; registryIdx=registryIdx->next) {
-            if (registryIdx->uid && !strcasecmp (registryIdx->uid, pluginuid)) break;
-        }
-        if (!registryIdx->uid) {
-            AFB_API_ERROR(cmd->sandbox->binding->api, "[plugin-not-found] sandbox='%s' cmd='%s' format='%s' plugin=%s", cmd->sandbox->uid, cmd->uid, formatuid, pluginuid);
-            goto OnErrorExit;
-        }
-    } else {
-        // search for core builtin encoders (registry->uid==NULL)
-        for (registryIdx= registryHead; registryIdx->uid && registryIdx->next; registryIdx=registryIdx->next);
-        if (registryIdx->uid) {
-            AFB_API_ERROR(cmd->sandbox->binding->api, "[Internal-error] missing builtin core formaters (hoops!!!)");
-            goto OnErrorExit;
-        }
-    }
+	// every encoder should define its formating callback
+	if (encoder->actionsCB == NULL) {
+		AFB_API_ERROR(cmd->sandbox->binding->api, "[encoder-invalid] sandbox=%s cmd=%s output='%s' plugin=%s (no encoder callback defined !!!)", cmd->sandbox->uid, cmd->uid, encoder->uid, pluginuid ?: "(unset)");
+		goto OnErrorExit;
+	}
 
-    // search format encoder within selected plugin
-    const encoderCbT *encoders = registryIdx->encoders;
-    for (index=0; encoders[index].uid; index++) {
-        if (!strcasecmp (encoders[index].uid, formatuid)) break;
-    }
+	// update command with coresponding format and all actionsCB to parse format option
+	cmd->encoder = encoder;
+	err = encoder->initCB ? encoder->initCB (cmd, optsJ, cmd->encoder->fmtctx) : 0;
+	if (err)
+		goto OnErrorExit;
 
-    if (!encoders[index].uid) {
-        AFB_API_ERROR(cmd->sandbox->binding->api, "[encoder-not-find] sandbox=%s cmd=%s format='%s'", cmd->sandbox->uid, cmd->uid, formatuid);
-        goto OnErrorExit;
-    }
-
-    // every encoder should define its formating callback
-    if (!encoders[index].actionsCB) {
-        AFB_API_ERROR(cmd->sandbox->binding->api, "[encoder-invalid] sandbox=%s cmd=%s format=%s (no encoder callback defined !!!)", cmd->sandbox->uid, cmd->uid, encoders[index].uid);
-        goto OnErrorExit;
-    }
-
-    // update command with coresponding format and all actionsCB to parse format option
-    cmd->encoder= &encoders[index];
-    if (cmd->encoder->initCB) err= cmd->encoder->initCB (cmd, optsJ, cmd->encoder->fmtctx);
-    else err=0;
-
-    if (err) goto OnErrorExit;
-
-OnFormatExit:
-    return 0;
+	return 0;
 
 OnErrorExit:
-    return 1;
+	return 1;
 }
+
 
 #include "spawn-encoders-plugins.h"
 
