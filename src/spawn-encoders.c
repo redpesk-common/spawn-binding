@@ -838,3 +838,41 @@ int encoderInit (void) {
   int status = encoderRegisterCB (NULL, encoderBuiltin);
   return status;
 }
+
+
+
+
+
+/**
+* starts the encoder
+*/
+int encoderStart(const encoderCbT *encoder, taskIdT *taskId)
+{
+	return encoder->actionsCB(taskId, ENCODER_TASK_START, ENCODER_OPS_STD, encoder->fmtctx);
+}
+
+/**
+* closes the encoder
+*/
+void encoderClose(const encoderCbT *encoder, taskIdT *taskId)
+{
+	encoder->actionsCB(taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_CLOSE, encoder->fmtctx);
+	encoder->actionsCB(taskId, ENCODER_TASK_STDERR, ENCODER_OPS_CLOSE, encoder->fmtctx);
+	encoder->actionsCB(taskId, ENCODER_TASK_STOP, ENCODER_OPS_CLOSE, encoder->fmtctx);
+}
+
+/**
+* abort the encoder
+*/
+void encoderAbort(const encoderCbT *encoder, taskIdT *taskId)
+{
+	encoder->actionsCB(taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, encoder->fmtctx);
+}
+
+/**
+* process input
+*/
+int encoderRead(const encoderCbT *encoder, taskIdT *taskId, int fd, bool error)
+{
+	return encoder->actionsCB(taskId, error ? ENCODER_TASK_STDERR : ENCODER_TASK_STDOUT, ENCODER_OPS_STD, encoder->fmtctx);
+}

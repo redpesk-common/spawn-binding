@@ -125,16 +125,16 @@ void spawnFreeTaskId  (taskIdT *taskId) {
     free(taskId);
 }
 
-static void taskPushFinalResponse (taskIdT *taskId) {
+static void taskPushFinalResponse (taskIdT *taskId)
+{
     shellCmdT *cmd=taskId->cmd;
 
     // try to read any remaining data before building exit status
     if (taskId->verbose > 2)
         AFB_REQ_INFO (taskId->request, "taskPushFinalResponse: uid=%s pid=%d [step-1: collect remaining data]", taskId->uid, taskId->pid);
-    (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
-    (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STDERR, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
 
-    (void)cmd->encoder->actionsCB (taskId, ENCODER_TASK_STOP, ENCODER_OPS_CLOSE, cmd->encoder->fmtctx);
+    encoderClose(cmd->encoder, taskId);
+
     if (taskId->verbose > 2)
         AFB_REQ_INFO (taskId->request, "taskPushFinalResponse: uid=%s pid=%d [step-2: collect child status=%s]", taskId->uid, taskId->pid, json_object_get_string(taskId->statusJ));
 

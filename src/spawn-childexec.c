@@ -83,7 +83,7 @@ static void on_timeout_expired(int signum, void *arg)
 			pid = taskId->pid;
 			if (pid != 0) {
 				AFB_REQ_NOTICE(taskId->request, "Terminating task uid=%s", taskId->uid);
-				taskId->cmd->encoder->actionsCB (taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, taskId->cmd->encoder->fmtctx);
+				encoderAbort(taskId->cmd->encoder, taskId);
 			}
 		}
 	}
@@ -151,10 +151,10 @@ static void on_pipe(afb_evfd_t efd, int fd, uint32_t revents, taskIdT *taskId, i
 	if (revents & EPOLLIN) {
 		if (taskId->verbose >2)
 			AFB_REQ_INFO (taskId->request, "uid=%s pid=%d [EPOLLIN std%s=%d]", taskId->uid, taskId->pid, out?"out":"err", fd);
-		err = cmd->encoder->actionsCB (taskId, out ? ENCODER_TASK_STDOUT : ENCODER_TASK_STDERR, ENCODER_OPS_STD, cmd->encoder->fmtctx);
+		err = encoderRead(cmd->encoder, taskId, fd, !out);
 		if (err) {
 			rp_jsonc_pack (&taskId->responseJ, "{ss so* so*}"
-				, "fail" ,"ENCODER_TASK_STDOUT"
+				, "fail" ,"read"
 				, "error" , taskId->errorJ
 				, "status", taskId->statusJ
 				);
@@ -282,7 +282,7 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         if (err) goto InternalError;
 
         // initilise cmd->command corresponding output formater buffer
-        err= cmd->encoder->actionsCB (taskId, ENCODER_TASK_START, ENCODER_OPS_STD, cmd->encoder->fmtctx);
+        err = encoderStart(cmd->encoder, taskId);
         if (err) goto InternalError;
 
         // set pipe fd into noblock mode

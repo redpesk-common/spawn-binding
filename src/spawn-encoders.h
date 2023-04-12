@@ -65,4 +65,11 @@ typedef int encoderParserCbT(taskIdT *taskId, streamBufT *docId, ssize_t len, en
 int encoderInit(void);
 int encoderFind (shellCmdT *cmd, json_object *encoderJ);
 
+
+void encoderClose(const encoderCbT *encoder, taskIdT *taskId);
+int encoderStart(const encoderCbT *encoder, taskIdT *taskId);
+void encoderAbort(const encoderCbT *encoder, taskIdT *taskId);
+int encoderRead(const encoderCbT *encoder, taskIdT *taskId, int fd, bool error);
+
+
 #endif /* _SPAWN_ENCODER_S_INCLUDE_ */
