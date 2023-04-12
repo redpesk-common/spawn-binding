@@ -50,6 +50,7 @@ typedef struct  {
   int (*initCB)(shellCmdT *cmd, json_object *optsJ, void* fmtctx);
   int (*actionsCB)(taskIdT *taskId, encoderActionE action, encoderOpsE subAction, void* fmtctx);
   void *fmtctx;
+  int (*check)(json_object *optsJ);
 } encoderCbT;
 
 typedef struct {
@@ -63,7 +64,31 @@ typedef int encoderEventCbT (taskIdT *taskId, streamBufT *docId, ssize_t start, 
 typedef int encoderParserCbT(taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
 
 int encoderInit(void);
-int encoderFind (shellCmdT *cmd, json_object *encoderJ);
+
+//typedef struct encoder_generator encoder_generator_t;
+typedef encoderCbT encoder_generator_t;
+typedef enum encoder_generator_error encoder_generator_error_t;
+
+enum encoder_generator_error {
+	ENCODER_GENERATOR_NO_ERROR = 0,
+	ENCODER_GENERATOR_ERROR_PLUGIN_NOT_FOUND = -1,
+	ENCODER_GENERATOR_ERROR_ENCODER_NOT_FOUND = -2,
+	ENCODER_GENERATOR_ERROR_INVALID_ENCODER = -3,
+	ENCODER_GENERATOR_ERROR_INVALID_OPTIONS = -4,
+	ENCODER_GENERATOR_ERROR_INVALID_SPECIFIER = -5,
+};
+
+encoder_generator_error_t
+encoder_generator_search(const char *pluginuid, const char *encoderuid, const encoder_generator_t **encoder);
+
+
+encoder_generator_error_t
+encoder_generator_get(const char *pluginuid, const char *encoderuid, json_object *options, const encoder_generator_t **result);
+
+encoder_generator_error_t
+encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **result, json_object **options);
+
+const char *encoder_generator_error_text(encoder_generator_error_t code);
 
 
 void encoderClose(const encoderCbT *encoder, taskIdT *taskId);

@@ -392,7 +392,7 @@ OnErrorExit:
 // Every encoder should have a formating callback supporting switch options.
 static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder->fmtctx;
+    streamOptsT *opts=cmd->encoder.encoder->fmtctx;
     docTaskCtxT *taskCtx= taskId->context;
     int err;
 
@@ -483,7 +483,7 @@ OnErrorExit:
 // Send one event for line on stdout and stderr at the command end
 static int encoderLineCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder->fmtctx;
+    streamOptsT *opts=cmd->encoder.encoder->fmtctx;
     docTaskCtxT *taskCtx= (docTaskCtxT*)taskId->context;
     int err;
 
@@ -513,7 +513,7 @@ OnErrorExit:
 // Send one event for line on stdout and stderr at the command end
 static int encoderRawCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder->fmtctx;
+    streamOptsT *opts=cmd->encoder.encoder->fmtctx;
     docTaskCtxT *taskCtx= (docTaskCtxT*)taskId->context;
     int err;
 
@@ -543,7 +543,7 @@ OnErrorExit:
 // for debug print both stdout & stderr directly on server
 static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     shellCmdT *cmd= taskId->cmd;
-    logOptsT *opts=cmd->encoder->fmtctx;
+    logOptsT *opts=cmd->encoder.encoder->fmtctx;
     logTaskCtxT *taskCtx= (logTaskCtxT*)taskId->context;
 
     int err;
@@ -623,7 +623,7 @@ OnErrorExit:
 // Send one event json blog and stdout as array when task stop
 static int encoderJsonCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder->fmtctx;
+    streamOptsT *opts=cmd->encoder.encoder->fmtctx;
     docTaskCtxT *taskCtx= taskId->context;
     int err;
 
@@ -662,7 +662,7 @@ static int encoderInitLog (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     opts->fileout = stdout;
     opts->maxlen = MAX_DOC_LINE_SIZE;
 
-    ((encoderCbT*)cmd->encoder)->fmtctx = (void*)opts;
+    ((encoderCbT*)cmd->encoder.encoder)->fmtctx = (void*)opts;
     if (optsJ) {
         err = rp_jsonc_unpack(optsJ, "{s?s s?s s?i !}" ,"stdout", &fileout, "stderr", &fileerr, "maxlen", &opts->maxlen);
         if (err) {
@@ -691,7 +691,7 @@ static int encoderInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     streamOptsT *opts = malloc(sizeof (streamOptsT));
     opts->maxlen =  MAX_DOC_LINE_SIZE;
     opts->lineCount = MAX_DOC_LINE_COUNT;
-    ((encoderCbT*)cmd->encoder)->fmtctx = (void*)opts;
+    ((encoderCbT*)cmd->encoder.encoder)->fmtctx = (void*)opts;
     if (optsJ) {
         err = rp_jsonc_unpack(optsJ, "{s?i s?i !}" ,"maxline", &opts->lineCount, "maxlen", &opts->maxlen);
         if (err) {
@@ -740,11 +740,14 @@ static int encoderRegisterCB (const char *uid, const encoderCbT *actionsCB) {
     return 0;
 }
 
+
+
 // search the encoder in the registry
-const encoderCbT *search_encoder(const char *pluginuid, const char *encoderuid)
+encoder_generator_error_t
+encoder_generator_search(const char *pluginuid, const char *encoderuid, const encoder_generator_t **result)
 {
 	const encoderRegistryT *registry;
-	const encoderCbT *result;
+	const encoderCbT *encoder;
 
 	// search the plugin
 	for (registry = registryHead ; registry ; registry = registry->next) {
@@ -756,70 +759,80 @@ const encoderCbT *search_encoder(const char *pluginuid, const char *encoderuid)
 			break;
 	}
 	if (registry == NULL)
-		return NULL;
+		return ENCODER_GENERATOR_ERROR_PLUGIN_NOT_FOUND;
 
 	// search the encoder
-	result = registry->encoders;
+	encoder = registry->encoders;
 	if (encoderuid != NULL) {
-		while (result->uid != NULL && strcasecmp (result->uid, encoderuid))
-			result++;
-		if (result->uid == NULL)
-			return NULL;
+		while (encoder->uid != NULL && strcasecmp (encoder->uid, encoderuid))
+			encoder++;
+		if (encoder->uid == NULL)
+			return ENCODER_GENERATOR_ERROR_ENCODER_NOT_FOUND;
 	}
-	return result;
+	*result = encoder;
+	return ENCODER_GENERATOR_NO_ERROR;
 }
 
-// search for a plugin encoders/decoders CB list
-int encoderFind (shellCmdT *cmd, json_object *encoderJ)
+encoder_generator_error_t
+encoder_generator_get(const char *pluginuid, const char *encoderuid, json_object *options, const encoder_generator_t **result)
+{
+	encoder_generator_error_t ege;
+	const encoder_generator_t *encoder;
+
+	// search for an existing encoder
+	ege = encoder_generator_search(pluginuid, encoderuid, &encoder);
+	if (ege != ENCODER_GENERATOR_NO_ERROR)
+		return ege;
+
+	// every encoder should define its formating callback
+	if (encoder->actionsCB == NULL)
+		return ENCODER_GENERATOR_ERROR_INVALID_ENCODER;
+
+	// every encoder should define its formating callback
+	if (encoder->check != NULL && encoder->check(options) < 0)
+		return ENCODER_GENERATOR_ERROR_INVALID_OPTIONS;
+
+	*result = encoder;
+	return ENCODER_GENERATOR_NO_ERROR;
+}
+
+encoder_generator_error_t
+encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **result, json_object **options)
 {
 	int err;
-	const encoderCbT *encoder;
 	const char *pluginuid = NULL, *encoderuid = NULL;
-	json_object *optsJ = NULL;
 
 	// extract encoder specification
-	if (encoderJ != NULL) {
-		if (json_object_is_type (encoderJ, json_type_string)) {
+	*options = NULL;
+	if (specifier != NULL) {
+		if (json_object_is_type (specifier, json_type_string)) {
 			// encoder is a string
-			encoderuid = json_object_get_string(encoderJ);
+			encoderuid = json_object_get_string(specifier);
 		} else {
 			// encoder is a complex object with options
-			err = rp_jsonc_unpack(encoderJ, "{s?s,ss,s?o !}"
+			err = rp_jsonc_unpack(specifier, "{s?s,ss,s?o !}"
 					,"plugin", &pluginuid
 					,"output", &encoderuid
-					,"opts", &optsJ
+					,"opts", options
 			);
-			if (err) {
-				AFB_API_ERROR(cmd->sandbox->binding->api, "[invalid-format] sandbox='%s' cmd='%s' not a valid json format='%s'", cmd->sandbox->uid, cmd->uid, json_object_get_string(encoderJ));
-				goto OnErrorExit;
-			}
+			if (err)
+				return ENCODER_GENERATOR_ERROR_INVALID_SPECIFIER;
 		}
 	}
 
-	// search for an existing encoder
-	encoder = search_encoder(pluginuid, encoderuid);
-	if (encoder == NULL) {
-		AFB_API_ERROR(cmd->sandbox->binding->api, "[encoder-not-found] sandbox='%s' cmd='%s' output='%s' plugin=%s",
-					cmd->sandbox->uid, cmd->uid, encoderuid ?: "(unset)", pluginuid ?: "(unset)");
-		goto OnErrorExit;
+	return encoder_generator_get(pluginuid, encoderuid, *options, result);
+}
+
+const char *encoder_generator_error_text(encoder_generator_error_t code)
+{
+	switch(code) {
+	case ENCODER_GENERATOR_ERROR_PLUGIN_NOT_FOUND:	return "PLUGIN_NOT_FOUND"; break;
+	case ENCODER_GENERATOR_ERROR_ENCODER_NOT_FOUND:	return "ENCODER_NOT_FOUND"; break;
+	case ENCODER_GENERATOR_ERROR_INVALID_ENCODER:	return "INVALID_ENCODER"; break;
+	case ENCODER_GENERATOR_ERROR_INVALID_OPTIONS:	return "INVALID_OPTIONS"; break;
+	case ENCODER_GENERATOR_ERROR_INVALID_SPECIFIER:	return "INVALID_SPECIFIER"; break;
+	default: return ""; break;
 	}
-
-	// every encoder should define its formating callback
-	if (encoder->actionsCB == NULL) {
-		AFB_API_ERROR(cmd->sandbox->binding->api, "[encoder-invalid] sandbox=%s cmd=%s output='%s' plugin=%s (no encoder callback defined !!!)", cmd->sandbox->uid, cmd->uid, encoder->uid, pluginuid ?: "(unset)");
-		goto OnErrorExit;
-	}
-
-	// update command with coresponding format and all actionsCB to parse format option
-	cmd->encoder = encoder;
-	err = encoder->initCB ? encoder->initCB (cmd, optsJ, cmd->encoder->fmtctx) : 0;
-	if (err)
-		goto OnErrorExit;
-
-	return 0;
-
-OnErrorExit:
-	return 1;
 }
 
 
@@ -851,6 +864,8 @@ int encoderInit (void) {
 */
 int encoderStart(const encoderCbT *encoder, taskIdT *taskId)
 {
+	if (encoder->fmtctx == NULL && encoder->initCB)
+		encoder->initCB(taskId->cmd, taskId->cmd->encoder.options, encoder->fmtctx);
 	return encoder->actionsCB(taskId, ENCODER_TASK_START, ENCODER_OPS_STD, encoder->fmtctx);
 }
 

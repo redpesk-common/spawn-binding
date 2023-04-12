@@ -182,7 +182,16 @@ struct shellCmdS
 	struct sandBoxS *sandbox;
 
 	/** the encoder */
-	const encoderCbT *encoder;
+	struct {
+		/** the encoder */
+		const encoderCbT *encoder;
+
+		/** options when generating the encoder */
+		json_object *options;
+	}
+		encoder;
+
+	/** short usage */
 
 	/** instances of the shell command (UTHASH) */
 	taskIdT *tids;

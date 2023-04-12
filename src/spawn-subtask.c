@@ -133,7 +133,7 @@ static void taskPushFinalResponse (taskIdT *taskId)
     if (taskId->verbose > 2)
         AFB_REQ_INFO (taskId->request, "taskPushFinalResponse: uid=%s pid=%d [step-1: collect remaining data]", taskId->uid, taskId->pid);
 
-    encoderClose(cmd->encoder, taskId);
+    encoderClose(cmd->encoder.encoder, taskId);
 
     if (taskId->verbose > 2)
         AFB_REQ_INFO (taskId->request, "taskPushFinalResponse: uid=%s pid=%d [step-2: collect child status=%s]", taskId->uid, taskId->pid, json_object_get_string(taskId->statusJ));

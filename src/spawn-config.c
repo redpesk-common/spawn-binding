@@ -184,9 +184,14 @@ int spawn_config_read_one_command(sandBoxT *sandbox, shellCmdT *cmd, json_object
 		cmd->verbose = sandbox->verbose;
 
 	// find encode/decode callback
-	err = encoderFind(cmd, encoderJ);
-	if (err)
+	err = encoder_generator_get_JSON(encoderJ, &cmd->encoder.encoder, &cmd->encoder.options);
+	if (err) {
+		AFB_ERROR("[encoder-error] sandbox='%s' fail to get encoder: %s for %s",
+					sandbox->uid,
+					encoder_generator_error_text(err),
+					json_object_to_json_string(encoderJ));
 		goto OnErrorExit;
+	}
 
 	// If not special privilege use sandbox one
 	if (!privilege)
