@@ -251,15 +251,14 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
     return (char* const*)params;
 } // end childBuildArgv
 
-static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose, pid_t sonPid, int outfd, int errfd) {
-
-    json_object *responseJ;
-    afb_api_t api = cmd->sandbox->binding->api;
-    int   err;
-    taskIdT *taskId = NULL;
+static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose, pid_t sonPid, int outfd, int errfd)
+{
+	json_object *responseJ;
+	int   err;
+	taskIdT *taskId;
 
         // create task context
-        taskId = (taskIdT*) calloc (1, sizeof(taskIdT));
+        taskId = calloc (1, sizeof *taskId);
         taskId->pid= sonPid;
         taskId->cmd= cmd;
         taskId->verbose= verbose;
@@ -275,7 +274,7 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
             AFB_REQ_INFO (request, "[taskid-created] uid='%s' pid=%d (spawnTaskStart)", taskId->uid, sonPid);
 
         // create task event
-        err = afb_api_new_event(api, taskId->cmd->apiverb, &taskId->event);
+        err = afb_api_new_event(afb_req_get_api(request), taskId->cmd->apiverb, &taskId->event);
         if (err < 0) goto InternalError;
 
         err = afb_req_subscribe(request, taskId->event);
@@ -311,7 +310,11 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
 
         // build responseJ & update call tid
         if (!taskId->synchronous) {
-            rp_jsonc_pack (&responseJ, "{ss ss* ss si}", "api", afb_api_name(api), "sandbox", taskId->cmd->sandbox->uid, "command", taskId->cmd->uid, "pid", taskId->pid);
+            rp_jsonc_pack (&responseJ, "{ss ss* ss si}",
+				"api", afb_req_get_called_api(request),
+				"sandbox", taskId->cmd->sandbox->uid,
+				"command", taskId->cmd->uid,
+				"pid", taskId->pid);
             afb_data_t data = afb_data_json_c_hold(responseJ);
             afb_req_reply(taskId->request, 0, 1, &data);
         }
@@ -323,11 +326,12 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         return 0;
 
 InternalError:
-    AFB_REQ_ERROR(request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s", cmd->uid, cmd->command, sonPid, strerror(errno));
-    afb_req_reply(request, AFB_ERRNO_INTERNAL_ERROR, 0, NULL);
-    kill(-sonPid, SIGTERM);
-    spawnFreeTaskId (taskId);
-    return 1;
+	AFB_REQ_ERROR(request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s",
+					cmd->uid, cmd->command, sonPid, strerror(errno));
+	afb_req_reply(request, AFB_ERRNO_INTERNAL_ERROR, 0, NULL);
+	kill(-sonPid, SIGTERM);
+	spawnFreeTaskId (taskId);
+	return 1;
 }
 
 static void child_exit(int code)
