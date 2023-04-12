@@ -188,7 +188,7 @@ int spawn_config_read_one_command(sandBoxT *sandbox, shellCmdT *cmd, json_object
 	if (err) {
 		AFB_ERROR("[encoder-error] sandbox='%s' fail to get encoder: %s for %s",
 					sandbox->uid,
-					encoder_generator_error_text(err),
+					encoder_error_text(err),
 					json_object_to_json_string(encoderJ));
 		goto OnErrorExit;
 	}

@@ -63,33 +63,102 @@ typedef struct {
 typedef int encoderEventCbT (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context);
 typedef int encoderParserCbT(taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
 
-
-int encoder_generator_factory_init(void);
-
 //typedef struct encoder_generator encoder_generator_t;
 typedef encoderCbT encoder_generator_t;
-typedef enum encoder_generator_error encoder_generator_error_t;
-
-enum encoder_generator_error {
-	ENCODER_GENERATOR_NO_ERROR = 0,
-	ENCODER_GENERATOR_ERROR_PLUGIN_NOT_FOUND = -1,
-	ENCODER_GENERATOR_ERROR_ENCODER_NOT_FOUND = -2,
-	ENCODER_GENERATOR_ERROR_INVALID_ENCODER = -3,
-	ENCODER_GENERATOR_ERROR_INVALID_OPTIONS = -4,
-	ENCODER_GENERATOR_ERROR_INVALID_SPECIFIER = -5,
-};
-
-encoder_generator_error_t
-encoder_generator_search(const char *pluginuid, const char *encoderuid, const encoder_generator_t **encoder);
 
 
-encoder_generator_error_t
-encoder_generator_get(const char *pluginuid, const char *encoderuid, json_object *options, const encoder_generator_t **result);
 
-encoder_generator_error_t
-encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **result, json_object **options);
 
-const char *encoder_generator_error_text(encoder_generator_error_t code);
+/**
+* encoder system errors
+*/
+typedef
+enum encoder_error {
+	ENCODER_NO_ERROR = 0,
+	ENCODER_ERROR_PLUGIN_NOT_FOUND = -1,
+	ENCODER_ERROR_ENCODER_NOT_FOUND = -2,
+	ENCODER_ERROR_INVALID_ENCODER = -3,
+	ENCODER_ERROR_INVALID_OPTIONS = -4,
+	ENCODER_ERROR_INVALID_SPECIFIER = -5,
+	ENCODER_ERROR_OUT_OF_MEMORY = -6,
+}
+	encoder_error_t;
+
+/**
+* Get the text for the given error code
+*/
+extern
+const char *
+encoder_error_text(encoder_error_t code);
+
+/**
+* Initialization of the factory of encoder generators
+* @return the error code, ENCODER_NO_ERROR if there is no error
+*/
+extern
+encoder_error_t
+encoder_generator_factory_init(void);
+
+/**
+* Search the encoder generator of given pluginuid and encoderuid.
+* and return it in encoder
+*
+* @param pluginuid  uid of the plugin or NULL for builtins
+* @param encoderuid uid of the encoder or NULL for default one
+* @param generator  pointer for storing the found encoder generator
+* @return the error code, ENCODER_NO_ERROR if there is no error
+*/
+extern
+encoder_error_t
+encoder_generator_search(
+	const char *pluginuid,
+	const char *encoderuid,
+	const encoder_generator_t **generator);
+
+/**
+* Get the encoder generator of given pluginuid and encoderuid and check it for the given options.
+*
+* @param pluginuid  uid of the plugin or NULL for builtins
+* @param encoderuid uid of the encoder or NULL for default one
+* @param options    JSON object for options to be checked
+* @param generator  pointer for storing the found encoder generator
+* @return the error code, ENCODER_NO_ERROR if there is no error
+*/
+extern
+encoder_error_t
+encoder_generator_get(
+	const char *pluginuid,
+	const char *encoderuid,
+	json_object *options,
+	const encoder_generator_t **generator);
+
+/**
+* Get the encoder generator of given JSON specifier and check it for the given options.
+* Also return the options.
+*
+* @param specifier  JSON object describing the expected encoder generator
+* @param generator  pointer for storing the found encoder generator
+* @param options    pointer for storing JSON object of options
+* @return the error code, ENCODER_NO_ERROR if there is no error
+*/
+extern
+encoder_error_t
+encoder_generator_get_JSON(
+	json_object *specifier,
+	const encoder_generator_t **generator,
+	json_object **options);
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 void encoderClose(const encoderCbT *encoder, taskIdT *taskId);

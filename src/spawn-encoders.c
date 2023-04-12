@@ -40,15 +40,6 @@
 #include "spawn-subtask-internal.h"
 #include "spawn-expand.h"
 
-typedef struct encoderRegistryS {
-   const char *uid;
-   struct encoderRegistryS *next;
-   const encoderCbT *encoders;
-} encoderRegistryT;
-
-// registry holds a linked list of core+pugins encoders
-static encoderRegistryT *registryHead = NULL;
-
 // builtin document encoder
 typedef struct {
     streamBufT *buffer;
@@ -718,86 +709,108 @@ static /*const*/ encoderCbT encoderBuiltin[] = { /*1st default == TEXT*/
 
 
 
+#if !defined(BUILTIN_FACTORY_NAME)
+#define BUILTIN_FACTORY_NAME "builtins"
+#endif
+
+
+typedef
+struct encoder_factory
+{
+	struct encoder_factory *next;
+	const encoder_generator_t *generators;
+	const char *uid;
+}
+	encoder_factory_t;
+
+
+
+
+
+// registry holds a linked list of core+pugins encoders
+static encoder_factory_t *first_factory = NULL;
+
 
 // add a new plugin encoder to the registry
-static int encoderRegisterCB (const char *uid, const encoderCbT *actionsCB) {
-    encoderRegistryT *registryIdx, *registryEntry;
+static
+encoder_error_t
+add_encoder_generator_factory(const char *uid, const encoder_generator_t *generators)
+{
+	encoder_factory_t *factory, **ptrfac;
 
-    // create holding hat for encoder/decoder CB
-    registryEntry= (encoderRegistryT*) calloc (1, sizeof(encoderRegistryT));
-    registryEntry->uid = uid;
-    registryEntry->encoders = actionsCB;
+	// create holding hat for encoder/decoder CB
+	factory = calloc (1, sizeof *factory);
+	if (factory == NULL)
+		return ENCODER_ERROR_OUT_OF_MEMORY;
 
+	// init the structure
+	factory->next = NULL;
+	factory->generators = generators;
+	factory->uid = uid;
 
-    // if not 1st encoder insert at the end of the chain
-    if (!registryHead) {
-        registryHead = registryEntry;
-    } else {
-        for (registryIdx= registryHead; registryIdx->next; registryIdx=registryIdx->next);
-        registryIdx->next = registryEntry;
-    }
+	// link it at latest position
+	ptrfac = &first_factory;
+	while (*ptrfac != NULL)
+		ptrfac = &(*ptrfac)->next;
+	*ptrfac = factory;
 
-    return 0;
+	// done
+	return ENCODER_NO_ERROR;
 }
-
-
 
 // search the encoder in the registry
-encoder_generator_error_t
-encoder_generator_search(const char *pluginuid, const char *encoderuid, const encoder_generator_t **result)
+encoder_error_t
+encoder_generator_search(const char *pluginuid, const char *encoderuid, const encoder_generator_t **generator)
 {
-	const encoderRegistryT *registry;
-	const encoderCbT *encoder;
+	const encoder_factory_t *factory;
+	const encoder_generator_t *itgen;
 
-	// search the plugin
-	for (registry = registryHead ; registry ; registry = registry->next) {
-		if (pluginuid == NULL) {
-			if (registry->uid == NULL)
-				break;
-		}
-		else if (registry->uid != NULL && !strcasecmp(registry->uid, pluginuid))
-			break;
+	// search the factory
+	factory = first_factory;
+	if (pluginuid != NULL) {
+		while (factory && (factory->uid == NULL || strcasecmp(factory->uid, pluginuid)))
+			factory = factory->next;
 	}
-	if (registry == NULL)
-		return ENCODER_GENERATOR_ERROR_PLUGIN_NOT_FOUND;
+	if (factory == NULL)
+		return ENCODER_ERROR_PLUGIN_NOT_FOUND;
 
 	// search the encoder
-	encoder = registry->encoders;
+	itgen = factory->generators;
 	if (encoderuid != NULL) {
-		while (encoder->uid != NULL && strcasecmp (encoder->uid, encoderuid))
-			encoder++;
-		if (encoder->uid == NULL)
-			return ENCODER_GENERATOR_ERROR_ENCODER_NOT_FOUND;
+		while (itgen->uid != NULL && strcasecmp (itgen->uid, encoderuid))
+			itgen++;
+		if (itgen->uid == NULL)
+			return ENCODER_ERROR_ENCODER_NOT_FOUND;
 	}
-	*result = encoder;
-	return ENCODER_GENERATOR_NO_ERROR;
+	*generator = itgen;
+	return ENCODER_NO_ERROR;
 }
 
-encoder_generator_error_t
-encoder_generator_get(const char *pluginuid, const char *encoderuid, json_object *options, const encoder_generator_t **result)
+encoder_error_t
+encoder_generator_get(const char *pluginuid, const char *encoderuid, json_object *options, const encoder_generator_t **generator)
 {
-	encoder_generator_error_t ege;
-	const encoder_generator_t *encoder;
+	encoder_error_t ege;
+	const encoder_generator_t *gener;
 
 	// search for an existing encoder
-	ege = encoder_generator_search(pluginuid, encoderuid, &encoder);
-	if (ege != ENCODER_GENERATOR_NO_ERROR)
+	ege = encoder_generator_search(pluginuid, encoderuid, &gener);
+	if (ege != ENCODER_NO_ERROR)
 		return ege;
 
 	// every encoder should define its formating callback
-	if (encoder->actionsCB == NULL)
-		return ENCODER_GENERATOR_ERROR_INVALID_ENCODER;
+	if (gener->actionsCB == NULL)
+		return ENCODER_ERROR_INVALID_ENCODER;
 
 	// every encoder should define its formating callback
-	if (encoder->check != NULL && encoder->check(options) < 0)
-		return ENCODER_GENERATOR_ERROR_INVALID_OPTIONS;
+	if (gener->check != NULL && gener->check(options) < 0)
+		return ENCODER_ERROR_INVALID_OPTIONS;
 
-	*result = encoder;
-	return ENCODER_GENERATOR_NO_ERROR;
+	*generator = gener;
+	return ENCODER_NO_ERROR;
 }
 
-encoder_generator_error_t
-encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **result, json_object **options)
+encoder_error_t
+encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **generator, json_object **options)
 {
 	int err;
 	const char *pluginuid = NULL, *encoderuid = NULL;
@@ -816,21 +829,22 @@ encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **r
 					,"opts", options
 			);
 			if (err)
-				return ENCODER_GENERATOR_ERROR_INVALID_SPECIFIER;
+				return ENCODER_ERROR_INVALID_SPECIFIER;
 		}
 	}
 
-	return encoder_generator_get(pluginuid, encoderuid, *options, result);
+	return encoder_generator_get(pluginuid, encoderuid, *options, generator);
 }
 
-const char *encoder_generator_error_text(encoder_generator_error_t code)
+const char *encoder_error_text(encoder_error_t code)
 {
 	switch(code) {
-	case ENCODER_GENERATOR_ERROR_PLUGIN_NOT_FOUND:	return "PLUGIN_NOT_FOUND"; break;
-	case ENCODER_GENERATOR_ERROR_ENCODER_NOT_FOUND:	return "ENCODER_NOT_FOUND"; break;
-	case ENCODER_GENERATOR_ERROR_INVALID_ENCODER:	return "INVALID_ENCODER"; break;
-	case ENCODER_GENERATOR_ERROR_INVALID_OPTIONS:	return "INVALID_OPTIONS"; break;
-	case ENCODER_GENERATOR_ERROR_INVALID_SPECIFIER:	return "INVALID_SPECIFIER"; break;
+	case ENCODER_ERROR_PLUGIN_NOT_FOUND:	return "PLUGIN_NOT_FOUND"; break;
+	case ENCODER_ERROR_ENCODER_NOT_FOUND:	return "ENCODER_NOT_FOUND"; break;
+	case ENCODER_ERROR_INVALID_ENCODER:	return "INVALID_ENCODER"; break;
+	case ENCODER_ERROR_INVALID_OPTIONS:	return "INVALID_OPTIONS"; break;
+	case ENCODER_ERROR_INVALID_SPECIFIER:	return "INVALID_SPECIFIER"; break;
+	case ENCODER_ERROR_OUT_OF_MEMORY:	return "OUT_OF_MEMORY"; break;
 	default: return ""; break;
 	}
 }
@@ -840,7 +854,7 @@ const char *encoder_generator_error_text(encoder_generator_error_t code)
 
 // Default callback structure is passed to plugin at initialisation time
 encoderPluginCbT encoderPluginCb = {
-    .registrate   = encoderRegisterCB,
+    .registrate   = add_encoder_generator_factory,
     .bufferSet    = encoderBufferSetCB,
     .jsonParser   = encoderJsonParserCB,
     .textParser   = encoderLineParserCB,
@@ -848,11 +862,10 @@ encoderPluginCbT encoderPluginCb = {
 };
 
 // register callback and use it to register core encoders
-int encoder_generator_factory_init (void) {
-
-  // Builtin Encoder don't have UID
-  int status = encoderRegisterCB (NULL, encoderBuiltin);
-  return status;
+encoder_error_t
+encoder_generator_factory_init (void)
+{
+  return add_encoder_generator_factory (BUILTIN_FACTORY_NAME, encoderBuiltin);
 }
 
 
