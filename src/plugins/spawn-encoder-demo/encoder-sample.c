@@ -127,7 +127,7 @@ static int MyCustomInitCB (shellCmdT *cmd, json_object *optsJ, void* context) {
     // create option handle and attach it to conresponding command handler
     MyCmdOpts *opts = malloc(sizeof (MyCmdOpts));
     opts->blkcount =  MY_DEFAULT_blkcount;
-    ((encoderCbT*)cmd->encoder.encoder)->fmtctx = (void*)opts;
+    ((encoder_generator_t*)cmd->encoder.generator)->fmtctx = (void*)opts;
 
     // If config private a custom 'opts' value parse it now
     if (optsJ) {
@@ -146,7 +146,7 @@ static int MyCustomInitCB (shellCmdT *cmd, json_object *optsJ, void* context) {
 // Send one event json blog and stdout as array when task stop
 static int MyCustomSampleCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     shellCmdT *cmd= taskId->cmd;
-    MyCmdOpts *opts=cmd->encoder.encoder->fmtctx;
+    MyCmdOpts *opts=cmd->encoder.generator->fmtctx;
     MyTaskCtxT *taskctx= taskId->context;
     int err;
 
@@ -218,7 +218,7 @@ OnErrorExit:
 }
 
 // list custom encoders for registration
-encoderCbT MyEncoders[] = {
+encoder_generator_t MyEncoders[] = {
   {.uid="my-custom-encoder"  , .info="One event per blkcount=xxx lines", .initCB=MyCustomInitCB, .actionsCB=MyCustomSampleCB},
   {.uid= NULL} // terminator
 };

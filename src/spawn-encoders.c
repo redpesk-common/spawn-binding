@@ -383,7 +383,7 @@ OnErrorExit:
 // Every encoder should have a formating callback supporting switch options.
 static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder.encoder->fmtctx;
+    streamOptsT *opts=cmd->encoder.generator->fmtctx;
     docTaskCtxT *taskCtx= taskId->context;
     int err;
 
@@ -474,7 +474,7 @@ OnErrorExit:
 // Send one event for line on stdout and stderr at the command end
 static int encoderLineCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder.encoder->fmtctx;
+    streamOptsT *opts=cmd->encoder.generator->fmtctx;
     docTaskCtxT *taskCtx= (docTaskCtxT*)taskId->context;
     int err;
 
@@ -504,7 +504,7 @@ OnErrorExit:
 // Send one event for line on stdout and stderr at the command end
 static int encoderRawCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
     shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder.encoder->fmtctx;
+    streamOptsT *opts=cmd->encoder.generator->fmtctx;
     docTaskCtxT *taskCtx= (docTaskCtxT*)taskId->context;
     int err;
 
@@ -532,9 +532,10 @@ OnErrorExit:
 }
 
 // for debug print both stdout & stderr directly on server
-static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
+static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx)
+{
     shellCmdT *cmd= taskId->cmd;
-    logOptsT *opts=cmd->encoder.encoder->fmtctx;
+    logOptsT *opts=cmd->encoder.generator->fmtctx;
     logTaskCtxT *taskCtx= (logTaskCtxT*)taskId->context;
 
     int err;
@@ -612,9 +613,10 @@ OnErrorExit:
 }
 
 // Send one event json blog and stdout as array when task stop
-static int encoderJsonCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
+static int encoderJsonCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx)
+{
     shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder.encoder->fmtctx;
+    streamOptsT *opts=cmd->encoder.generator->fmtctx;
     docTaskCtxT *taskCtx= taskId->context;
     int err;
 
@@ -644,7 +646,8 @@ OnErrorExit:
 }
 
 // fmtParsing take config cmd option and parse them into something usefull for taskId start
-static int encoderInitLog (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
+static int encoderInitLog (shellCmdT *cmd, json_object *optsJ, void* fmtctx)
+{
     int err;
     const char *fileerr = NULL, *fileout = NULL;
 
@@ -653,7 +656,7 @@ static int encoderInitLog (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     opts->fileout = stdout;
     opts->maxlen = MAX_DOC_LINE_SIZE;
 
-    ((encoderCbT*)cmd->encoder.encoder)->fmtctx = (void*)opts;
+    ((encoder_generator_t*)cmd->encoder.generator)->fmtctx = (void*)opts;
     if (optsJ) {
         err = rp_jsonc_unpack(optsJ, "{s?s s?s s?i !}" ,"stdout", &fileout, "stderr", &fileerr, "maxlen", &opts->maxlen);
         if (err) {
@@ -682,7 +685,7 @@ static int encoderInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     streamOptsT *opts = malloc(sizeof (streamOptsT));
     opts->maxlen =  MAX_DOC_LINE_SIZE;
     opts->lineCount = MAX_DOC_LINE_COUNT;
-    ((encoderCbT*)cmd->encoder.encoder)->fmtctx = (void*)opts;
+    ((encoder_generator_t*)cmd->encoder.generator)->fmtctx = (void*)opts;
     if (optsJ) {
         err = rp_jsonc_unpack(optsJ, "{s?i s?i !}" ,"maxline", &opts->lineCount, "maxlen", &opts->maxlen);
         if (err) {
@@ -713,7 +716,7 @@ struct encoder_factory
 
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
-static /*const*/ encoderCbT encoderBuiltin[] = { /*1st default == TEXT*/
+static /*const*/ encoder_generator_t encoderBuiltin[] = { /*1st default == TEXT*/
   {.uid="TEXT" , .info="unique event at closure with all outputs", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB},
   {.uid="SYNC" , .info="return json data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB, .synchronous=1},
   {.uid="RAW"  , .info="return raw data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderRawCB, .synchronous=1},
@@ -729,6 +732,22 @@ static /*const*/ encoderCbT encoderBuiltin[] = { /*1st default == TEXT*/
 
 // registry holds a linked list of core+pugins encoders
 static encoder_factory_t *first_factory = NULL;
+
+// text of the error
+const char *encoder_error_text(encoder_error_t code)
+{
+	switch(code) {
+	case ENCODER_ERROR_PLUGIN_NOT_FOUND:	return "PLUGIN_NOT_FOUND"; break;
+	case ENCODER_ERROR_ENCODER_NOT_FOUND:	return "ENCODER_NOT_FOUND"; break;
+	case ENCODER_ERROR_INVALID_ENCODER:	return "INVALID_ENCODER"; break;
+	case ENCODER_ERROR_INVALID_OPTIONS:	return "INVALID_OPTIONS"; break;
+	case ENCODER_ERROR_INVALID_SPECIFIER:	return "INVALID_SPECIFIER"; break;
+	case ENCODER_ERROR_OUT_OF_MEMORY:	return "OUT_OF_MEMORY"; break;
+	default: return ""; break;
+	}
+}
+
+
 
 
 // add a new plugin encoder to the registry
@@ -842,25 +861,10 @@ encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **g
 encoder_error_t
 encoder_generator_check_options(const encoder_generator_t *generator, json_object *options)
 {
-	if (options && generator->check != NULL && generator->check(options) < 0)
-		return ENCODER_ERROR_INVALID_OPTIONS;
-	return ENCODER_NO_ERROR;
+	return generator->check != NULL ? generator->check(options) : ENCODER_NO_ERROR;
 }
 
 
-
-const char *encoder_error_text(encoder_error_t code)
-{
-	switch(code) {
-	case ENCODER_ERROR_PLUGIN_NOT_FOUND:	return "PLUGIN_NOT_FOUND"; break;
-	case ENCODER_ERROR_ENCODER_NOT_FOUND:	return "ENCODER_NOT_FOUND"; break;
-	case ENCODER_ERROR_INVALID_ENCODER:	return "INVALID_ENCODER"; break;
-	case ENCODER_ERROR_INVALID_OPTIONS:	return "INVALID_OPTIONS"; break;
-	case ENCODER_ERROR_INVALID_SPECIFIER:	return "INVALID_SPECIFIER"; break;
-	case ENCODER_ERROR_OUT_OF_MEMORY:	return "OUT_OF_MEMORY"; break;
-	default: return ""; break;
-	}
-}
 
 
 #include "spawn-encoders-plugins.h"
@@ -875,13 +879,24 @@ encoderPluginCbT encoderPluginCb = {
 };
 
 
+encoder_error_t
+encoder_generator_create_encoder(const encoder_generator_t *generator, json_object *options, encoder_t **encoder)
+{
+	*encoder = generator;
+	return ENCODER_NO_ERROR;
+}
+
+void
+encoder_destroy(encoder_t *encoder)
+{
+}
 
 
 
 /**
 * starts the encoder
 */
-int encoderStart(const encoderCbT *encoder, taskIdT *taskId)
+int encoderStart(encoder_t *encoder, taskIdT *taskId)
 {
 	if (encoder->fmtctx == NULL && encoder->initCB)
 		encoder->initCB(taskId->cmd, taskId->cmd->encoder.options, encoder->fmtctx);
@@ -891,7 +906,7 @@ int encoderStart(const encoderCbT *encoder, taskIdT *taskId)
 /**
 * closes the encoder
 */
-void encoderClose(const encoderCbT *encoder, taskIdT *taskId)
+void encoderClose(encoder_t *encoder, taskIdT *taskId)
 {
 	encoder->actionsCB(taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_CLOSE, encoder->fmtctx);
 	encoder->actionsCB(taskId, ENCODER_TASK_STDERR, ENCODER_OPS_CLOSE, encoder->fmtctx);
@@ -901,7 +916,7 @@ void encoderClose(const encoderCbT *encoder, taskIdT *taskId)
 /**
 * abort the encoder
 */
-void encoderAbort(const encoderCbT *encoder, taskIdT *taskId)
+void encoderAbort(encoder_t *encoder, taskIdT *taskId)
 {
 	encoder->actionsCB(taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, encoder->fmtctx);
 }
@@ -909,7 +924,7 @@ void encoderAbort(const encoderCbT *encoder, taskIdT *taskId)
 /**
 * process input
 */
-int encoderRead(const encoderCbT *encoder, taskIdT *taskId, int fd, bool error)
+int encoderRead(encoder_t *encoder, taskIdT *taskId, int fd, bool error)
 {
 	return encoder->actionsCB(taskId, error ? ENCODER_TASK_STDERR : ENCODER_TASK_STDOUT, ENCODER_OPS_STD, encoder->fmtctx);
 }

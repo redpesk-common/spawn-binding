@@ -181,10 +181,10 @@ struct shellCmdS
 	/** tethering sandbox */
 	struct sandBoxS *sandbox;
 
-	/** the encoder */
+	/** the encoder generator */
 	struct {
-		/** the encoder */
-		const encoderCbT *encoder;
+		/** the generator */
+		const encoder_generator_t *generator;
 
 		/** options when generating the encoder */
 		json_object *options;

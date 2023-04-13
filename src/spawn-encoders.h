@@ -26,48 +26,7 @@
 #include <json-c/json.h>
 #include "spawn-binding.h"
 
-/**
-* Defintion of main actions for encoders
-*/
-typedef enum {
-    ENCODER_TASK_UNSET,
-    ENCODER_TASK_STDOUT,
-    ENCODER_TASK_STDERR,
-    ENCODER_TASK_START,
-    ENCODER_TASK_STOP,
-    ENCODER_TASK_KILL,
-} encoderActionE;
-
-typedef enum {
-    ENCODER_OPS_STD,
-    ENCODER_OPS_CLOSE,
-} encoderOpsE;
-
-typedef struct  {
-  const char *uid;
-  const char *info;
-  int synchronous;
-  int (*initCB)(shellCmdT *cmd, json_object *optsJ, void* fmtctx);
-  int (*actionsCB)(taskIdT *taskId, encoderActionE action, encoderOpsE subAction, void* fmtctx);
-  void *fmtctx;
-  int (*check)(json_object *optsJ);
-} encoderCbT;
-
-typedef struct {
-    char *data;
-    long index;
-    long size;
-    long count;
-} streamBufT;
-
-typedef int encoderEventCbT (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context);
-typedef int encoderParserCbT(taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
-
-//typedef struct encoder_generator encoder_generator_t;
-typedef encoderCbT encoder_generator_t;
-
-
-
+/***************************************************************************/
 
 /**
 * encoder system errors
@@ -91,6 +50,72 @@ extern
 const char *
 encoder_error_text(encoder_error_t code);
 
+/***************************************************************************/
+
+/**
+* Defintion of main actions for encoders
+*/
+typedef enum {
+    ENCODER_TASK_UNSET,
+    ENCODER_TASK_STDOUT,
+    ENCODER_TASK_STDERR,
+    ENCODER_TASK_START,
+    ENCODER_TASK_STOP,
+    ENCODER_TASK_KILL,
+} encoderActionE;
+
+typedef enum {
+    ENCODER_OPS_STD,
+    ENCODER_OPS_CLOSE,
+} encoderOpsE;
+
+typedef struct encoder_generator encoder_generator_t;
+typedef struct encoder_generator encoder_t;
+//typedef struct encoder encoder_t;
+
+
+
+struct encoder_generator
+{
+	/** identifier of the generator */
+	const char *uid;
+
+	/** some text for documentation */
+	const char *info;
+
+	/**
+	* if not zero, the encoder is synchronous: it locks the request until completion
+	* and returns its value in the reply.
+	* Otherwise, a reply is given when the command is started, its output are sent in events
+	*/
+	int synchronous;
+
+	/** check options */
+	encoder_error_t (*check)(json_object *options);
+
+	/** create instance */
+	encoder_error_t (*instanciate)(const encoder_generator_t *generator, json_object *options, encoder_t **encoder);
+
+	/** tuning data */
+	const void *tuning;
+
+	int (*initCB)(shellCmdT *cmd, json_object *optsJ, void* fmtctx);
+	int (*actionsCB)(taskIdT *taskId, encoderActionE action, encoderOpsE subAction, void* fmtctx);
+	void *fmtctx;
+};
+
+typedef struct {
+    char *data;
+    long index;
+    long size;
+    long count;
+} streamBufT;
+
+typedef int encoderEventCbT (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context);
+typedef int encoderParserCbT(taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
+
+/***************************************************************************/
+
 /**
 * Initialization of the factory of encoder generators
 * @return the error code, ENCODER_NO_ERROR if there is no error
@@ -98,6 +123,8 @@ encoder_error_text(encoder_error_t code);
 extern
 encoder_error_t
 encoder_generator_factory_init(void);
+
+/***************************************************************************/
 
 /**
 * Search the encoder generator of given pluginuid and encoderuid.
@@ -157,24 +184,32 @@ extern
 encoder_error_t
 encoder_generator_check_options(const encoder_generator_t *generator, json_object *options);
 
+/**
+* Instanciate an encoder according to the options
+*
+* @param generator  the encoder generator
+* @param options    JSON object of options
+* @param encoder    pointer for storing the create encoder
+* @return the error code, ENCODER_NO_ERROR if there is no error
+*/
+extern
+encoder_error_t
+encoder_generator_create_encoder(const encoder_generator_t *generator, json_object *options, encoder_t **encoder);
 
+/***************************************************************************/
 
+/**
+* Destroy the encoder instance
+* @param encoder the encoder to be destroyed
+*/
+extern
+void
+encoder_destroy(encoder_t *encoder);
 
-
-
-
-
-
-
-
-
-
-
-
-void encoderClose(const encoderCbT *encoder, taskIdT *taskId);
-int encoderStart(const encoderCbT *encoder, taskIdT *taskId);
-void encoderAbort(const encoderCbT *encoder, taskIdT *taskId);
-int encoderRead(const encoderCbT *encoder, taskIdT *taskId, int fd, bool error);
+int encoderStart(encoder_t *encoder, taskIdT *taskId);
+void encoderClose(encoder_t *encoder, taskIdT *taskId);
+void encoderAbort(encoder_t *encoder, taskIdT *taskId);
+int encoderRead(encoder_t *encoder, taskIdT *taskId, int fd, bool error);
 
 
 #endif /* _SPAWN_ENCODER_S_INCLUDE_ */

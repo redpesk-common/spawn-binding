@@ -27,24 +27,61 @@
 #include <uthash.h>
 #include <afb/afb-binding.h>
 
-struct taskIdS {
-  pid_t pid; // hashtable key
-  char *uid;
-  int synchronous;
-  int verbose;
-  int outfd;
-  int errfd;
-  shellCmdT *cmd;
-  afb_req_t request;
-  void *context;
-  struct timeout_data *timeout;
-  afb_evfd_t srcout;
-  afb_evfd_t srcerr;
-  afb_event_t event;
-  json_object *responseJ;
-  json_object *errorJ;
-  json_object *statusJ;
-  UT_hash_handle tidsHash, gtidsHash;    // makes this structure hashable
+/**
+* Structure holding data of a command execution
+*/
+struct taskIdS
+{
+	/** pid of the task */
+	pid_t pid;
+
+	/** uid of the task */
+	char *uid;
+
+	/** related command */
+	shellCmdT *cmd;
+
+	/** verbosity of the task */
+	int verbose;
+
+	/** flag if synchronous */
+	int synchronous;
+
+	/** input pipe from task stdout */
+	int outfd;
+
+	/** input pipe from task stderr */
+	int errfd;
+
+	/** event handlers for pipe from task stdout */
+	afb_evfd_t srcout;
+
+	/** event handlers for pipe from task stderr */
+	afb_evfd_t srcerr;
+
+	/** encoder */
+	encoder_t *encoder;
+
+	/** timeout management data */
+	struct timeout_data *timeout;
+
+	/** request attached to the task */
+	afb_req_t request;
+
+	/** event attached to the task */
+	afb_event_t event;
+
+	void *context;
+
+	json_object *responseJ;
+	json_object *errorJ;
+	json_object *statusJ;
+
+	/** hash of tasks per command */
+	UT_hash_handle tidsHash;
+
+	/** global hash of tasks */
+	UT_hash_handle gtidsHash;
 };
 
 /** global running tasks */
