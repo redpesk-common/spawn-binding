@@ -35,13 +35,17 @@ ctl sync {"action":"start"}
 ctl exit true
 EOC
 
-sed -i '/"pid"/d' $COUT
+sed -i '/"pid"/s/: *[0-9]*/:/' $COUT
 
 if cmp --silent $BOUT $BREF && cmp --silent $COUT $CREF
 then
 	echo "ok - test ctl"
 else
 	echo "not ok - test ctl"
+	echo "  ---"
+	{ diff $BOUT $BREF ; diff $COUT $CREF ; } |
+	sed 's/^/  /'
+	echo "  ..."
 fi
 
 exit

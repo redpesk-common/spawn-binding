@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2015-2021 IoT.bzh Company
- * Author "Fulup Ar Foll"
  *
  * $RP_BEGIN_LICENSE$
  * Commercial License Usage
@@ -37,673 +36,530 @@
 #include "spawn-sandbox.h"
 #include "spawn-encoders.h"
 #include "spawn-subtask.h"
-#include "spawn-subtask-internal.h"
 #include "spawn-expand.h"
 
-// builtin document encoder
-typedef struct {
-    streamBufT *buffer;
-    json_object *arrayJ;
-    json_object *errorJ;
-    long lncount;
-} streamCtxT;
+#include "lib/vfmt.h"
+#include "lib/stream-buf.h"
+#include "lib/line-buf.h"
+#include "lib/jsonc-buf.h"
 
-typedef struct {
-   streamCtxT stdout;
-   streamCtxT stderr;
-} docTaskCtxT;
+/***************************************************************************************/
 
-typedef struct {
-   ssize_t lineCount;
-   ssize_t maxlen;
-} streamOptsT;
+//#include "spawn-encoders-plugins.h"
 
-typedef struct {
-   ssize_t maxlen;
-   FILE *fileout;
-   FILE *fileerr;
-} logOptsT;
-
-typedef struct {
-   streamBufT stdout;
-   streamBufT stderr;
-   logOptsT *opts;
-} logTaskCtxT;
-
-
-// return a new empty document stream
-static streamBufT *encoderBufferSetCB(streamBufT *buffer, ssize_t size) {
-    // if no buffer provided let create one
-    if (!buffer) {
-        buffer = calloc(1, sizeof(streamBufT));
-        buffer->data= malloc(size+3); // +3 needed for oversized lines trailer '\\'
-        buffer->size=size;
-    }
-    buffer->index=0;
-    buffer->count=0;
-    return buffer;
-}
-
-// document encoder callback add one line into document json array
-static int jsonEventCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
-    json_object *blobJ, *lineJ;
-    afb_data_t data;
-
-    // try to build a json from current buffer
-    blobJ =json_tokener_parse(&docId->data[start]);
-
-    if (blobJ) {
-        //rp_jsonc_pack(&lineJ, "{si ss}", "pid", taskId->pid, "output", &docId->data[start]);
-	data = afb_data_json_c_hold(blobJ);
-        afb_event_push(taskId->event, 1, &data);
-
-    } else {
-        // push error event
-        if (!errorJ)
-		errorJ = json_object_new_string("[parsing fail] invalid json");
-        rp_jsonc_pack(&lineJ, "{si ss so*}", "pid", taskId->pid, "output", &docId->data[start], "warning", errorJ);
-	data = afb_data_json_c_hold(lineJ);
-        afb_event_push(taskId->event, 1, &data);
-        goto OnErrorExit;
-    }
-
-    return 0;
-
-OnErrorExit:
-    return 1;
-}
-
-// send one event for each completed json blob. If oversized send as a string error
-static int encoderJsonParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context) {
-    int err;
-    ssize_t idx, dataIdx=0;
-
-    // nothing to do
-    if (len == 0 && docId->index == 0) return 0;
-
-    // nothing else to read this is our last call
-    if (len == 0) {
-        if (docId->index == docId->size) {
-            if (taskId->verbose)
-                AFB_REQ_NOTICE(taskId->request, "[json too long] encoderJsonParserCB: sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
-            docId->data[docId->index++] = '\\';
-            docId->data[docId->index++] = '\0';
-            err= callback(taskId, docId, 0, json_object_new_string ("line(s) too long folded with '\\' [increase {'linemax':xxxx}]"),context);
-            if (err) goto OnErrorExit;
-        } else {
-            docId->data[docId->index++] = '\0';
-            err= callback(taskId, docId, 0, NULL, context);
-            if (err) goto OnErrorExit;
-        }
-
-        // reset docId index and add continuation prefix
-        docId->index=0;
-
-    } else {
-        long initial=docId->count;
-        char eol;
-
-        // search within docId for newlines and optionally push them into jsonarray
-        for (idx=docId->index; idx<=(docId->index + len); idx++) {
-
-            // search for json blob ignoring extra prefix/trailer characters
-            if (docId->data[idx] == '{') docId->count++;
-            else if (docId->data[idx] == '}') docId->count--;
-
-            // ignore prefix characters
-            if (initial == docId->count) {
-                if (!docId->count) dataIdx=idx;
-                continue;
-            }
-            // if json blob not close keep searching
-            if (docId->count)  {
-                initial=-1;
-                continue;
-            }
-
-            // temporarely close C string to send event
-            eol= docId->data[idx+1];
-            docId->data[idx+1]='\0';
-            err= callback(taskId, docId, dataIdx,NULL,context);
-            if (err) goto OnErrorExit;
-            docId->data[idx+1]=eol;
-            dataIdx=idx+1;
-
-            initial=0; // restart a new json blob
-        }
-
-        // json not close let's update data index
-        if (!dataIdx) {
-            docId->index = docId->index + len;
-        } else {
-            // if some data remain move them to buffer head
-            if (dataIdx == idx) {
-                docId->index = 0;
-            } else {
-                long remaining = docId->index+len-dataIdx;
-                if (remaining > 0) {
-                    memmove (&docId->data[0], &docId->data[dataIdx], remaining);
-                    docId->index= remaining-1;
-                } else {
-                    docId->index=0;
-                }
-            }
-        }
-    }
-    return 0;
-
-OnErrorExit:
-    return 1;
-}
-
-// none encoder callback output line on server
-static int logEventCB (taskIdT *taskId, streamBufT *data, ssize_t start, json_object *errorJ, void *context) {
-    long output= (long)context;
-    logTaskCtxT *taskCtx= (logTaskCtxT*) taskId->context;
-
-    if (output == STDOUT_FILENO) fprintf (taskCtx->opts->fileout, "[%s] %s\n", taskId->uid, &data->data[start]);
-    else fprintf (taskCtx->opts->fileerr, "[%s] %s\n", taskId->uid, &data->data[start]);
-    return 0;
-}
-
-// line encoder callback send one event per new line
-static int lineEventCB (taskIdT *taskId, streamBufT *sbuf, ssize_t start, json_object *errorJ, void *context) {
-    int err;
-    json_object *lineJ;
-    afb_data_t data;
-
-    err = rp_jsonc_pack(&lineJ, "{si ss* so*}", "pid", taskId->pid, "output", &sbuf->data[start], "warning", errorJ);
-    if (err) goto OnErrorExit;
-
-    data = afb_data_json_c_hold(lineJ);
-    afb_event_push(taskId->event, 1, &data);
-    return 0;
-
-OnErrorExit:
-    return 1;
-}
-
-// store all data in a buffer and turn it as string on cmd end
-static int rawDataCB (taskIdT *taskId, streamBufT *data, ssize_t start, json_object *errorJ, void *context) {
-    streamCtxT *streamctx = (streamCtxT*) context;
-
-    // update error message from buffer
-    if (errorJ) {
-        if (!streamctx->errorJ) streamctx->errorJ=errorJ;
-        else json_object_put (errorJ);
-    }
-    // data index point C line start
-    streamctx->arrayJ = json_object_new_string(&data->data[start]);
-    return 0;
-}
-
-// store raw pipe data en push it as a json string on command end
-static int encoderRawParserCB (taskIdT *taskId, streamBufT *data, ssize_t len, encoderEventCbT callback, void* context) {
-    int err;
-
-    // nothing to do
-    if (len == 0 && data->index == 0) return 0;
-
-    // keep raw buffer data until command finishes
-    if (len == 0) {
-        if (data->index == data->size) {
-            // no more space double buffer size
-            data->size = data->size * 2;
-            data->data = realloc (data->data, data->size);
-            AFB_REQ_NOTICE(taskId->request, "[buffer size doubled] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
-            if (!data->data) goto OnErrorExit;
-
-        } else {
-            if (data->data[data->index++] > '\r') data->index++; // if no new line keep last char
-            data->data[data->index++] = '\0';
-            err= callback(taskId, data, 0, NULL, context);
-            data->index=0;
-            if (err) goto OnErrorExit;
-        }
-    } else {
-       data->index = data->index + len;
-    }
-    return 0;
-
-OnErrorExit:
-    return 1;
-}
-
-
-// document encoder callback add one line into document json array
-static int DefaultArrayCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
-    streamCtxT *streamctx = (streamCtxT*) context;
-
-    // create output array only when needed
-    if (!streamctx->arrayJ) streamctx->arrayJ= json_object_new_array();
-    // update error message from buffer
-    if (errorJ) {
-        if (!streamctx->errorJ) streamctx->errorJ=errorJ;
-        else json_object_put (errorJ);
-    }
-    // docId index point C line start
-    json_object_array_add (streamctx->arrayJ, json_object_new_string(&docId->data[start]));
-
-    // make sure we do not not overload response array
-    if (!streamctx->lncount--) {
-        streamctx->errorJ= json_object_new_string("[too many lines] inscrease document 'linemax' option");
-        goto OnErrorExit;
-    }
-    return 0;
-
-OnErrorExit:
-    return 1;
-}
-
-// search for newline delimiters and add it to json response array
-static int encoderLineParserCB (taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context) {
-    int err;
-    ssize_t idx, dataIdx=0;
-
-    // nothing to do
-    if (len == 0 && docId->index == 0) return 0;
-
-    // nothing else to read this is our last call
-    if (len == 0) {
-        if (docId->index == docId->size) {
-            AFB_REQ_NOTICE(taskId->request, "[line too long] sandbox=%s cmd=%s pid=%d", taskId->cmd->sandbox->uid, taskId->cmd->uid, taskId->pid);
-            docId->data[docId->index++] = '\\';
-            docId->data[docId->index++] = '\0';
-            err= callback(taskId, docId, 0, json_object_new_string ("line too long truncated with '\\'"), context);
-            if (err) goto OnErrorExit;
-        } else {
-            if ((unsigned char)docId->data[docId->index++] > '\r') docId->index++; // if last char is not a newline keep it
-            docId->data[docId->index++] = '\0';
-            err= callback(taskId, docId, 0, NULL, context);
-            if (err) goto OnErrorExit;
-        }
-
-        // reset docId index and add continuation prefix
-        docId->index=0;
-
-    } else {
-
-        // search within docId for newlines and optionally push them into jsonarray
-        for (idx=docId->index; idx<=(docId->index + len-1); idx++) {
-
-            // for every newline close 'C' string and push it to the stdoutJ array
-            if ((unsigned char)docId->data[idx] <= '\r') {  // CR ou NL are equivalent
-                docId->data[idx] = '\0';
-                err= callback (taskId, docId, dataIdx, NULL, context);
-                if (err) goto OnErrorExit;
-
-                for (idx=idx+1; (unsigned char)docId->data[idx] <= '\r'; idx++); // remove any trailling cr/nl
-                dataIdx= idx; // next line start
-            }
-        }
-
-        // no newline found simplely update docId index
-        if (!dataIdx) {
-            docId->index = docId->index + len;
-        } else {
-            // move remaining characters to docId start
-            if (dataIdx != idx +1) {
-                long remaining = docId->index+len-dataIdx;
-                if (remaining > 0) {
-                    memmove (&docId->data[0], &docId->data[dataIdx], remaining);
-                    docId->index= remaining-1;
-                } else {
-                    docId->index = 0; // reset docId
-                }
-            }
-        }
-    }
-    return 0;
-
-OnErrorExit:
-    return 1;
-}
-
-// read any avaliable data from stdout/err fd in nonblocking mode
-static int encoderReadFd (taskIdT *taskId, int pipefd, streamBufT *buffer, ssize_t bufsize, encoderParserCbT parserCB, encoderEventCbT eventCB, encoderOpsE operation, void *userdata) {
-    ssize_t freeIdx, len;
-    int err;
-
-    do {
-        freeIdx= bufsize - buffer->index;
-        len = read (pipefd, &buffer->data[buffer->index], freeIdx);
-
-        // we have some new data or data buffer is full
-        if (len > 0 || freeIdx == 0 || operation == ENCODER_OPS_CLOSE) {
-            err= (*parserCB) (taskId, buffer, len, eventCB, (void*)userdata);
-            if (err) goto OnErrorExit;
-        }
-    } while (len > 0);
-    return 0;
-
-OnErrorExit:
-    return 1;
-}
-
-// Every encoder should have a formating callback supporting switch options.
-static int encoderDefaultCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
-    shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder.generator->fmtctx;
-    docTaskCtxT *taskCtx= taskId->context;
-    int err;
-
-    switch (action) {
-
-        case ENCODER_TASK_START:  {
-
-            // prepare handles to store stdout/err stream
-            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_START uid=%s pid=%d\n", taskId->uid, taskId->pid);
-            taskCtx = calloc (1, sizeof(docTaskCtxT));
-            taskCtx->stdout.buffer= encoderBufferSetCB(NULL, opts->maxlen);
-            taskCtx->stderr.buffer= encoderBufferSetCB(NULL, opts->maxlen);
-            taskCtx->stdout.lncount = opts->lineCount;
-            taskCtx->stderr.lncount = opts->lineCount;
-
-            // attach handle to taskId
-            taskId->context= (void*)taskCtx;
-
-            break;
-        }
-
-        case ENCODER_TASK_STDOUT: {
-            if (taskId->verbose >8)  fprintf (stderr, "**** ENCODER_DOC_STDOUT uid=%s pid=%d\n", taskId->uid, taskId->pid);
-            err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderLineParserCB, DefaultArrayCB, operation, &taskCtx->stdout);
-            if (err) {
-                AFB_REQ_ERROR(taskId->request, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
-                goto OnErrorExit;
-            }
-            break;
-        }
-
-        case ENCODER_TASK_STDERR: {
-            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_STDERR uid=%spid=%d\n", taskId->uid, taskId->pid);
-            err= encoderReadFd (taskId, taskId->errfd, taskCtx->stderr.buffer, opts->maxlen, encoderLineParserCB, DefaultArrayCB, operation, &taskCtx->stderr);
-            if (err) {
-                AFB_REQ_ERROR(taskId->request, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
-                goto OnErrorExit;
-            }
-            break;
-        }
-
-        case ENCODER_TASK_STOP: {
-
-            json_object *errorJ=NULL;
-            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_STOP uid=%s pid=%d\n", taskId->uid, taskId->pid);
-            if (taskCtx->stdout.errorJ || taskCtx->stderr.errorJ) {
-                err= rp_jsonc_pack (&errorJ, "{so* so*}"
-                    , "stdout", taskCtx->stdout.errorJ
-                    , "stderr", taskCtx->stderr.errorJ
-                );
-                if (err) goto OnErrorExit;
-            }
-
-            err=rp_jsonc_pack (&taskId->responseJ, "{ss si so* so* so* so*}"
-                , "cmd", taskId->cmd->uid
-                , "pid", taskId->pid
-                , "status", taskId->statusJ
-                , "warning", errorJ
-                , "stdout", taskCtx->stdout.arrayJ
-                , "stderr", taskCtx->stderr.arrayJ
-                );
-            if (err) goto OnErrorExit;
-
-            // free private task encoder memory structure
-            free (taskCtx->stdout.buffer);
-            free (taskCtx->stderr.buffer);
-            free (taskCtx);
-            break;
-        }
-
-        case ENCODER_TASK_KILL: {
-            // update error message before FMT_TASK_STOP take it
-            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_DOC_KILL taskId=0x%p pid=%d\n", taskId, taskId->pid);
-            taskId->errorJ= json_object_new_string("[timeout] forced sigkill");
-            break;
-        }
-
-        default:
-           AFB_REQ_ERROR(taskId->request, "[action-fail] sandbox=%s cmd=%s action=%d pid=%d", cmd->sandbox->uid, cmd->uid, action, taskId->pid);
-           goto OnErrorExit;
-    }
-    return 0;
-
-OnErrorExit:
-    return 1;
-}
-
-// Send one event for line on stdout and stderr at the command end
-static int encoderLineCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
-    shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder.generator->fmtctx;
-    docTaskCtxT *taskCtx= (docTaskCtxT*)taskId->context;
-    int err;
-
-    switch (action) {
-
-        case ENCODER_TASK_STDOUT:
-            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_LINE_STDOUT taskId=0x%p pid=%d\n", taskId, taskId->pid);
-            err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderLineParserCB, lineEventCB, operation, &taskCtx->stdout);
-            if (err) {
-                AFB_REQ_ERROR(taskId->request, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
-                goto OnErrorExit;
-            }
-            break;
-
-        // anything else is delegated to document encoder
-        default:
-            err= encoderDefaultCB (taskId, action, operation, fmtctx);
-            if (err) goto OnErrorExit;
-            break;
-    }
-    return 0;
-
-OnErrorExit:
-    return 1;
-}
-
-// Send one event for line on stdout and stderr at the command end
-static int encoderRawCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
-    shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder.generator->fmtctx;
-    docTaskCtxT *taskCtx= (docTaskCtxT*)taskId->context;
-    int err;
-
-    switch (action) {
-
-        case ENCODER_TASK_STDOUT:
-            if (taskId->verbose >8) fprintf (stderr, "**** ENCODER_RAW_STDOUT taskId=0x%p pid=%d\n", taskId, taskId->pid);
-            err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderRawParserCB, rawDataCB, operation, &taskCtx->stdout);
-            if (err) {
-                AFB_REQ_ERROR(taskId->request, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
-                goto OnErrorExit;
-            }
-            break;
-
-        // anything else is delegated to document encoder
-        default:
-            err= encoderDefaultCB (taskId, action, operation, fmtctx);
-            if (err) goto OnErrorExit;
-            break;
-    }
-    return 0;
-
-OnErrorExit:
-    return 1;
-}
-
-// for debug print both stdout & stderr directly on server
-static int encoderLogCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx)
+struct encoder
 {
-    shellCmdT *cmd= taskId->cmd;
-    logOptsT *opts=cmd->encoder.generator->fmtctx;
-    logTaskCtxT *taskCtx= (logTaskCtxT*)taskId->context;
+	const encoder_generator_t *generator;
+	void *data;
+};
 
-    int err;
+/***************************************************************************************/
 
-    switch (action) {
-        case ENCODER_TASK_START:  {
-            // prepare handles to store stdout/err stream
-            if (taskId->verbose >8) fprintf (stderr, "**** encoderLogCB uid=%s pid=%d\n", taskId->uid, taskId->pid);
-
-            taskCtx = calloc (1, sizeof(logTaskCtxT));
-            taskCtx->opts=opts;
-            taskCtx->stdout.data= malloc(opts->maxlen);
-            taskCtx->stderr.data= malloc(opts->maxlen);
-            taskId->context= taskCtx;
-
-            // write start entry into log
-            fprintf (opts->fileout, "[%s] --- start %s [%s]---\n", taskId->uid, taskId->cmd->command, utilsExpandKey("$TODAY"));
-
-            break;
-        }
-
-        case ENCODER_TASK_STDOUT: {
-            if (taskId->verbose >8)  fprintf (stderr, "**** encoderLogCB uid=%s pid=%d\n", taskId->uid, taskId->pid);
-            err= encoderReadFd (taskId, taskId->outfd, &taskCtx->stdout, opts->maxlen, encoderLineParserCB, logEventCB, operation, (void*)STDOUT_FILENO);
-            if (err) {
-                AFB_REQ_ERROR(taskId->request, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
-                goto OnErrorExit;
-            }
-            break;
-        }
-
-        case ENCODER_TASK_STDERR: {
-            if (taskId->verbose >8) fprintf (stderr, "**** encoderLogCB uid=%spid=%d\n", taskId->uid, taskId->pid);
-            err= encoderReadFd (taskId, taskId->errfd, &taskCtx->stderr, opts->maxlen, encoderLineParserCB, logEventCB, operation, (void*)STDERR_FILENO);
-            if (err) {
-                AFB_REQ_ERROR(taskId->request, "[encoderCB fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
-                goto OnErrorExit;
-            }
-            break;
-        }
-
-        case ENCODER_TASK_STOP: {
-
-            // flush output files
-            fprintf (opts->fileout, "[%s] --- end ---\n", taskId->uid);
-            fflush(taskCtx->opts->fileout);
-            fflush(taskCtx->opts->fileerr);
-
-            if (taskId->verbose >8) fprintf (stderr, "**** encoderLogCB uid=%s pid=%d\n", taskId->uid, taskId->pid);
-            err=rp_jsonc_pack (&taskId->responseJ, "{ss si so* so*}"
-                , "cmd", taskId->cmd->uid
-                , "pid", taskId->pid
-                , "status", taskId->statusJ
-                , "warning",  taskId->errorJ
-                );
-            if (err) goto OnErrorExit;
-            break;
-        }
-
-        case ENCODER_TASK_KILL: {
-            // update error message before FMT_TASK_STOP take it
-            if (taskId->verbose >8) fprintf (stderr, "**** encoderLogCB taskId=0x%p pid=%d\n", taskId, taskId->pid);
-            taskId->errorJ= json_object_new_string("[timeout] forced sigkill");
-            break;
-        }
-
-        default:
-           AFB_REQ_ERROR(taskId->request, "[action-fail] sandbox=%s cmd=%s action=%d pid=%d", cmd->sandbox->uid, cmd->uid, action, taskId->pid);
-           goto OnErrorExit;
-    }
-    return 0;
-
-OnErrorExit:
-    return 1;
-}
-
-// Send one event json blog and stdout as array when task stop
-static int encoderJsonCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx)
+static
+void drop_fd(int fd)
 {
-    shellCmdT *cmd= taskId->cmd;
-    streamOptsT *opts=cmd->encoder.generator->fmtctx;
-    docTaskCtxT *taskCtx= taskId->context;
-    int err;
-
-    switch (action) {
-
-        case ENCODER_TASK_STDOUT:
-            //fprintf (stderr, "**** ENCODER_JSON_STDOUT taskId=0x%p pid=%d\n", taskId, taskId->pid);
-            err= encoderReadFd (taskId, taskId->outfd, taskCtx->stdout.buffer, opts->maxlen, encoderJsonParserCB, jsonEventCB, operation, &taskCtx->stdout);
-            if (err) {
-                AFB_REQ_ERROR(taskId->request, "[encoderCB-fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
-                goto OnErrorExit;
-            }
-            break;
-
-        // anything else is delegated to document encoder
-        default:
-            err= encoderDefaultCB (taskId, action, operation, fmtctx);
-            if (err) goto OnErrorExit;
-            break;
-
-    }
-
-    return 0;
-
-OnErrorExit:
-    return 1;
+	char block[4096];
+	while(read(fd, block, sizeof block) == (ssize_t)(sizeof block));
 }
 
-// fmtParsing take config cmd option and parse them into something usefull for taskId start
-static int encoderInitLog (shellCmdT *cmd, json_object *optsJ, void* fmtctx)
+/***************************************************************************************/
+
+// hold per taskId encoder context
+typedef
+	struct {
+		const char *sout;
+		const char *serr;
+		FILE *fout;
+		FILE *ferr;
+	}
+		LogCtxT;
+
+/** check options */
+static
+encoder_error_t log_check(json_object *options)
 {
-    int err;
-    const char *fileerr = NULL, *fileout = NULL;
-
-    logOptsT *opts = malloc(sizeof (logOptsT));
-    opts->fileerr = stderr;
-    opts->fileout = stdout;
-    opts->maxlen = MAX_DOC_LINE_SIZE;
-
-    ((encoder_generator_t*)cmd->encoder.generator)->fmtctx = (void*)opts;
-    if (optsJ) {
-        err = rp_jsonc_unpack(optsJ, "{s?s s?s s?i !}" ,"stdout", &fileout, "stderr", &fileerr, "maxlen", &opts->maxlen);
-        if (err) {
-            AFB_API_ERROR(cmd->sandbox->binding->api, "[invalid format] sandbox=%s cmd=%s opts=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
-            goto OnErrorExit;
-        }
-
-        // if decicate log file are given open them now
-        if (fileout) opts->fileout= fopen (utilsExpandKeyCmd(fileout, cmd), "a");
-        if (fileerr) opts->fileerr= fopen (utilsExpandKeyCmd(fileerr, cmd), "a");
-        if (!opts->fileout || !opts->fileerr) {
-            AFB_API_ERROR(cmd->sandbox->binding->api, "[invalid logfile] sandbox=%s cmd=%s opts=%s err=%s", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ), strerror(errno));
-            goto OnErrorExit;
-        }
-    }
-    return 0;
-
- OnErrorExit:
-    return 1;
+	const char *fileout, *fileerr;
+	int err = options == NULL ? 0 : rp_jsonc_unpack(options, "{s?s s?s}" ,"stdout", &fileout, "stderr", &fileerr);
+	return err ? ENCODER_ERROR_INVALID_OPTIONS : ENCODER_NO_ERROR;
 }
 
-// fmtParsing take config cmd option and parse them into something usefull for taskId start
-static int encoderInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
-    int err;
+/** instanciate data */
+static
+encoder_error_t
+log_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
+{
+	LogCtxT *ctx;
+	
+	/* allocate */
+	ctx = calloc(1, sizeof *ctx);
+	if (ctx == NULL)
+		return ENCODER_ERROR_OUT_OF_MEMORY;
 
-    streamOptsT *opts = malloc(sizeof (streamOptsT));
-    opts->maxlen =  MAX_DOC_LINE_SIZE;
-    opts->lineCount = MAX_DOC_LINE_COUNT;
-    ((encoder_generator_t*)cmd->encoder.generator)->fmtctx = (void*)opts;
-    if (optsJ) {
-        err = rp_jsonc_unpack(optsJ, "{s?i s?i !}" ,"maxline", &opts->lineCount, "maxlen", &opts->maxlen);
-        if (err) {
-            AFB_API_ERROR(cmd->sandbox->binding->api, "[invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
-            goto OnErrorExit;
-        }
-    }
-    return 0;
-
- OnErrorExit:
-    return 1;
+	/* init */
+	if (options == NULL 
+	 || 0 == rp_jsonc_unpack(options, "{s?s s?s}", "stdout", &ctx->sout, "stderr", &ctx->serr)) {
+		*data = ctx;
+		return ENCODER_NO_ERROR;
+	}
+	free(ctx);
+	return ENCODER_ERROR_INVALID_OPTIONS;
 }
 
+/** open a file */
+static FILE *openexp(const char *filename, const char *mode, taskIdT *task)
+{
+	char *path = utilsExpandKeyTask(filename, task);
+	FILE *file = fopen(path, mode);
+	if (file == NULL)
+		vfmtcl((void*)spawnTaskLog, task, AFB_SYSLOG_LEVEL_ERROR, "opening file %s with mode %s failed: %s",
+			path, mode, strerror(errno));
+	free(path);
+	return file;
+}
+
+/** terminate processing */
+encoder_error_t
+log_begin(void *data, taskIdT *task)
+{
+	LogCtxT *ctx = data;
+	ctx->fout = ctx->sout == NULL ? stdout : openexp(ctx->sout, "a", task);
+	if (ctx->fout != NULL) {
+		ctx->ferr = ctx->serr == NULL ? stderr : openexp(ctx->serr, "a", task);
+		if (ctx->ferr != NULL)
+			return ENCODER_NO_ERROR;
+		if (ctx->sout != NULL)
+			fclose(ctx->fout);
+	}
+	return ENCODER_ERROR_SYSTEM;
+}
+
+/** process input */
+encoder_error_t
+log_read(void *data, taskIdT *taskId, int fd, bool error)
+{
+	char buffer[4096];
+	LogCtxT *ctx = data;
+	FILE *file = error ? ctx->ferr : ctx->fout;
+
+	for (;;) {
+		// read
+		ssize_t sts = read(fd, buffer, sizeof buffer);
+		if (sts > 0)
+			fwrite(buffer, 1, (size_t)sts, file);
+		else if (sts == 0 || errno != EINTR)
+			break;
+	}
+	return ENCODER_NO_ERROR;
+}
+
+/** terminate processing */
+encoder_error_t
+log_end(void *data, taskIdT *taskId)
+{
+	LogCtxT *ctx = data;
+	if (ctx->ferr != stderr)
+		fclose(ctx->ferr);
+	if (ctx->fout != stdout)
+		fclose(ctx->fout);
+	return ENCODER_NO_ERROR;
+}
+
+/** drop resources */
+static
+void
+log_destroy(void *data)
+{
+	LogCtxT *ctx = data;
+	free(ctx);
+}
+
+/***************************************************************************************/
+
+/** definition of the modes for line text */
+typedef
+	enum {
+		/** send arrays of lines as event at the end */
+		mode_text_event,
+		/** send arrays of lines as the reply at the end */
+		mode_text_sync,
+		/** send lines as events, line by line */
+		mode_text_line,
+		/** send text blob as the reply at the end */
+		mode_text_raw
+	}
+	TextModeT;
+
+/** definition of a stream for output and error */
+typedef
+	struct {
+		/** json object data */
+		json_object *data;
+		/** handler of buffer */
+		stream_buf_t buf;
+		/** if overflow is detected */
+		bool overflowed;
+	}
+	TextBufT;
+
+/** context of a text encoder */
+typedef
+	struct {
+		/** the mode */
+		TextModeT mode;
+		/** the maximum count of lines to hold */
+		int maxline;
+		/** for holding output */
+		TextBufT out;
+		/** for holding errors */
+		TextBufT err;
+	}
+	TextCtxT;
+
+/** pair of encoder context and task for callbacks */
+typedef
+	struct {
+		/** the encoder context */
+		TextCtxT *ctx;
+		/** the task */
+		taskIdT *task;
+		/** the buffer */
+		TextBufT *buf;
+	}
+	TextTaskCtxT;
+
+/** check options */
+static
+encoder_error_t
+text_check(json_object *options)
+{
+	int maxline, maxlen, err;
+
+	if (options == NULL)
+		return ENCODER_NO_ERROR;
+
+	err = rp_jsonc_unpack(options, "{s?i s?i}", "maxline", &maxline, "maxlen", &maxlen);
+	if (err || maxlen <= 0 || maxline <= 0)
+		return ENCODER_ERROR_INVALID_OPTIONS;
+
+	return ENCODER_NO_ERROR;
+}
+
+/** instanciate data */
+static
+encoder_error_t
+text_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
+{
+	TextCtxT *ctx;
+	int maxlen, err;
+	
+	/* allocate */
+	ctx = calloc(1, sizeof *ctx);
+	if (ctx == NULL)
+		return ENCODER_ERROR_OUT_OF_MEMORY;
+
+	/* init */
+	maxlen =  MAX_DOC_LINE_SIZE;
+	ctx->maxline = MAX_DOC_LINE_COUNT;
+	ctx->mode = (TextModeT)(intptr_t)generator->tuning;
+	if (options != NULL) {
+		err = rp_jsonc_unpack(options, "{s?i s?i}", "maxline", &ctx->maxline, "maxlen", &maxlen);
+		if (err || maxlen <= 0 || ctx->maxline <= 0) {
+			free(ctx);
+			return ENCODER_ERROR_INVALID_OPTIONS;
+		}
+	}
+	if (stream_buf_init(&ctx->out.buf, maxlen) != NULL) {
+		if (stream_buf_init(&ctx->err.buf, maxlen) != NULL) {
+			*data = ctx;
+			return ENCODER_NO_ERROR;
+		}
+		stream_buf_clear(&ctx->out.buf);
+	}
+	free(ctx);
+	return ENCODER_ERROR_OUT_OF_MEMORY;
+}
+
+/** encode one line */
+static
+void
+text_line_cb(void *closure, const char *line, size_t length)
+{
+	TextTaskCtxT *ctx = closure;
+	json_object *object = json_object_new_string_len(line, length);
+	if (ctx->ctx->mode == mode_text_line) {
+		json_object *event = json_object_new_object();
+		if (event != NULL) {
+			const char *name = ctx->buf == &ctx->ctx->err ? "stderr" : "stdout";
+			if (json_object_object_add(event, name, object) == 0) {
+				spawnTaskPushEventJSON(ctx->task, event);
+				return;
+			}
+			json_object_put(event);
+		}
+		json_object_put(object);
+		object = NULL;
+	}
+	if (object == NULL)
+		vfmtcl((void*)spawnTaskLog, ctx->task, AFB_SYSLOG_LEVEL_ERROR, "out of memory");
+	else {
+		json_object *array = ctx->buf->data;
+		if (array == NULL) {
+			ctx->buf->data = array = json_object_new_array_ext(ctx->ctx->maxline + 1);
+			if (array == NULL) {
+				json_object_put(object);
+				vfmtcl((void*)spawnTaskLog, ctx->task, AFB_SYSLOG_LEVEL_ERROR, "out of memory");
+				return;
+			}
+		}
+		else {
+			int len = ctx->ctx->maxline - (int)json_object_array_length(array);
+			if (len <= 0) {
+				ctx->buf->overflowed = true;
+				json_object_put(object);
+				if (len < 0)
+					return;
+				object = json_object_new_string("...");
+			}
+		}
+		json_object_array_add(array, object);
+	}
+}
+
+/** process text input */
+encoder_error_t
+text_read(void *data, taskIdT *task, int fd, bool error)
+{
+	TextTaskCtxT ctx = { .ctx = data, .task = task  };
+	ctx.buf = error ? &ctx.ctx->err : &ctx.ctx->out;
+	if (ctx.buf->overflowed)
+		drop_fd(fd);
+	else
+		line_buf_read(&ctx.buf->buf, fd, text_line_cb, &ctx);
+	return ENCODER_NO_ERROR;
+}
+
+/** process raw input */
+encoder_error_t
+text_read_raw(void *data, taskIdT *task, int fd, bool error)
+{
+	TextCtxT *ctx = data;
+	TextBufT *tbuf = error ? &ctx->err : &ctx->out;
+	if (!stream_buf_is_full(&tbuf->buf))
+		stream_buf_read_fd(&tbuf->buf, fd);
+	else {
+		tbuf->overflowed = true;
+		drop_fd(fd);
+	}
+	return ENCODER_NO_ERROR;
+}
+
+/** terminate processing */
+encoder_error_t
+text_end(void *data, taskIdT *task)
+{
+	json_object *object;
+	TextCtxT *ctx = data;
+
+	if (ctx->mode == mode_text_raw) {
+		ctx->out.data = json_object_new_string_len(
+			stream_buf_data(&ctx->out.buf), stream_buf_length(&ctx->out.buf));
+		ctx->err.data = json_object_new_string_len(
+			stream_buf_data(&ctx->err.buf), stream_buf_length(&ctx->err.buf));
+	}
+	else {
+		TextTaskCtxT tactx = { .ctx = ctx, .task = task };
+		tactx.buf = &ctx->err;
+		line_buf_end(&ctx->err.buf, text_line_cb, &tactx);
+		tactx.buf = &ctx->out;
+		line_buf_end(&ctx->out.buf, text_line_cb, &tactx);
+	}
+	switch (ctx->mode) {
+	case mode_text_raw:
+	case mode_text_sync:
+	case mode_text_event:
+		rp_jsonc_pack(&object, "{so* so* so* so*}",
+			"stdout", ctx->out.data,
+			"stderr", ctx->err.data,
+			"stdout-overflow", ctx->out.overflowed ? json_object_new_boolean(1) : NULL,
+			"stderr-overflow", ctx->err.overflowed ? json_object_new_boolean(1) : NULL
+			);
+		ctx->out.data = ctx->err.data = NULL;
+		if (ctx->mode == mode_text_event)
+			spawnTaskPushEventJSON(task, object);
+		else
+			spawnTaskReplyJSON(task, 0, object);
+		break;
+	case mode_text_line:
+		break;
+	}
+
+	return ENCODER_NO_ERROR;
+}
+
+/** destroy the encoder */
+static
+void
+text_destroy(void *data)
+{
+	TextCtxT *ctx = data;
+	json_object_put(ctx->out.data);
+	json_object_put(ctx->err.data);
+	stream_buf_clear(&ctx->out.buf);
+	stream_buf_clear(&ctx->err.buf);
+	free(ctx);
+}
+
+/***************************************************************************************/
+
+/** conjson of a json encoder */
+typedef
+	struct {
+		/** tokenizer */
+		json_tokener *tokener;
+		/** buffer for errors */
+		stream_buf_t buf;
+	}
+	JsonCtxT;
+
+/** pair of encoder conjson and task for callbacks */
+typedef
+	struct {
+		/** the encoder conjson */
+		JsonCtxT *ctx;
+		/** the task */
+		taskIdT *task;
+	}
+	JsonTaskCtxT;
+
+/** check options */
+static
+encoder_error_t
+json_check(json_object *options)
+{
+	int maxlen, maxdepth, err;
+
+	if (options == NULL)
+		return ENCODER_NO_ERROR;
+
+	err = rp_jsonc_unpack(options, "{s?i s?i}", "maxlen", &maxlen, "maxdepth", &maxdepth);
+	if (err || maxlen <= 0 || maxdepth <= 0)
+		return ENCODER_ERROR_INVALID_OPTIONS;
+
+	return ENCODER_NO_ERROR;
+}
+
+/** instanciate data */
+static
+encoder_error_t
+json_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
+{
+	JsonCtxT *ctx;
+	int maxlen, maxdepth, err;
+	
+	/* allocate */
+	ctx = calloc(1, sizeof *ctx);
+	if (ctx == NULL)
+		return ENCODER_ERROR_OUT_OF_MEMORY;
+
+	/* init */
+	maxlen =  MAX_DOC_LINE_SIZE;
+	maxdepth = JSON_TOKENER_DEFAULT_DEPTH;
+	if (options != NULL) {
+		err = rp_jsonc_unpack(options, "{s?i s?i}", "maxlen", &maxlen, "maxdepth", &maxdepth);
+		if (err || maxlen <= 0 || maxdepth <= 0) {
+			free(ctx);
+			return ENCODER_ERROR_INVALID_OPTIONS;
+		}
+	}
+	if (stream_buf_init(&ctx->buf, maxlen) != NULL) {
+		ctx->tokener = json_tokener_new_ex(maxdepth);
+		if (ctx->tokener != NULL) {
+			*data = ctx;
+			return ENCODER_NO_ERROR;
+		}
+		stream_buf_clear(&ctx->buf);
+	}
+	free(ctx);
+	return ENCODER_ERROR_OUT_OF_MEMORY;
+}
+
+static
+void
+json_emit(void *closure, json_object *object, const char *name)
+{
+	JsonTaskCtxT *ctx = closure;
+	json_object *event = json_object_new_object();
+	if (event != NULL) {
+		if (json_object_object_add(event, name, object) == 0) {
+			spawnTaskPushEventJSON(ctx->task, event);
+			return;
+		}
+		json_object_put(event);
+	}
+	json_object_put(object);
+	vfmtcl((void*)spawnTaskLog, ctx->task, AFB_SYSLOG_LEVEL_ERROR, "out of memory");
+}
+
+static
+void
+json_push_cb(void *closure, json_object *object)
+{
+	if (object != NULL)
+		json_emit(closure, object, "stdout");
+}
+
+static
+void
+json_err_cb(void *closure, const char *message)
+{
+	json_emit(closure, json_object_new_string(message), "json-error");
+}
+
+static
+void
+json_line_cb(void *closure, const char *line, size_t length)
+{
+	json_emit(closure, json_object_new_string_len(line, length), "stderr");
+}
+
+/** process json input */
+encoder_error_t
+json_read(void *data, taskIdT *task, int fd, bool error)
+{
+	JsonTaskCtxT ctx = { .ctx = data, .task = task  };
+	if (error)
+		line_buf_read(&ctx.ctx->buf, fd, json_line_cb, &ctx);
+	else
+		jsonc_buf_read(ctx.ctx->tokener, fd, json_push_cb, &ctx, json_err_cb);
+	return ENCODER_NO_ERROR;
+}
+
+/** terminate processing */
+encoder_error_t
+json_end(void *data, taskIdT *task)
+{
+	JsonTaskCtxT ctx = { .ctx = data, .task = task  };
+	line_buf_end(&ctx.ctx->buf, json_line_cb, &ctx);
+	jsonc_buf_end(ctx.ctx->tokener, json_push_cb, &ctx, json_err_cb);
+	return ENCODER_NO_ERROR;
+}
+
+/** destroy the encoder */
+static
+void
+json_destroy(void *data)
+{
+	JsonCtxT *ctx = data;
+	json_tokener_free(ctx->tokener);
+	stream_buf_clear(&ctx->buf);
+	free(ctx);
+}
+
+/***************************************************************************************/
 
 #if !defined(BUILTIN_FACTORY_NAME)
 #define BUILTIN_FACTORY_NAME "builtins"
 #endif
-
 
 typedef
 struct encoder_factory
@@ -717,18 +573,77 @@ struct encoder_factory
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
 static /*const*/ encoder_generator_t encoderBuiltin[] = { /*1st default == TEXT*/
-  {.uid="TEXT" , .info="unique event at closure with all outputs", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB},
-  {.uid="SYNC" , .info="return json data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB, .synchronous=1},
-  {.uid="RAW"  , .info="return raw data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderRawCB, .synchronous=1},
-  {.uid="LINE" , .info="one event per line",  .initCB=encoderInitCB, .actionsCB=encoderLineCB},
-  {.uid="JSON" , .info="one event per json blob",  .initCB=encoderInitCB, .actionsCB=encoderJsonCB},
-  {.uid="LOG"  , .info="keep stdout/stderr on server",  .initCB=encoderInitLog, .actionsCB=encoderLogCB},
-  {.uid= NULL} // must be null terminated
+  {
+	.uid = "TEXT" ,
+	.info = "unique event at closure with all outputs",
+	.check   = text_check,
+	.create  = text_instanciate,
+	.begin   = NULL,
+	.read    = text_read,
+	.end     = text_end,
+	.destroy = text_destroy,
+	.synchronous = 0,
+	.tuning  = (void*)(intptr_t)mode_text_event
+  },
+  {
+	.uid = "SYNC" ,
+	.info = "return json data at cmd end",
+	.check   = text_check,
+	.create  = text_instanciate,
+	.begin   = NULL,
+	.read    = text_read,
+	.end     = text_end,
+	.destroy = text_destroy,
+	.synchronous = 1,
+	.tuning  = (void*)(intptr_t)mode_text_sync
+  },
+  {
+	.uid = "LINE" ,
+	.info = "one event per line", 
+	.check   = text_check,
+	.create  = text_instanciate,
+	.begin   = NULL,
+	.read    = text_read,
+	.end     = text_end,
+	.destroy = text_destroy,
+	.tuning  = (void*)(intptr_t)mode_text_line
+  },
+  {
+	.uid = "RAW" ,
+	.info = "return raw data at cmd end",
+	.check   = text_check,
+	.create  = text_instanciate,
+	.begin   = NULL,
+	.read    = text_read_raw,
+	.end     = text_end,
+	.destroy = text_destroy,
+	.synchronous = 1,
+	.tuning  = (void*)(intptr_t)mode_text_raw
+  },
+  {
+	.uid = "JSON",
+	.info = "one event per json blob", 
+	.check   = json_check,
+	.create  = json_instanciate,
+	.begin   = NULL,
+	.read    = json_read,
+	.end     = json_end,
+	.destroy = json_destroy
+  },
+  {
+	.uid = "LOG" ,
+	.info = "keep stdout/stderr on server", 
+	.check   = log_check,
+	.create  = log_instanciate,
+	.begin   = log_begin,
+	.read    = log_read,
+	.end     = log_end,
+	.destroy = log_destroy
+  },
+  {.uid =  NULL} // must be null terminated
 };
 
-
-
-
+/***************************************************************************************/
 
 // registry holds a linked list of core+pugins encoders
 static encoder_factory_t *first_factory = NULL;
@@ -747,13 +662,9 @@ const char *encoder_error_text(encoder_error_t code)
 	}
 }
 
-
-
-
 // add a new plugin encoder to the registry
-static
 encoder_error_t
-add_encoder_generator_factory(const char *uid, const encoder_generator_t *generators)
+encoder_generator_factory_add(const char *uid, const encoder_generator_t *generators)
 {
 	encoder_factory_t *factory, **ptrfac;
 
@@ -781,7 +692,7 @@ add_encoder_generator_factory(const char *uid, const encoder_generator_t *genera
 encoder_error_t
 encoder_generator_factory_init (void)
 {
-  return add_encoder_generator_factory (BUILTIN_FACTORY_NAME, encoderBuiltin);
+  return encoder_generator_factory_add (BUILTIN_FACTORY_NAME, encoderBuiltin);
 }
 
 // search the encoder in the registry
@@ -824,7 +735,7 @@ encoder_generator_get(const char *pluginuid, const char *encoderuid, const encod
 		return ege;
 
 	// every encoder should define its formating callback
-	if (gener->actionsCB == NULL)
+	if (gener->read == NULL)
 		return ENCODER_ERROR_INVALID_ENCODER;
 
 	*generator = gener;
@@ -864,43 +775,52 @@ encoder_generator_check_options(const encoder_generator_t *generator, json_objec
 	return generator->check != NULL ? generator->check(options) : ENCODER_NO_ERROR;
 }
 
-
-
-
-#include "spawn-encoders-plugins.h"
-
-// Default callback structure is passed to plugin at initialisation time
-encoderPluginCbT encoderPluginCb = {
-    .registrate   = add_encoder_generator_factory,
-    .bufferSet    = encoderBufferSetCB,
-    .jsonParser   = encoderJsonParserCB,
-    .textParser   = encoderLineParserCB,
-    .readStream   = encoderReadFd,
-};
-
-
 encoder_error_t
-encoder_generator_create_encoder(const encoder_generator_t *generator, json_object *options, encoder_t **encoder)
+encoder_generator_create_encoder(const encoder_generator_t *generator, json_object *options, encoder_t **p_encoder)
 {
-	*encoder = generator;
-	return ENCODER_NO_ERROR;
+	encoder_error_t rc;
+	encoder_t *encoder = malloc(sizeof *encoder);
+	if (encoder == NULL)
+		rc = ENCODER_ERROR_OUT_OF_MEMORY;
+	else {
+		encoder->generator = generator;
+		rc = generator->create == NULL ? ENCODER_NO_ERROR : generator->create(generator, options, &encoder->data);
+		if (rc != ENCODER_NO_ERROR)
+			free(encoder);
+		else
+			*p_encoder = encoder;
+	}
+	return rc;
 }
+
+/***************************************************************************************/
 
 void
 encoder_destroy(encoder_t *encoder)
 {
+	if (encoder->generator->destroy)
+		encoder->generator->destroy(encoder->data);
+	free(encoder);
 }
-
-
 
 /**
 * starts the encoder
 */
 int encoderStart(encoder_t *encoder, taskIdT *taskId)
 {
-	if (encoder->fmtctx == NULL && encoder->initCB)
-		encoder->initCB(taskId->cmd, taskId->cmd->encoder.options, encoder->fmtctx);
-	return encoder->actionsCB(taskId, ENCODER_TASK_START, ENCODER_OPS_STD, encoder->fmtctx);
+	encoder_error_t ec = ENCODER_NO_ERROR;
+	if (encoder->generator->begin)
+		ec = encoder->generator->begin(encoder->data, taskId);
+	if (ec != ENCODER_NO_ERROR) {
+		spawnTaskReplyJSON(taskId, AFB_ERRNO_INTERNAL_ERROR, NULL);
+	}
+	else if (encoder->generator->synchronous) {
+		spawnTaskPushInitialStatus(taskId, NULL);
+	}
+	else {
+		spawnTaskReplyJSON(taskId, 0, NULL);
+	}
+	return 0;
 }
 
 /**
@@ -908,17 +828,10 @@ int encoderStart(encoder_t *encoder, taskIdT *taskId)
 */
 void encoderClose(encoder_t *encoder, taskIdT *taskId)
 {
-	encoder->actionsCB(taskId, ENCODER_TASK_STDOUT, ENCODER_OPS_CLOSE, encoder->fmtctx);
-	encoder->actionsCB(taskId, ENCODER_TASK_STDERR, ENCODER_OPS_CLOSE, encoder->fmtctx);
-	encoder->actionsCB(taskId, ENCODER_TASK_STOP, ENCODER_OPS_CLOSE, encoder->fmtctx);
-}
-
-/**
-* abort the encoder
-*/
-void encoderAbort(encoder_t *encoder, taskIdT *taskId)
-{
-	encoder->actionsCB(taskId, ENCODER_TASK_KILL, ENCODER_OPS_STD, encoder->fmtctx);
+	if (encoder->generator->end)
+		encoder->generator->end(encoder->data, taskId);
+	if (!encoder->generator->synchronous)
+		spawnTaskPushFinalStatus(taskId, NULL);
 }
 
 /**
@@ -926,5 +839,7 @@ void encoderAbort(encoder_t *encoder, taskIdT *taskId)
 */
 int encoderRead(encoder_t *encoder, taskIdT *taskId, int fd, bool error)
 {
-	return encoder->actionsCB(taskId, error ? ENCODER_TASK_STDERR : ENCODER_TASK_STDOUT, ENCODER_OPS_STD, encoder->fmtctx);
+	if (encoder->generator->read)
+		return encoder->generator->read(encoder->data, taskId, fd, error);
+	return 0;
 }

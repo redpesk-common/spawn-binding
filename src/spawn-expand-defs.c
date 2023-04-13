@@ -37,6 +37,7 @@
 #include <rp-utils/rp-uuid.h>
 
 #include "spawn-sandbox.h"
+#include "spawn-subtask-internal.h"
 #include "spawn-expand.h"
 #include "spawn-expand-defs.h"
 
@@ -133,6 +134,18 @@ static char*GetObjectUid(const char *label, void *ctx, spawnExpandSpecificT *spe
                 return (char*)(specific->value.cmd->sandbox->uid);
             case  WANT_API_NAME:
                 return (char*)(afb_api_name(specific->value.cmd->sandbox->binding->api));
+            default:
+                break;
+            }
+            break;
+        case expand_task:
+            switch (request) {
+            case  WANT_COMMAND_UID:
+                return (char*)(specific->value.task->cmd->uid);
+            case  WANT_SANDBOX_UID:
+                return (char*)(specific->value.task->cmd->sandbox->uid);
+            case  WANT_API_NAME:
+                return (char*)(afb_api_name(specific->value.task->cmd->sandbox->binding->api));
             default:
                 break;
             }

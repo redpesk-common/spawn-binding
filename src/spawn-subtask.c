@@ -64,23 +64,89 @@ taskIdT *globtids = NULL;
 /** globtids' access protection */
 pthread_rwlock_t globtidsem = PTHREAD_RWLOCK_INITIALIZER;
 
-void taskPushResponse (taskIdT *taskId) {
+void spawnTaskLog(taskIdT *taskId, int lvl, const char *fmt, va_list args)
+{
+	if (afb_req_wants_log_level(taskId->request, lvl))
+		afb_req_vverbose(taskId->request, lvl, NULL, 0, NULL, fmt, args);
+}
 
-    // push event if not one listen just stop pushing
-    json_object *resp = taskId->responseJ;
-    taskId->responseJ = NULL;
-    if (resp) {
-	int count = 1;
-        afb_data_t data = afb_data_json_c_hold(resp);
-        if (taskId->synchronous)
-            afb_req_reply(taskId->request, 0, 1, &data);
-        else
-	    count = afb_event_push(taskId->event, 1, &data);
-        taskId->statusJ = NULL;
-        taskId->errorJ = NULL;
-        if (!count && taskId->verbose > 4)
-	    AFB_REQ_NOTICE(taskId->request, "uid='%s' no client listening",  taskId->uid);
-    }
+static
+json_object *objmixin(json_object *dest, json_object *mixed)
+{
+	if (mixed != NULL) {
+		if (json_object_is_type(mixed, json_type_object)) {
+			rp_jsonc_object_merge(dest, mixed, rp_jsonc_merge_option_replace);
+			json_object_put(mixed);
+		}
+		else
+			json_object_object_add(dest, "data", mixed);
+	}
+	return dest;
+}
+
+static
+void send_task_event(taskIdT *taskId, json_object *object)
+{
+	afb_data_t data = afb_data_json_c_hold(object);
+	int count = afb_event_push(taskId->event, 1, &data);
+	if (!count && taskId->verbose > 4)
+		AFB_REQ_NOTICE(taskId->request, "uid='%s' no client listening",  taskId->uid);
+}
+
+void spawnTaskPushEventJSON(taskIdT *taskId, json_object *object)
+{
+	json_object *event;
+	rp_jsonc_pack(&event, "{ss si}",
+			"type", "data",
+			"pid", taskId->pid);
+	send_task_event(taskId, objmixin(event, object));
+}
+
+void spawnTaskPushInitialStatus(taskIdT *taskId, json_object *object)
+{
+	json_object *event;
+	rp_jsonc_pack(&event, "{ss ss ss ss si}",
+			"type", "initial-event",
+			"api", afb_req_get_called_api(taskId->request),
+			"sandbox", taskId->cmd->sandbox->uid,
+			"command", taskId->cmd->uid,
+			"pid", taskId->pid);
+	send_task_event(taskId, objmixin(event, object));
+}
+
+void spawnTaskPushFinalStatus(taskIdT *taskId, json_object *object)
+{
+	json_object *event;
+	rp_jsonc_pack(&event, "{ss si so*}",
+			"type", "final-event",
+			"pid", taskId->pid,
+			"status", taskId->statusJ);
+	taskId->statusJ = NULL;
+	send_task_event(taskId, objmixin(event, object));
+}
+
+void spawnTaskReplyJSON(taskIdT *taskId, int status, json_object *object)
+{
+	if (taskId->replied) {
+		AFB_REQ_NOTICE(taskId->request, "uid='%s' already replied",  taskId->uid);
+		json_object_put(object);
+	}
+	else {
+		afb_data_t data;
+		json_object *reply;
+
+		rp_jsonc_pack(&reply, "{ss ss ss si so*}",
+				"api", afb_req_get_called_api(taskId->request),
+				"sandbox", taskId->cmd->sandbox->uid,
+				"command", taskId->cmd->uid,
+				"pid", taskId->pid,
+				"status", taskId->statusJ);
+		taskId->statusJ = NULL;
+
+		data = afb_data_json_c_hold(objmixin(reply, object));
+		afb_req_reply(taskId->request, status, 1, &data);
+		taskId->replied = true;
+	}
 }
 
 extern void end_timeout_monitor(taskIdT *taskId);
@@ -130,17 +196,19 @@ void spawnFreeTaskId  (taskIdT *taskId)
 
 static void taskPushFinalResponse (taskIdT *taskId)
 {
-    // try to read any remaining data before building exit status
-    if (taskId->verbose > 2)
-        AFB_REQ_INFO (taskId->request, "taskPushFinalResponse: uid=%s pid=%d [step-1: collect remaining data]", taskId->uid, taskId->pid);
+	// try to read any remaining data before building exit status
+	if (taskId->verbose > 2)
+		AFB_REQ_INFO (taskId->request, "taskPushFinalResponse: uid=%s pid=%d [step-1: collect remaining data]", taskId->uid, taskId->pid);
 
-    encoderClose(taskId->encoder, taskId);
+	encoderClose(taskId->encoder, taskId);
 
-    if (taskId->verbose > 2)
-        AFB_REQ_INFO (taskId->request, "taskPushFinalResponse: uid=%s pid=%d [step-2: collect child status=%s]", taskId->uid, taskId->pid, json_object_get_string(taskId->statusJ));
+	if (taskId->verbose > 2)
+		AFB_REQ_INFO (taskId->request, "taskPushFinalResponse: uid=%s pid=%d [step-2: collect child status=%s]", taskId->uid, taskId->pid, json_object_get_string(taskId->statusJ));
 
-    taskPushResponse (taskId);
-    spawnFreeTaskId(taskId);
+	if (!taskId->replied)
+		spawnTaskReplyJSON (taskId, 0, NULL);
+
+	spawnFreeTaskId(taskId);
 }
 
 
@@ -298,7 +366,8 @@ static taskIdT *spawnChildGetTaskId (int childPid) {
     return taskId;
 }
 
-void spawnChildUpdateStatus (taskIdT *taskId) {
+void spawnChildUpdateStatus (taskIdT *taskId)
+{
     int childPid, childStatus;
     int expectPid=0; // wait for any child whose process group ID is equal to calling process
 
@@ -325,11 +394,14 @@ void spawnChildUpdateStatus (taskIdT *taskId) {
 
         // update child taskId status
         if (WIFEXITED (childStatus)) {
-            rp_jsonc_pack (&taskId->statusJ, "{si so*}", "exit", WEXITSTATUS(childStatus), "info", taskId->errorJ);
+            rp_jsonc_pack (&taskId->statusJ, "{si}", "exit", WEXITSTATUS(childStatus));
         } else if(WIFSIGNALED (childStatus)) {
-            rp_jsonc_pack (&taskId->statusJ, "{ss so*}", "signal", strsignal(WTERMSIG(childStatus)), "info", taskId->errorJ);
+	    if (WTERMSIG(childStatus) == SIGKILL && taskId->expired)
+                rp_jsonc_pack (&taskId->statusJ, "{ss ss}", "signal", strsignal(WTERMSIG(childStatus)) ?: "unknown", "info", "timeout");
+	    else
+                rp_jsonc_pack (&taskId->statusJ, "{ss}", "signal", strsignal(WTERMSIG(childStatus)) ?: "unknown");
         } else {
-            rp_jsonc_pack (&taskId->statusJ, "{si so*}", "unknown", 255, "info", taskId->errorJ);
+            rp_jsonc_pack (&taskId->statusJ, "{si}", "unknown", 255);
         }
 
         // push final respond to every taskId subscriber

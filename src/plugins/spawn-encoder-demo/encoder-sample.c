@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2021 "IoT.bzh"
- * Author "Fulup Ar Foll" <fulup@iot.bzh>
  *
  * Use of this source code is governed by an MIT-style
  * license that can be found in the LICENSE file or at https://opensource.org/licenses/MIT.
@@ -15,6 +14,9 @@
 #include <afb-helpers4/afb-data-utils.h>
 #include <rp-utils/rp-jsonc.h>
 
+#include "lib/stream-buf.h"
+#include "lib/line-buf.h"
+
 #include "spawn-binding.h"
 #include "spawn-sandbox.h"
 #include "spawn-encoders.h"
@@ -22,8 +24,6 @@
 #include "spawn-encoders-plugins.h"
 
 #include "spawn-subtask.h"
-
-#include "spawn-subtask-internal.h"
 
 /*
  * demo custom plugin encoder
@@ -35,11 +35,10 @@
  *  - to activate MyEncoder add to your command definition
  *    'encoder':{"plugin": "MyEncoders", output:'Sample1', 'blkcount':  xxxx}
  *
- *  - a plugin may contains one or multiple encoder. Plugins use a privage namespace for encoder 'uid'
+ *  - a plugin may contains one or multiple encoder. Plugins use a private namespace for encoder 'uid'
  *
  *  Note: this demo encoder is provided as template for developpers to create there own code.
  *  to keep sample simple it leverage generic read pipe and line parsing from builtin encoder.
- *
  */
 
 DECLARE_SPAWN_ENCODER_PLUGIN("encoder_sample", encoder_entry)
@@ -48,183 +47,159 @@ DECLARE_SPAWN_ENCODER_PLUGIN("encoder_sample", encoder_entry)
 #define MY_DEFAULT_blkcount 10   // send one event every 10 lines
 #define MY_DEFAULT_maxlen 512  // any line longer than this will be split
 
-// default generic encoder utilities pluginCB
-static encoderPluginCbT *pluginCB;
-
-// hold per command encoder opts
-typedef struct {
-    int blkcount;
-    int maxlen;
-} MyCmdOpts;
-
 // hold per taskId encoder context
-typedef struct {
-    json_object *stdoutJ;
-    streamBufT *sout;
-    streamBufT *serr;
-    int linecount;
-    int blockcount;
-    int errcount;
-} MyTaskCtxT;
+typedef
+	struct {
+		json_object *array;
+		stream_buf_t sout;
+		stream_buf_t serr;
+		int linecount;
+		int errcount;
+		int blkcount;
+		int maxlen;
+	}
+		MyCtxT;
+
+typedef
+	struct {
+		MyCtxT *ctx;
+		taskIdT *task;
+	}
+		MyTaskCtxT;
 
 
-// group stdout lines into an array and send them only at linecount
-static int MyCustomStdoutCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
-    MyTaskCtxT *taskctx = (MyTaskCtxT*)context;
-    int err;
+static void on_out_line(void *closure, const char *line, size_t length)
+{
+	MyTaskCtxT *tc = closure;
+	taskIdT *task = tc->task;
+	MyCtxT *ctx = tc->ctx;
 
-    // this is a new new bloc create json_array and initialize line counter
-    if (!taskctx->stdoutJ) {
-        taskctx->stdoutJ= json_object_new_array();
-        taskctx->linecount= taskctx->blockcount;
-    }
-
-    // update error message from read buffer callback
-    if (errorJ) {
-        taskId->statusJ= errorJ;
-        goto OnErrorExit;
-    }
-
-    // add buffer line into a json array
-    err= json_object_array_add (taskctx->stdoutJ, json_object_new_string(&docId->data[start]));
-    if (err) goto OnErrorExit;
-
-    // we reach block number of line count
-    if (!taskctx->linecount-- && !err) {
-	afb_data_t data = afb_data_json_c_hold(taskctx->stdoutJ);
-        afb_event_push(taskId->event, 1, &data);
-        taskctx->stdoutJ= NULL; // force a new json array as previous one was free by afb_event_push
-    }
-    return 0;
-
-OnErrorExit:
-    return 1;
+	ctx->linecount++;
+	if (ctx->array == NULL)
+		ctx->array = json_object_new_array();
+	json_object_array_add(ctx->array, json_object_new_string_len(line, length));
+	if (json_object_array_length(ctx->array) == ctx->blkcount) {
+		spawnTaskPushEventJSON(task, ctx->array);
+		ctx->array = NULL;
+	}
 }
 
 // Send each stderr line as a string event
-static int MyCustomStderrCB (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context) {
-    MyTaskCtxT *taskctx = (MyTaskCtxT*)context;
-    int err;
+static void on_err_line(void *closure, const char *line, size_t length)
+{
+	MyTaskCtxT *tc = closure;
+	taskIdT *task = tc->task;
+	MyCtxT *ctx = tc->ctx;
+	json_object *object;
 
-    json_object *responseJ;
-
-    // build a json object with counter and data for each new stderr output line
-    err=rp_jsonc_pack (&responseJ, "{si, ss}", "errcount", taskctx->errcount++, "data", &docId->data[start]);
-    if (err) goto OnErrorExit;
-
-    afb_data_t data = afb_data_json_c_hold(responseJ);
-    afb_event_push(taskId->event, 1, &data);
-    return 0;
-
-OnErrorExit:
-    return 1;
+	rp_jsonc_pack (&object, "{si so}",
+		"err", ++ctx->errcount,
+		"data", json_object_new_string_len(line, length));
+	spawnTaskPushEventJSON(task, object);
 }
 
-// this function is call at config parsing time. Once for each command declaring {output:'MyEncoder'...
-static int MyCustomInitCB (shellCmdT *cmd, json_object *optsJ, void* context) {
-    int err;
-
-    // create option handle and attach it to conresponding command handler
-    MyCmdOpts *opts = malloc(sizeof (MyCmdOpts));
-    opts->blkcount =  MY_DEFAULT_blkcount;
-    ((encoder_generator_t*)cmd->encoder.generator)->fmtctx = (void*)opts;
-
-    // If config private a custom 'opts' value parse it now
-    if (optsJ) {
-        err = rp_jsonc_unpack(optsJ, "{s?i s?i}" ,"blkcount", &opts->blkcount, "maxlen", &opts->maxlen);
-        if (err) {
-            AFB_API_ERROR(cmd->sandbox->binding->api, "MyCustomInitCB: [invalid format] sandbox=%s cmd=%s opts=%s ", cmd->sandbox->uid, cmd->uid, json_object_get_string(optsJ));
-            goto OnErrorExit;
-        }
-    }
-    return 0;
-
- OnErrorExit:
-    return 1;
+/** check options */
+static
+encoder_error_t my_check(json_object *options)
+{
+	int blkcount, maxlen, err = rp_jsonc_unpack(options, "{s?i s?i}" ,"blkcount", &blkcount, "maxlen", &maxlen);
+	return err  || blkcount < 1 || maxlen < 1 ? ENCODER_ERROR_INVALID_OPTIONS : ENCODER_NO_ERROR;
 }
 
-// Send one event json blog and stdout as array when task stop
-static int MyCustomSampleCB (taskIdT *taskId, encoderActionE action, encoderOpsE operation, void* fmtctx) {
-    shellCmdT *cmd= taskId->cmd;
-    MyCmdOpts *opts=cmd->encoder.generator->fmtctx;
-    MyTaskCtxT *taskctx= taskId->context;
-    int err;
+/** instanciate data */
+static
+encoder_error_t
+my_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
+{
+	encoder_error_t rc = ENCODER_ERROR_OUT_OF_MEMORY;
+	int err;
+	MyCtxT *ctx;
+	
+	/* allocate */
+	ctx = calloc(1, sizeof *ctx);
+	if (ctx != NULL) {
+		/* init */
+		ctx->blkcount = MY_DEFAULT_blkcount;
+		ctx->maxlen = MY_DEFAULT_maxlen;
+		err = rp_jsonc_unpack(options, "{s?i s?i}" ,"blkcount", &ctx->blkcount, "maxlen", &ctx->maxlen);
+		if (err || ctx->blkcount < 1 || ctx->maxlen < 1)
+			rc = ENCODER_ERROR_INVALID_OPTIONS;
+		else {
+			if (stream_buf_init(&ctx->sout, ctx->maxlen) != NULL) {
+				if (stream_buf_init(&ctx->serr, ctx->maxlen) != NULL) {
+					/* finalize */
+					*data = ctx;
+					return ENCODER_NO_ERROR;
+				}
+				stream_buf_clear(&ctx->sout);
+			}
+		}
+		free(ctx);
+	}
+	return rc;
+}
 
-    switch (action) {
+/** process input */
+encoder_error_t
+my_read(void *data, taskIdT *taskId, int fd, bool error)
+{
+	MyTaskCtxT tc = { .ctx = data, .task = taskId };
+	if (error)
+		line_buf_read(&tc.ctx->serr, fd, on_err_line, &tc);
+	else
+		line_buf_read(&tc.ctx->sout, fd, on_out_line, &tc);
+	return ENCODER_NO_ERROR;
+}
 
-        case ENCODER_TASK_START:  {
+/** terminate processing */
+encoder_error_t
+my_end(void *data, taskIdT *taskId)
+{
+	json_object *object;
+	MyTaskCtxT tc = { .ctx = data, .task = taskId };
+	line_buf_end(&tc.ctx->serr, on_err_line, &tc);
+	line_buf_end(&tc.ctx->sout, on_out_line, &tc);
+	if (tc.ctx->array != NULL) {
+		spawnTaskPushEventJSON(tc.task, tc.ctx->array);
+		tc.ctx->array = NULL;
+	}
+	rp_jsonc_pack (&object, "{si si}",
+		"errcount", tc.ctx->errcount,
+		"linecount", tc.ctx->linecount);
+	spawnTaskPushEventJSON(tc.task, object);
+	return ENCODER_NO_ERROR;
+}
 
-            // prepare handles to store stdout/err stream
-            taskctx= calloc (1, sizeof(MyTaskCtxT));
-            taskctx->sout= (*pluginCB->bufferSet) (NULL, opts->maxlen);
-            taskctx->serr= (*pluginCB->bufferSet) (NULL, opts->maxlen);
-            taskctx->blockcount= opts->blkcount;
-
-            // attach handle to taskId
-            taskId->context= (void*)taskctx;
-            break;
-        }
-
-        case ENCODER_TASK_STDOUT: {
-            err= (*pluginCB->readStream) (taskId, taskId->outfd, taskctx->sout, opts->maxlen, (*pluginCB->textParser), MyCustomStdoutCB, operation, taskctx);
-            if (err) {
-                AFB_REQ_ERROR(taskId->request, "MyCustomSampleCB: [Stdout fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
-                goto OnErrorExit;
-            }
-            break;
-        }
-
-        case ENCODER_TASK_STDERR: {
-            err= (*pluginCB->readStream) (taskId, taskId->errfd, taskctx->serr, opts->maxlen, (*pluginCB->textParser), MyCustomStderrCB, operation, taskctx);
-            if (err) {
-                AFB_REQ_ERROR(taskId->request, "MyCustomSampleCB: [Stdout fail] sandbox=%s cmd=%s pid=%d", cmd->sandbox->uid, cmd->uid, taskId->pid);
-                goto OnErrorExit;
-            }
-            break;
-        }
-
-        case ENCODER_TASK_STOP: {
-
-            err=rp_jsonc_pack (&taskId->responseJ, "{ss si so* so*}"
-                , "cmd", taskId->cmd->uid
-                , "pid", taskId->pid
-                , "status", taskId->statusJ
-                , "stdout", taskctx->stdoutJ
-                );
-            if (err) goto OnErrorExit;
-
-            // free private task encoder memory structure
-            free (taskctx->sout);
-            free (taskctx->serr);
-            free (taskctx);
-            break;
-        }
-
-        case ENCODER_TASK_KILL: {
-            // update error message before FMT_TASK_STOP take it
-            taskId->errorJ= json_object_new_string("[timeout] forced sigkill");
-            break;
-        }
-
-        default:
-           AFB_REQ_ERROR(taskId->request, "fmtDocArrayCB: [action fail] sandbox=%s cmd=%s action=%d pid=%d", cmd->sandbox->uid, cmd->uid, action, taskId->pid);
-           goto OnErrorExit;
-    }
-
-    return 0;
-
-OnErrorExit:
-    return 1;
+static
+void
+my_destroy(void *data)
+{
+	MyCtxT *ctx = data;
+	stream_buf_clear(&ctx->sout);
+	stream_buf_clear(&ctx->sout);
+	free(ctx);
 }
 
 // list custom encoders for registration
 encoder_generator_t MyEncoders[] = {
-  {.uid="my-custom-encoder"  , .info="One event per blkcount=xxx lines", .initCB=MyCustomInitCB, .actionsCB=MyCustomSampleCB},
+  {
+	.uid     = "my-custom-encoder",
+	.info    = "One event per blkcount=xxx lines",
+	.check   = my_check,
+	.create  = my_instanciate,
+	.begin   = NULL,
+	.read    = my_read,
+	.end     = my_end,
+	.destroy = my_destroy
+  },
   {.uid= NULL} // terminator
 };
 
 
-static int encoder_entry(encoderPluginCbT *pluginCB)
+static
+encoder_error_t
+encoder_entry(json_object *config)
 {
-	return pluginCB->registrate(SpawnEncoderManifest.name, MyEncoders);
+	return encoder_generator_factory_add(SpawnEncoderManifest.name, MyEncoders);
+
 }

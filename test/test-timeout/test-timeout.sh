@@ -22,7 +22,7 @@ timeout timeout {"action":"start"}
 timeout no-timeout {"action":"start"}
 EOC
 
-sed -i '/"pid"/d' $COUT
+sed -i '/"pid"/s/: *[0-9]*/:/' $COUT
 
 if cmp --silent $BOUT $BREF && cmp --silent $COUT $CREF
 then

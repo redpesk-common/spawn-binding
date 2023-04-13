@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015-2021 IoT.bzh Company
- * Author "Fulup Ar Foll"
+ * Author José Bollo
  *
  * $RP_BEGIN_LICENSE$
  * Commercial License Usage
@@ -20,21 +20,20 @@
  *  https://www.gnu.org/licenses/gpl-3.0.html.
  * $RP_END_LICENSE$
 */
-#ifndef _SPAWN_ENCODERS_PLUGINS_INCLUDE_
-#define _SPAWN_ENCODERS_PLUGINS_INCLUDE_
 
-#include "spawn-encoders.h"
+#pragma once
 
-typedef const struct {
-	encoder_error_t (*entry)(json_object *config);
-	const char *name;
-} encoderMafifestT;
+#include <json-c/json.h>
 
-#define DECLARE_SPAWN_ENCODER_PLUGIN(plugin_name, plugin_entry) \
-		static int plugin_entry(json_object*);     \
-		encoderMafifestT SpawnEncoderManifest = {       \
-			.entry = plugin_entry,                  \
-			.name  = plugin_name                    \
-		};
+typedef void (*jsonc_buf_cb)(void *closure, json_object *object);
+typedef void (*jsonc_buf_error_cb)(void *closure, const char *message);
 
-#endif /* _SPAWN_ENCODERS_PLUGINS_INCLUDE_ */
+extern
+void jsonc_buf_process(json_tokener *tokener, const char *buffer, size_t offset, jsonc_buf_cb push, void *closure, jsonc_buf_error_cb onerror);
+
+extern
+void jsonc_buf_read(json_tokener *tokener, int fd, jsonc_buf_cb push, void *closure, jsonc_buf_error_cb onerror);
+
+extern
+void jsonc_buf_end(json_tokener *tokener, jsonc_buf_cb push, void *closure, jsonc_buf_error_cb onerror);
+

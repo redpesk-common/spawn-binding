@@ -29,6 +29,10 @@ PROJECT_TARGET_ADD(spawn)
                 spawn-enums.c
                 spawn-expand-defs.c
                 spawn-subtask.c
+		lib/jsonc-buf.c
+		lib/line-buf.c
+		lib/stream-buf.c
+		lib/vfmt.c
                 )
         set(CMAKE_HEADERS
                 spawn-binding.h
@@ -43,6 +47,10 @@ PROJECT_TARGET_ADD(spawn)
                 spawn-subtask.h
                 spawn-subtask-internal.h
                 spawn-utils.h
+		lib/jsonc-buf.h
+		lib/line-buf.h
+		lib/stream-buf.h
+		lib/vfmt.h
                 )
 
 	# Define project Targets

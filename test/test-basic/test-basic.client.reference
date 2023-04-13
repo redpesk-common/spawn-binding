@@ -20,24 +20,47 @@ ON-REPLY 2:basic/distro: OK
     "api":"basic",
     "sandbox":"sandbox-basic",
     "command":"distro",
+    "pid":
   }
 }
 SEND-CALL basic/sync {"action":"start"}
+ON-EVENT basic/sync:
+{
+  "jtype":"afb-event",
+  "event":"basic/sync",
+  "data":{
+    "type":"initial-event",
+    "api":"basic",
+    "sandbox":"sandbox-basic",
+    "command":"sync",
+    "pid":
+  }
+}
 ON-EVENT basic/distro:
 {
   "jtype":"afb-event",
   "event":"basic/distro",
   "data":{
-    "cmd":"distro",
-    "status":{
-      "exit":0
-    },
+    "type":"data",
+    "pid":,
     "stdout":[
       "test-basic.binder.reference",
       "test-basic.client.reference",
       "test-basic.json",
       "test-basic.sh"
     ]
+  }
+}
+ON-EVENT basic/distro:
+{
+  "jtype":"afb-event",
+  "event":"basic/distro",
+  "data":{
+    "type":"final-event",
+    "pid":,
+    "status":{
+      "exit":0
+    }
   }
 }
 ON-REPLY 3:basic/sync: OK
@@ -48,7 +71,10 @@ ON-REPLY 3:basic/sync: OK
     "code":0
   },
   "response":{
-    "cmd":"sync",
+    "api":"basic",
+    "sandbox":"sandbox-basic",
+    "command":"sync",
+    "pid":,
     "status":{
       "exit":0
     },

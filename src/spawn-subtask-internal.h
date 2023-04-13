@@ -44,14 +44,11 @@ struct taskIdS
 	/** verbosity of the task */
 	int verbose;
 
-	/** flag if synchronous */
-	int synchronous;
+	/** flag if replied */
+	bool replied;
 
-	/** input pipe from task stdout */
-	int outfd;
-
-	/** input pipe from task stderr */
-	int errfd;
+	/** flag if timeout expired */
+	bool expired;
 
 	/** event handlers for pipe from task stdout */
 	afb_evfd_t srcout;
@@ -71,10 +68,7 @@ struct taskIdS
 	/** event attached to the task */
 	afb_event_t event;
 
-	void *context;
-
-	json_object *responseJ;
-	json_object *errorJ;
+	/** status */
 	json_object *statusJ;
 
 	/** hash of tasks per command */

@@ -29,9 +29,10 @@
 
 #include "spawn-sandbox.h"
 
-const char *utilsExpandKeySandbox (const char* src, sandBoxT *sandbox);
-const char *utilsExpandKeyCmd (const char* src, shellCmdT *cmd);
-const char* utilsExpandKey (const char* inputString);
-const char* utilsExpandJson (const char* src, json_object *keysJ);
+char *utilsExpandKeySandbox (const char* src, sandBoxT *sandbox);
+char *utilsExpandKeyCmd (const char* src, shellCmdT *cmd);
+char *utilsExpandKeyTask (const char* src, taskIdT *task);
+char* utilsExpandKey (const char* inputString);
+char* utilsExpandJson (const char* src, json_object *keysJ);
 
 #endif /* _SPAWN_EXPAND_INCLUDE_ */

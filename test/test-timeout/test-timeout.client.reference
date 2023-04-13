@@ -9,6 +9,18 @@ ON-REPLY 1:timeout/ping: OK
   "response":"pong=1"
 }
 SEND-CALL timeout/timeout {"action":"start"}
+ON-EVENT timeout/timeout:
+{
+  "jtype":"afb-event",
+  "event":"timeout/timeout",
+  "data":{
+    "type":"initial-event",
+    "api":"timeout",
+    "sandbox":"sandbox-timeout",
+    "command":"timeout",
+    "pid":
+  }
+}
 ON-REPLY 2:timeout/timeout: OK
 {
   "jtype":"afb-reply",
@@ -17,14 +29,29 @@ ON-REPLY 2:timeout/timeout: OK
     "code":0
   },
   "response":{
-    "cmd":"timeout",
+    "api":"timeout",
+    "sandbox":"sandbox-timeout",
+    "command":"timeout",
+    "pid":,
     "status":{
       "signal":"Killed",
-      "info":"[timeout] forced sigkill"
+      "info":"timeout"
     }
   }
 }
 SEND-CALL timeout/no-timeout {"action":"start"}
+ON-EVENT timeout/no-timeout:
+{
+  "jtype":"afb-event",
+  "event":"timeout/no-timeout",
+  "data":{
+    "type":"initial-event",
+    "api":"timeout",
+    "sandbox":"sandbox-timeout",
+    "command":"no-timeout",
+    "pid":
+  }
+}
 ON-REPLY 3:timeout/no-timeout: OK
 {
   "jtype":"afb-reply",
@@ -33,7 +60,10 @@ ON-REPLY 3:timeout/no-timeout: OK
     "code":0
   },
   "response":{
-    "cmd":"no-timeout",
+    "api":"timeout",
+    "sandbox":"sandbox-timeout",
+    "command":"no-timeout",
+    "pid":,
     "status":{
       "exit":0
     }

@@ -1,0 +1,4 @@
+test-encoders.binder.reference
+test-encoders.client.reference
+test-encoders.json
+test-encoders.sh

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015-2021 IoT.bzh Company
- * Author "Fulup Ar Foll"
+ * Author José Bollo
  *
  * $RP_BEGIN_LICENSE$
  * Commercial License Usage
@@ -20,21 +20,35 @@
  *  https://www.gnu.org/licenses/gpl-3.0.html.
  * $RP_END_LICENSE$
 */
-#ifndef _SPAWN_ENCODERS_PLUGINS_INCLUDE_
-#define _SPAWN_ENCODERS_PLUGINS_INCLUDE_
 
-#include "spawn-encoders.h"
+#include <stdarg.h>
 
-typedef const struct {
-	encoder_error_t (*entry)(json_object *config);
-	const char *name;
-} encoderMafifestT;
+void vfmt(void (*fun)(const char *fmt, va_list args), const char *fmt, ...)
+{
+	if (fun) {
+		va_list args;
+		va_start(args, fmt);
+		fun(fmt, args);
+		va_end(args);
+	}
+}
 
-#define DECLARE_SPAWN_ENCODER_PLUGIN(plugin_name, plugin_entry) \
-		static int plugin_entry(json_object*);     \
-		encoderMafifestT SpawnEncoderManifest = {       \
-			.entry = plugin_entry,                  \
-			.name  = plugin_name                    \
-		};
+void vfmtc(void (*fun)(void *closure, const char *fmt, va_list args), void *closure, const char *fmt, ...)
+{
+	if (fun) {
+		va_list args;
+		va_start(args, fmt);
+		fun(closure, fmt, args);
+		va_end(args);
+	}
+}
 
-#endif /* _SPAWN_ENCODERS_PLUGINS_INCLUDE_ */
+void vfmtcl(void (*fun)(void *closure, int lvl, const char *fmt, va_list args), void *closure, int lvl, const char *fmt, ...)
+{
+	if (fun) {
+		va_list args;
+		va_start(args, fmt);
+		fun(closure, lvl, fmt, args);
+		va_end(args);
+	}
+}

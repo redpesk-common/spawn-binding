@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2015-2021 IoT.bzh Company
- * Author "Fulup Ar Foll"
  *
  * $RP_BEGIN_LICENSE$
  * Commercial License Usage
@@ -23,6 +22,7 @@
 #ifndef _SPAWN_ENCODER_S_INCLUDE_
 #define _SPAWN_ENCODER_S_INCLUDE_
 
+#include <stdbool.h>
 #include <json-c/json.h>
 #include "spawn-binding.h"
 
@@ -40,6 +40,7 @@ enum encoder_error {
 	ENCODER_ERROR_INVALID_OPTIONS = -4,
 	ENCODER_ERROR_INVALID_SPECIFIER = -5,
 	ENCODER_ERROR_OUT_OF_MEMORY = -6,
+	ENCODER_ERROR_SYSTEM = -7,
 }
 	encoder_error_t;
 
@@ -52,28 +53,10 @@ encoder_error_text(encoder_error_t code);
 
 /***************************************************************************/
 
-/**
-* Defintion of main actions for encoders
-*/
-typedef enum {
-    ENCODER_TASK_UNSET,
-    ENCODER_TASK_STDOUT,
-    ENCODER_TASK_STDERR,
-    ENCODER_TASK_START,
-    ENCODER_TASK_STOP,
-    ENCODER_TASK_KILL,
-} encoderActionE;
-
-typedef enum {
-    ENCODER_OPS_STD,
-    ENCODER_OPS_CLOSE,
-} encoderOpsE;
-
+typedef struct encoder encoder_t;
 typedef struct encoder_generator encoder_generator_t;
-typedef struct encoder_generator encoder_t;
-//typedef struct encoder encoder_t;
 
-
+/***************************************************************************/
 
 struct encoder_generator
 {
@@ -90,29 +73,27 @@ struct encoder_generator
 	*/
 	int synchronous;
 
-	/** check options */
-	encoder_error_t (*check)(json_object *options);
-
-	/** create instance */
-	encoder_error_t (*instanciate)(const encoder_generator_t *generator, json_object *options, encoder_t **encoder);
-
 	/** tuning data */
 	const void *tuning;
 
-	int (*initCB)(shellCmdT *cmd, json_object *optsJ, void* fmtctx);
-	int (*actionsCB)(taskIdT *taskId, encoderActionE action, encoderOpsE subAction, void* fmtctx);
-	void *fmtctx;
+	/** check options */
+	encoder_error_t (*check)(json_object *options);
+
+	/** instanciate data */
+	encoder_error_t (*create)(const encoder_generator_t *generator, json_object *options, void **data);
+
+	/** begin processing */
+	encoder_error_t (*begin)(void *data, taskIdT *taskId);
+
+	/** process input */
+	encoder_error_t (*read)(void *data, taskIdT *taskId, int fd, bool error);
+
+	/** terminate processing */
+	encoder_error_t (*end)(void *data, taskIdT *taskId);
+
+	/** destroy data */
+	void (*destroy)(void *data);
 };
-
-typedef struct {
-    char *data;
-    long index;
-    long size;
-    long count;
-} streamBufT;
-
-typedef int encoderEventCbT (taskIdT *taskId, streamBufT *docId, ssize_t start, json_object *errorJ, void *context);
-typedef int encoderParserCbT(taskIdT *taskId, streamBufT *docId, ssize_t len, encoderEventCbT callback, void* context);
 
 /***************************************************************************/
 
@@ -123,6 +104,16 @@ typedef int encoderParserCbT(taskIdT *taskId, streamBufT *docId, ssize_t len, en
 extern
 encoder_error_t
 encoder_generator_factory_init(void);
+
+/**
+* Adds an array of generators under the given uid
+* @param uid the pluginuid
+* @param generators an array of generators terminated with an item of NULL uid
+* @return the error code, ENCODER_NO_ERROR if there is no error
+*/
+extern
+encoder_error_t
+encoder_generator_factory_add(const char *uid, const encoder_generator_t *generators);
 
 /***************************************************************************/
 
@@ -208,7 +199,6 @@ encoder_destroy(encoder_t *encoder);
 
 int encoderStart(encoder_t *encoder, taskIdT *taskId);
 void encoderClose(encoder_t *encoder, taskIdT *taskId);
-void encoderAbort(encoder_t *encoder, taskIdT *taskId);
 int encoderRead(encoder_t *encoder, taskIdT *taskId, int fd, bool error);
 
 

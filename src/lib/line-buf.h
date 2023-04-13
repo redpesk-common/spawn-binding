@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015-2021 IoT.bzh Company
- * Author "Fulup Ar Foll"
+ * Author José Bollo
  *
  * $RP_BEGIN_LICENSE$
  * Commercial License Usage
@@ -19,22 +19,19 @@
  *  General Public License requirements will be met
  *  https://www.gnu.org/licenses/gpl-3.0.html.
  * $RP_END_LICENSE$
-*/
-#ifndef _SPAWN_ENCODERS_PLUGINS_INCLUDE_
-#define _SPAWN_ENCODERS_PLUGINS_INCLUDE_
+ */
 
-#include "spawn-encoders.h"
+#pragma once
 
-typedef const struct {
-	encoder_error_t (*entry)(json_object *config);
-	const char *name;
-} encoderMafifestT;
+#include "stream-buf.h"
 
-#define DECLARE_SPAWN_ENCODER_PLUGIN(plugin_name, plugin_entry) \
-		static int plugin_entry(json_object*);     \
-		encoderMafifestT SpawnEncoderManifest = {       \
-			.entry = plugin_entry,                  \
-			.name  = plugin_name                    \
-		};
+typedef void (*line_buf_cb)(void *closure, const char *line, size_t length);
 
-#endif /* _SPAWN_ENCODERS_PLUGINS_INCLUDE_ */
+extern
+void line_buf_process(stream_buf_t *sbuf, size_t offset, line_buf_cb push, void *closure);
+
+extern
+void line_buf_read(stream_buf_t *sbuf, int fd, line_buf_cb push, void *closure);
+
+extern
+void line_buf_end(stream_buf_t *sbuf, line_buf_cb push, void *closure);

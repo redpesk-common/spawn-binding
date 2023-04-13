@@ -1,0 +1,551 @@
+SEND-CALL encoders/ping true
+ON-REPLY 1:encoders/ping: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":"pong=1"
+}
+SEND-CALL encoders/default {"action":"start"}
+ON-REPLY 2:encoders/default: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"default",
+    "pid":
+  }
+}
+SEND-CALL encoders/wait {"action":"start"}
+ON-EVENT encoders/wait:
+{
+  "jtype":"afb-event",
+  "event":"encoders/wait",
+  "data":{
+    "type":"initial-event",
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":
+  }
+}
+ON-EVENT encoders/default:
+{
+  "jtype":"afb-event",
+  "event":"encoders/default",
+  "data":{
+    "type":"data",
+    "pid":,
+    "stdout":[
+      "test-encoders.binder.reference",
+      "test-encoders.client.reference",
+      "test-encoders.json",
+      "test-encoders.sh"
+    ]
+  }
+}
+ON-EVENT encoders/default:
+{
+  "jtype":"afb-event",
+  "event":"encoders/default",
+  "data":{
+    "type":"final-event",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}
+ON-REPLY 3:encoders/wait: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}
+SEND-CALL encoders/text {"action":"start"}
+ON-REPLY 4:encoders/text: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"text",
+    "pid":
+  }
+}
+SEND-CALL encoders/wait {"action":"start"}
+ON-EVENT encoders/wait:
+{
+  "jtype":"afb-event",
+  "event":"encoders/wait",
+  "data":{
+    "type":"initial-event",
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":
+  }
+}
+ON-EVENT encoders/text:
+{
+  "jtype":"afb-event",
+  "event":"encoders/text",
+  "data":{
+    "type":"data",
+    "pid":,
+    "stdout":[
+      "test-encoders.binder.reference",
+      "test-encoders.client.reference",
+      "test-encoders.json",
+      "test-encoders.sh"
+    ]
+  }
+}
+ON-EVENT encoders/text:
+{
+  "jtype":"afb-event",
+  "event":"encoders/text",
+  "data":{
+    "type":"final-event",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}
+ON-REPLY 5:encoders/wait: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}
+SEND-CALL encoders/sync {"action":"start"}
+ON-EVENT encoders/sync:
+{
+  "jtype":"afb-event",
+  "event":"encoders/sync",
+  "data":{
+    "type":"initial-event",
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"sync",
+    "pid":
+  }
+}
+ON-REPLY 6:encoders/sync: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"sync",
+    "pid":,
+    "status":{
+      "exit":0
+    },
+    "stdout":[
+      "test-encoders.binder.reference",
+      "test-encoders.client.reference",
+      "test-encoders.json",
+      "test-encoders.sh"
+    ]
+  }
+}
+SEND-CALL encoders/wait {"action":"start"}
+ON-EVENT encoders/wait:
+{
+  "jtype":"afb-event",
+  "event":"encoders/wait",
+  "data":{
+    "type":"initial-event",
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":
+  }
+}
+ON-REPLY 7:encoders/wait: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}
+SEND-CALL encoders/line {"action":"start"}
+ON-REPLY 8:encoders/line: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"line",
+    "pid":
+  }
+}
+SEND-CALL encoders/wait {"action":"start"}
+ON-EVENT encoders/wait:
+{
+  "jtype":"afb-event",
+  "event":"encoders/wait",
+  "data":{
+    "type":"initial-event",
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":
+  }
+}
+ON-EVENT encoders/line:
+{
+  "jtype":"afb-event",
+  "event":"encoders/line",
+  "data":{
+    "type":"data",
+    "pid":,
+    "stdout":"test-encoders.binder.reference"
+  }
+}
+ON-EVENT encoders/line:
+{
+  "jtype":"afb-event",
+  "event":"encoders/line",
+  "data":{
+    "type":"data",
+    "pid":,
+    "stdout":"test-encoders.client.reference"
+  }
+}
+ON-EVENT encoders/line:
+{
+  "jtype":"afb-event",
+  "event":"encoders/line",
+  "data":{
+    "type":"data",
+    "pid":,
+    "stdout":"test-encoders.json"
+  }
+}
+ON-EVENT encoders/line:
+{
+  "jtype":"afb-event",
+  "event":"encoders/line",
+  "data":{
+    "type":"data",
+    "pid":,
+    "stdout":"test-encoders.sh"
+  }
+}
+ON-EVENT encoders/line:
+{
+  "jtype":"afb-event",
+  "event":"encoders/line",
+  "data":{
+    "type":"final-event",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}
+ON-REPLY 9:encoders/wait: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}
+SEND-CALL encoders/raw {"action":"start"}
+ON-EVENT encoders/raw:
+{
+  "jtype":"afb-event",
+  "event":"encoders/raw",
+  "data":{
+    "type":"initial-event",
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"raw",
+    "pid":
+  }
+}
+ON-REPLY 10:encoders/raw: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"raw",
+    "pid":,
+    "status":{
+      "exit":0
+    },
+    "stdout":"test-encoders.binder.reference\ntest-encoders.client.reference\ntest-encoders.json\ntest-encoders.sh\n",
+    "stderr":""
+  }
+}
+SEND-CALL encoders/wait {"action":"start"}
+ON-EVENT encoders/wait:
+{
+  "jtype":"afb-event",
+  "event":"encoders/wait",
+  "data":{
+    "type":"initial-event",
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":
+  }
+}
+ON-REPLY 11:encoders/wait: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}
+SEND-CALL encoders/json {"action":"start"}
+ON-REPLY 12:encoders/json: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"json",
+    "pid":
+  }
+}
+SEND-CALL encoders/wait {"action":"start"}
+ON-EVENT encoders/wait:
+{
+  "jtype":"afb-event",
+  "event":"encoders/wait",
+  "data":{
+    "type":"initial-event",
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":
+  }
+}
+ON-EVENT encoders/json:
+{
+  "jtype":"afb-event",
+  "event":"encoders/json",
+  "data":{
+    "type":"data",
+    "pid":,
+    "stdout":{
+      "line":"test-encoders.binder.reference"
+    }
+  }
+}
+ON-EVENT encoders/json:
+{
+  "jtype":"afb-event",
+  "event":"encoders/json",
+  "data":{
+    "type":"data",
+    "pid":,
+    "stdout":{
+      "line":"test-encoders.client.reference"
+    }
+  }
+}
+ON-EVENT encoders/json:
+{
+  "jtype":"afb-event",
+  "event":"encoders/json",
+  "data":{
+    "type":"data",
+    "pid":,
+    "stdout":{
+      "line":"test-encoders.json"
+    }
+  }
+}
+ON-EVENT encoders/json:
+{
+  "jtype":"afb-event",
+  "event":"encoders/json",
+  "data":{
+    "type":"data",
+    "pid":,
+    "stdout":{
+      "line":"test-encoders.sh"
+    }
+  }
+}
+ON-EVENT encoders/json:
+{
+  "jtype":"afb-event",
+  "event":"encoders/json",
+  "data":{
+    "type":"data",
+    "pid":,
+    "json-error":"unexpected end of data"
+  }
+}
+ON-EVENT encoders/json:
+{
+  "jtype":"afb-event",
+  "event":"encoders/json",
+  "data":{
+    "type":"final-event",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}
+ON-REPLY 13:encoders/wait: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}
+SEND-CALL encoders/log {"action":"start"}
+ON-REPLY 14:encoders/log: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"log",
+    "pid":
+  }
+}
+SEND-CALL encoders/wait {"action":"start"}
+ON-EVENT encoders/wait:
+{
+  "jtype":"afb-event",
+  "event":"encoders/wait",
+  "data":{
+    "type":"initial-event",
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":
+  }
+}
+ON-EVENT encoders/log:
+{
+  "jtype":"afb-event",
+  "event":"encoders/log",
+  "data":{
+    "type":"final-event",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}
+ON-REPLY 15:encoders/wait: OK
+{
+  "jtype":"afb-reply",
+  "request":{
+    "status":"success",
+    "code":0
+  },
+  "response":{
+    "api":"encoders",
+    "sandbox":"sandbox-encoders",
+    "command":"wait",
+    "pid":,
+    "status":{
+      "exit":0
+    }
+  }
+}

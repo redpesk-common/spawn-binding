@@ -36,10 +36,12 @@ typedef struct {
     enum {
         expand_sandbox,
         expand_cmd,
+        expand_task,
     } type;
     union {
 	sandBoxT *sandbox;
 	shellCmdT *cmd;
+	taskIdT *task;
     } value;
 } spawnExpandSpecificT;
 

@@ -80,11 +80,10 @@ static void on_timeout_expired(int signum, void *arg)
 		if (taskId != NULL) {
 			data->taskId = NULL;
 			taskId->timeout = NULL;
+			taskId->expired = true;
 			pid = taskId->pid;
-			if (pid != 0) {
+			if (pid != 0)
 				AFB_REQ_NOTICE(taskId->request, "Terminating task uid=%s", taskId->uid);
-				encoderAbort(taskId->encoder, taskId);
-			}
 		}
 	}
 	pthread_mutex_unlock(&timeout_mutex);
@@ -140,26 +139,14 @@ void end_timeout_monitor(taskIdT *taskId)
 
 static void on_pipe(afb_evfd_t efd, int fd, uint32_t revents, taskIdT *taskId, int out)
 {
-	int err;
-
 	// if taskId->pid == 0 then FMT_TASK_STOP was already called once
 	if (taskId->pid == 0)
 		return;
 
 	if (revents & EPOLLIN) {
-		if (taskId->verbose >2)
+		if (taskId->verbose > 2)
 			AFB_REQ_INFO (taskId->request, "uid=%s pid=%d [EPOLLIN std%s=%d]", taskId->uid, taskId->pid, out?"out":"err", fd);
-		err = encoderRead(taskId->encoder, taskId, fd, !out);
-		if (err) {
-			rp_jsonc_pack (&taskId->responseJ, "{ss so* so*}"
-				, "fail" ,"read"
-				, "error" , taskId->errorJ
-				, "status", taskId->statusJ
-				);
-			taskPushResponse (taskId);
-			taskId->errorJ=NULL;
-			taskId->statusJ=NULL;
-		}
+		encoderRead(taskId->encoder, taskId, fd, !out);
 	}
 
 	// what ever stdout/err pipe hanghup 1st we close both event sources
@@ -251,7 +238,6 @@ static char* const* childBuildArgv (shellCmdT *cmd, json_object * argsJ, int ver
 
 static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose, pid_t sonPid, int outfd, int errfd)
 {
-	json_object *responseJ;
 	int   err;
 	taskIdT *taskId;
 
@@ -260,10 +246,7 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         taskId->pid= sonPid;
         taskId->cmd= cmd;
         taskId->verbose= verbose;
-        taskId->outfd= outfd;
-        taskId->errfd= errfd;
 	taskId->request= afb_req_addref(request); // save request for later logging and response
-	taskId->synchronous = cmd->encoder.generator->synchronous;
 
         if(asprintf (&taskId->uid, "%s/%s@%d", cmd->sandbox->uid, cmd->uid, taskId->pid)<0)
             goto InternalError;
@@ -281,20 +264,19 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         // initilise cmd->command corresponding output formater buffer
 	err = encoder_generator_create_encoder(cmd->encoder.generator, cmd->encoder.options, &taskId->encoder);
         if (err) goto InternalError;
-        err = encoderStart(taskId->encoder, taskId);
-        if (err) goto InternalError;
 
         // set pipe fd into noblock mode
-        err= fcntl (taskId->outfd, F_SETFL, O_NONBLOCK);
+        err= fcntl (outfd, F_SETFL, O_NONBLOCK);
         if (err) goto InternalError;
 
-        err= fcntl (taskId->errfd, F_SETFL, O_NONBLOCK);
+        err= fcntl (errfd, F_SETFL, O_NONBLOCK);
         if (err) goto InternalError;
+
 
         // register stdout/err piped FD within mainloop
-        err = afb_evfd_create(&taskId->srcout, taskId->outfd, EPOLLIN|EPOLLHUP, on_pipe_out, taskId, 0, 1);
+        err = afb_evfd_create(&taskId->srcout, outfd, EPOLLIN|EPOLLHUP, on_pipe_out, taskId, 0, 1);
         if (err) goto InternalError;
-        err = afb_evfd_create(&taskId->srcerr, taskId->errfd, EPOLLIN|EPOLLHUP, on_pipe_err, taskId, 0, 1);
+        err = afb_evfd_create(&taskId->srcerr, errfd, EPOLLIN|EPOLLHUP, on_pipe_err, taskId, 0, 1);
         if (err) goto InternalError;
 
         // update command and binding global tids hashtable
@@ -309,15 +291,8 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         }
 
         // build responseJ & update call tid
-        if (!taskId->synchronous) {
-            rp_jsonc_pack (&responseJ, "{ss ss* ss si}",
-				"api", afb_req_get_called_api(request),
-				"sandbox", taskId->cmd->sandbox->uid,
-				"command", taskId->cmd->uid,
-				"pid", taskId->pid);
-            afb_data_t data = afb_data_json_c_hold(responseJ);
-            afb_req_reply(taskId->request, 0, 1, &data);
-        }
+        err = encoderStart(taskId->encoder, taskId);
+        if (err) goto InternalError;
 
         // main process register son stdout/err into event mainloop
         if (cmd->timeout > 0)
@@ -326,9 +301,11 @@ static int start_in_parent (afb_req_t request, shellCmdT *cmd, json_object *args
         return 0;
 
 InternalError:
+        close(outfd);
+        close(errfd);
 	AFB_REQ_ERROR(request, "spawnTaskStart [Fail-to-launch] uid=%s cmd=%s pid=%d error=%s",
 					cmd->uid, cmd->command, sonPid, strerror(errno));
-	afb_req_reply(request, AFB_ERRNO_INTERNAL_ERROR, 0, NULL);
+	spawnTaskReplyJSON(taskId, AFB_ERRNO_INTERNAL_ERROR, NULL);
 	kill(-sonPid, SIGTERM);
 	spawnFreeTaskId (taskId);
 	return 1;

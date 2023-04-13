@@ -26,7 +26,10 @@ ON-REPLY 3:ctl/subcall: OK
     "code":0
   },
   "response":{
-    "cmd":"sync",
+    "api":"ctl",
+    "sandbox":"sandbox-basic",
+    "command":"sync",
+    "pid":,
     "status":{
       "exit":0
     },
@@ -47,21 +50,44 @@ ON-REPLY 4:ctl/distro: OK
     "api":"ctl",
     "sandbox":"sandbox-basic",
     "command":"distro",
+    "pid":
   }
 }
 SEND-CALL ctl/sync {"action":"start"}
+ON-EVENT ctl/sync:
+{
+  "jtype":"afb-event",
+  "event":"ctl/sync",
+  "data":{
+    "type":"initial-event",
+    "api":"ctl",
+    "sandbox":"sandbox-basic",
+    "command":"sync",
+    "pid":
+  }
+}
 ON-EVENT ctl/distro:
 {
   "jtype":"afb-event",
   "event":"ctl/distro",
   "data":{
-    "cmd":"distro",
-    "status":{
-      "exit":0
-    },
+    "type":"data",
+    "pid":,
     "stdout":[
       "Hello"
     ]
+  }
+}
+ON-EVENT ctl/distro:
+{
+  "jtype":"afb-event",
+  "event":"ctl/distro",
+  "data":{
+    "type":"final-event",
+    "pid":,
+    "status":{
+      "exit":0
+    }
   }
 }
 ON-REPLY 5:ctl/sync: OK
@@ -72,7 +98,10 @@ ON-REPLY 5:ctl/sync: OK
     "code":0
   },
   "response":{
-    "cmd":"sync",
+    "api":"ctl",
+    "sandbox":"sandbox-basic",
+    "command":"sync",
+    "pid":,
     "status":{
       "exit":0
     },

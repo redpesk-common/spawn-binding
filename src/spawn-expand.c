@@ -115,7 +115,7 @@ OnErrorExit:
     }
 }
 
-const char *utilsExpandString (spawnDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer, spawnExpandSpecificT *specific) {
+static char *utilsExpandString (spawnDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer, spawnExpandSpecificT *specific) {
     int count=0, idxIn, idxOut=0;
     char outputS[SPAWN_MAX_ARG_LEN];
     int err;
@@ -167,36 +167,41 @@ const char *utilsExpandString (spawnDefaultsT *defaults, const char* inputS, con
 }
 
 // default basic string expansion
-static const char *utilsExpandKeyCtx (const char* src, void *ctx) {
+static char *utilsExpandKeyCtx (const char* src, void *ctx) {
     return src ? utilsExpandString (spawnVarDefaults, src, NULL, NULL, ctx) : NULL;
 }
 
 // default basic string expansion
-const char *utilsExpandKey (const char* src) {
+char *utilsExpandKey (const char* src) {
     return utilsExpandKeyCtx(src, NULL);
 }
 
-const char *utilsExpandKeySandbox (const char* src, sandBoxT *sandbox)
+char *utilsExpandKeySandbox (const char* src, sandBoxT *sandbox)
 {
 	spawnExpandSpecificT specific = { .type = expand_sandbox, .value = { .sandbox = sandbox }};
 	return utilsExpandKeyCtx (src, &specific);
 }
 
-const char *utilsExpandKeyCmd (const char* src, shellCmdT *cmd)
+char *utilsExpandKeyCmd (const char* src, shellCmdT *cmd)
 {
 	spawnExpandSpecificT specific = { .type = expand_cmd, .value = { .cmd = cmd }};
 	return utilsExpandKeyCtx (src, &specific);
 }
 
+char *utilsExpandKeyTask (const char* src, taskIdT *task)
+{
+	spawnExpandSpecificT specific = { .type = expand_task, .value = { .task = task }};
+	return utilsExpandKeyCtx (src, &specific);
+}
+
 // replace any %key% with its coresponding json value (warning: json is case sensitive)
-const char *utilsExpandJson (const char* src, json_object *keysJ) {
-    int srcIdx, destIdx=0, labelIdx, expanded=0;
+char *utilsExpandJson (const char* src, json_object *keysJ) {
+    int srcIdx, destIdx=0, labelIdx;
     char dst[SPAWN_MAX_ARG_LEN], label[SPAWN_MAX_ARG_LABEL];
-    const char *response;
     json_object *labelJ;
     char separator = -1;
 
-    if (!keysJ) return (src);
+    if (!keysJ) return strdup(src);
     if (!src) goto OnErrorExit;
 
     for (srcIdx=0; src[srcIdx]; srcIdx++) {
@@ -215,7 +220,6 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
             dst[destIdx++]= src[srcIdx];
 
         } else {
-            expanded=1;
             labelIdx=0;
             // extract expansion label for source argument
             for (srcIdx=srcIdx+1; src[srcIdx]  ; srcIdx++) {
@@ -243,14 +247,7 @@ const char *utilsExpandJson (const char* src, json_object *keysJ) {
     dst[destIdx++] = '\0';
 
     // when expanded make a copy of dst into params
-    if (!expanded) {
-        response=src;
-    } else {
-        // fprintf (stderr, "utilsExpandJson: '%s' => '%s'\n", src, dst);
-        response= strdup(dst);
-    }
-
-    return response;
+    return strdup(dst);
 
   OnErrorExit:
         return NULL;

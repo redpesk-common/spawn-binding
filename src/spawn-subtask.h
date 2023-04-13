@@ -24,16 +24,22 @@
 #ifndef _SPAWN_SUBTASK_INCLUDE_
 #define _SPAWN_SUBTASK_INCLUDE_
 
-
+#include <stdarg.h>
 #include "spawn-binding.h"
 
 // spawn-subtask.c
 void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ);
 void spawnChildUpdateStatus (taskIdT *taskId);
-void taskPushResponse (taskIdT *taskId);
 void spawnFreeTaskId  (taskIdT *taskId);
 
 // spawn-childexec.c
 int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose);
+
+//
+void spawnTaskPushInitialStatus(taskIdT *taskId, json_object *object);
+void spawnTaskPushFinalStatus(taskIdT *taskId, json_object *object);
+void spawnTaskPushEventJSON(taskIdT *taskId, json_object *object);
+void spawnTaskReplyJSON(taskIdT *taskId, int status, json_object *object);
+void spawnTaskLog(taskIdT *taskId, int lvl, const char *fmt, va_list args);
 
 #endif /* _SPAWN_SUBTASK_INCLUDE_ */

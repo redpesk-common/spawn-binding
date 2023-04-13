@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "uid": "spawn-encoders",
+    "api": "encoders",
+    "version": "1.0"
+  },
+  "sandboxes": {
+      "uid": "sandbox-encoders",
+      "info": "encoders demo",
+      "commands": [
+        {
+          "uid": "default",
+          "info" : "default encoder",
+          "exec": {"cmdpath": "/usr/bin/sh", "args": ["-c", "/usr/bin/ls -1 ${DIRTOLIST} | /usr/bin/grep -v 'result'"]}
+        },
+        {
+            "uid": "text",
+            "encoder": "text",
+            "info" : "TEXT encoder",
+	    "exec": {"cmdpath": "/usr/bin/sh", "args": ["-c", "/usr/bin/ls -1 ${DIRTOLIST} | /usr/bin/grep -v 'result'"]}
+        },
+        {
+            "uid": "sync",
+            "encoder": "sync",
+            "info" : "SYNC encoder",
+	    "exec": {"cmdpath": "/usr/bin/sh", "args": ["-c", "/usr/bin/ls -1 ${DIRTOLIST} | /usr/bin/grep -v 'result'"]}
+        },
+        {
+            "uid": "line",
+            "encoder": "line",
+            "info" : "LINE encoder",
+	    "exec": {"cmdpath": "/usr/bin/sh", "args": ["-c", "/usr/bin/ls -1 ${DIRTOLIST} | /usr/bin/grep -v 'result'"]}
+        },
+        {
+            "uid": "raw",
+            "encoder": "raw",
+            "info" : "RAW encoder",
+	    "exec": {"cmdpath": "/usr/bin/sh", "args": ["-c", "/usr/bin/ls -1 ${DIRTOLIST} | /usr/bin/grep -v 'result'"]}
+        },
+        {
+            "uid": "json",
+            "encoder": "json",
+            "info" : "JSON encoder",
+	    "exec": {"cmdpath": "/usr/bin/sh", "args": ["-c", "/usr/bin/ls -1 ${DIRTOLIST} | /usr/bin/grep -v 'result' | sed 's/.*/{\"line\":\"&\"}/' | tee /tmp/xx"]}
+        },
+        {
+            "uid": "log",
+            "encoder": "log",
+            "info" : "LOG encoder",
+	    "exec": {"cmdpath": "/usr/bin/sh", "args": ["-c", "/usr/bin/ls -1 ${DIRTOLIST} | /usr/bin/grep -v 'result'"]}
+        }  ,
+        {
+            "uid": "wait",
+            "encoder": "sync",
+            "info" : "wait few time",
+	    "exec": {"cmdpath": "/usr/bin/sleep", "args": ["1"]}
+        }
+      ]
+    }
+}
