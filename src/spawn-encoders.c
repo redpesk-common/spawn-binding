@@ -787,7 +787,7 @@ encoder_generator_search(const char *pluginuid, const char *encoderuid, const en
 }
 
 encoder_error_t
-encoder_generator_get(const char *pluginuid, const char *encoderuid, json_object *options, const encoder_generator_t **generator)
+encoder_generator_get(const char *pluginuid, const char *encoderuid, const encoder_generator_t **generator)
 {
 	encoder_error_t ege;
 	const encoder_generator_t *gener;
@@ -800,10 +800,6 @@ encoder_generator_get(const char *pluginuid, const char *encoderuid, json_object
 	// every encoder should define its formating callback
 	if (gener->actionsCB == NULL)
 		return ENCODER_ERROR_INVALID_ENCODER;
-
-	// every encoder should define its formating callback
-	if (gener->check != NULL && gener->check(options) < 0)
-		return ENCODER_ERROR_INVALID_OPTIONS;
 
 	*generator = gener;
 	return ENCODER_NO_ERROR;
@@ -833,8 +829,18 @@ encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **g
 		}
 	}
 
-	return encoder_generator_get(pluginuid, encoderuid, *options, generator);
+	return encoder_generator_get(pluginuid, encoderuid, generator);
 }
+
+encoder_error_t
+encoder_generator_check_options(const encoder_generator_t *generator, json_object *options)
+{
+	if (options && generator->check != NULL && generator->check(options) < 0)
+		return ENCODER_ERROR_INVALID_OPTIONS;
+	return ENCODER_NO_ERROR;
+}
+
+
 
 const char *encoder_error_text(encoder_error_t code)
 {

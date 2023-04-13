@@ -185,7 +185,9 @@ int spawn_config_read_one_command(sandBoxT *sandbox, shellCmdT *cmd, json_object
 
 	// find encode/decode callback
 	err = encoder_generator_get_JSON(encoderJ, &cmd->encoder.encoder, &cmd->encoder.options);
-	if (err) {
+	if (err == ENCODER_NO_ERROR)
+		err = encoder_generator_check_options(cmd->encoder.encoder, cmd->encoder.options);
+	if (err != ENCODER_NO_ERROR) {
 		AFB_ERROR("[encoder-error] sandbox='%s' fail to get encoder: %s for %s",
 					sandbox->uid,
 					encoder_error_text(err),

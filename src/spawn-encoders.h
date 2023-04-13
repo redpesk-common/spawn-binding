@@ -116,11 +116,10 @@ encoder_generator_search(
 	const encoder_generator_t **generator);
 
 /**
-* Get the encoder generator of given pluginuid and encoderuid and check it for the given options.
+* Get the encoder generator of given pluginuid and encoderuid.
 *
 * @param pluginuid  uid of the plugin or NULL for builtins
 * @param encoderuid uid of the encoder or NULL for default one
-* @param options    JSON object for options to be checked
 * @param generator  pointer for storing the found encoder generator
 * @return the error code, ENCODER_NO_ERROR if there is no error
 */
@@ -129,7 +128,6 @@ encoder_error_t
 encoder_generator_get(
 	const char *pluginuid,
 	const char *encoderuid,
-	json_object *options,
 	const encoder_generator_t **generator);
 
 /**
@@ -147,6 +145,18 @@ encoder_generator_get_JSON(
 	json_object *specifier,
 	const encoder_generator_t **generator,
 	json_object **options);
+
+/**
+* check the options for the given encoder generator
+*
+* @param generator  the encoder generator
+* @param options    JSON object of options
+* @return the error code, ENCODER_NO_ERROR if there is no error
+*/
+extern
+encoder_error_t
+encoder_generator_check_options(const encoder_generator_t *generator, json_object *options);
+
 
 
 
