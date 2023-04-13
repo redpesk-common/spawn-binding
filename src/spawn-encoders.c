@@ -696,18 +696,6 @@ static int encoderInitCB (shellCmdT *cmd, json_object *optsJ, void* fmtctx) {
     return 1;
 }
 
-// Builtin in output formater. Note that first one is used when cmd does not define a format
-static /*const*/ encoderCbT encoderBuiltin[] = { /*1st default == TEXT*/
-  {.uid="TEXT" , .info="unique event at closure with all outputs", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB},
-  {.uid="SYNC" , .info="return json data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB, .synchronous=1},
-  {.uid="RAW"  , .info="return raw data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderRawCB, .synchronous=1},
-  {.uid="LINE" , .info="one event per line",  .initCB=encoderInitCB, .actionsCB=encoderLineCB},
-  {.uid="JSON" , .info="one event per json blob",  .initCB=encoderInitCB, .actionsCB=encoderJsonCB},
-  {.uid="LOG"  , .info="keep stdout/stderr on server",  .initCB=encoderInitLog, .actionsCB=encoderLogCB},
-  {.uid= NULL} // must be null terminated
-};
-
-
 
 #if !defined(BUILTIN_FACTORY_NAME)
 #define BUILTIN_FACTORY_NAME "builtins"
@@ -722,6 +710,18 @@ struct encoder_factory
 	const char *uid;
 }
 	encoder_factory_t;
+
+
+// Builtin in output formater. Note that first one is used when cmd does not define a format
+static /*const*/ encoderCbT encoderBuiltin[] = { /*1st default == TEXT*/
+  {.uid="TEXT" , .info="unique event at closure with all outputs", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB},
+  {.uid="SYNC" , .info="return json data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderDefaultCB, .synchronous=1},
+  {.uid="RAW"  , .info="return raw data at cmd end", .initCB=encoderInitCB, .actionsCB=encoderRawCB, .synchronous=1},
+  {.uid="LINE" , .info="one event per line",  .initCB=encoderInitCB, .actionsCB=encoderLineCB},
+  {.uid="JSON" , .info="one event per json blob",  .initCB=encoderInitCB, .actionsCB=encoderJsonCB},
+  {.uid="LOG"  , .info="keep stdout/stderr on server",  .initCB=encoderInitLog, .actionsCB=encoderLogCB},
+  {.uid= NULL} // must be null terminated
+};
 
 
 
@@ -756,6 +756,13 @@ add_encoder_generator_factory(const char *uid, const encoder_generator_t *genera
 
 	// done
 	return ENCODER_NO_ERROR;
+}
+
+// register callback and use it to register core encoders
+encoder_error_t
+encoder_generator_factory_init (void)
+{
+  return add_encoder_generator_factory (BUILTIN_FACTORY_NAME, encoderBuiltin);
 }
 
 // search the encoder in the registry
@@ -866,13 +873,6 @@ encoderPluginCbT encoderPluginCb = {
     .textParser   = encoderLineParserCB,
     .readStream   = encoderReadFd,
 };
-
-// register callback and use it to register core encoders
-encoder_error_t
-encoder_generator_factory_init (void)
-{
-  return add_encoder_generator_factory (BUILTIN_FACTORY_NAME, encoderBuiltin);
-}
 
 
 
