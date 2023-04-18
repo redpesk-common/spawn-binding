@@ -31,10 +31,7 @@ typedef const struct {
 } encoderMafifestT;
 
 #define DECLARE_SPAWN_ENCODER_PLUGIN(plugin_name, plugin_entry) \
-		static int plugin_entry(json_object*);     \
-		encoderMafifestT SpawnEncoderManifest = {       \
-			.entry = plugin_entry,                  \
-			.name  = plugin_name                    \
-		};
+	static int plugin_entry(json_object *);                 \
+	encoderMafifestT SpawnEncoderManifest = { .entry = plugin_entry, .name = plugin_name };
 
 #endif /* _SPAWN_ENCODERS_PLUGINS_INCLUDE_ */

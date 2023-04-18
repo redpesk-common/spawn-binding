@@ -21,7 +21,6 @@
  * $RP_END_LICENSE$
 */
 
-
 #ifndef _SPAWN_UTILS_INCLUDE_
 #define _SPAWN_UTILS_INCLUDE_
 
@@ -30,21 +29,21 @@
 #include "spawn-defaults.h"
 
 #ifdef MEMFD_CREATE_MISSING
-  // missing from Fedora, OpenSuse, ... !!!
-  long memfd_create (const char *name, unsigned int __flags);
+// missing from Fedora, OpenSuse, ... !!!
+long memfd_create(const char *name, unsigned int __flags);
 #endif
 
 // spawn-utils.c
-mode_t utilsUmaskSetGet (const char *mask);
+mode_t utilsUmaskSetGet(const char *mask);
 int utilsTaskPrivileged(void);
 
-int utilsFileModeIs (const char *filepath, int mode);
-ssize_t utilsFileLoad (const char *filepath, char **buffer);
-int utilsFileAddControl (afb_api_t api, const char *uid, int dirFd, const char *ctrlname, const char *ctrlval);
-const char* utilsExecCmd (afb_api_t api, const char* source, const char* command, int *filefd);
-int utilsExecFdCmd (afb_api_t api, const char* source, const char* command);
-long unsigned int utilsGetPathInod (const char* path);
-mode_t utilsUmaskSetGet (const char *mask);
+int utilsFileModeIs(const char *filepath, int mode);
+ssize_t utilsFileLoad(const char *filepath, char **buffer);
+int utilsFileAddControl(afb_api_t api, const char *uid, int dirFd, const char *ctrlname, const char *ctrlval);
+const char *utilsExecCmd(afb_api_t api, const char *source, const char *command, int *filefd);
+int utilsExecFdCmd(afb_api_t api, const char *source, const char *command);
+long unsigned int utilsGetPathInod(const char *path);
+mode_t utilsUmaskSetGet(const char *mask);
 
 void utilsResetSigals(void);
 

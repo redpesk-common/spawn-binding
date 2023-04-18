@@ -21,7 +21,6 @@
  * $RP_END_LICENSE$
 */
 
-
 #ifndef _SPAWN_BINDING_INCLUDE_
 #define _SPAWN_BINDING_INCLUDE_
 
@@ -30,8 +29,8 @@
 
 // anonymous type definition to allow anonymous type in .h
 typedef struct shellCmdS shellCmdT;
-typedef struct taskIdS   taskIdT;
-typedef struct sandBoxS  sandBoxT;
+typedef struct taskIdS taskIdT;
+typedef struct sandBoxS sandBoxT;
 
 /**
 * structure holding one api
@@ -57,10 +56,6 @@ typedef struct {
 
 	/** the sandboxes*/
 	sandBoxT *sandboxes;
-}
-	spawnApiT;
-
-
-
+} spawnApiT;
 
 #endif /* _SPAWN_BINDING_INCLUDE_ */

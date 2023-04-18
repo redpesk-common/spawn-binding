@@ -21,7 +21,6 @@
  * $RP_END_LICENSE$
 */
 
-
 #ifndef _SPAWN_DEFAULTS_INCLUDE_
 #define _SPAWN_DEFAULTS_INCLUDE_
 

@@ -21,7 +21,6 @@
  * $RP_END_LICENSE$
 */
 
-
 #ifndef _SPAWN_SANDBOX_INCLUDE_
 #define _SPAWN_SANDBOX_INCLUDE_
 
@@ -30,82 +29,81 @@
 #include "spawn-encoders.h"
 
 typedef struct {
-    uid_t uid;
-    gid_t gid;
-    nsRunmodFlagE runmod;
-    const int timeout;
-    const char *umask;
-    const char *path;
-    const char *ldpath;
-    const char *chdir;
+	uid_t uid;
+	gid_t gid;
+	nsRunmodFlagE runmod;
+	const int timeout;
+	const char *umask;
+	const char *path;
+	const char *ldpath;
+	const char *chdir;
 } confAclT;
 
 typedef struct {
-    const char *source;
-    const char *target;
-    nsMountFlagE mode;
+	const char *source;
+	const char *target;
+	nsMountFlagE mode;
 } confMountT;
 
 typedef struct {
-    const char *key;
-    const char *value;
-    nsEnvFlagE mode;
+	const char *key;
+	const char *value;
+	nsEnvFlagE mode;
 } confEnvT;
 
 typedef struct {
-    int value;
-    nsCapFlagE mode;
+	int value;
+	nsCapFlagE mode;
 } confCapT;
 
 typedef struct {
-    int pidgroupFd;
+	int pidgroupFd;
 } confCgroupT;
 
 typedef struct {
-    const char *bwrap;
-    const char *hostname;
-    int autocreate;
-    int selinux;
+	const char *bwrap;
+	const char *hostname;
+	int autocreate;
+	int selinux;
 } nsNamespaceOptsT;
 
 typedef struct {
-    int action;
-    int syscall;
+	int action;
+	int syscall;
 } confSecRuleT;
 
 typedef struct {
-    int dflt;
-    int locked;
-    const char *rulespath;
-    struct sock_fprog *fsock;
-    confSecRuleT *rules;
+	int dflt;
+	int locked;
+	const char *rulespath;
+	struct sock_fprog *fsock;
+	confSecRuleT *rules;
 } confSeccompT;
 
 // name space global config
 typedef struct {
-    nsShareFlagE all;
-    nsShareFlagE user;
-    nsShareFlagE cgroup;
-    nsShareFlagE ipc;
-    nsShareFlagE pid;
-    nsShareFlagE net;
+	nsShareFlagE all;
+	nsShareFlagE user;
+	nsShareFlagE cgroup;
+	nsShareFlagE ipc;
+	nsShareFlagE pid;
+	nsShareFlagE net;
 } confNamespaceTagsT;
 
 typedef struct {
-    const char **argv;
-    int argc;
-    int secompFD;
-    nsNamespaceOptsT opts;
-    confNamespaceTagsT*shares;
-    confEnvT *envs;
-    confMountT *mounts;
+	const char **argv;
+	int argc;
+	int secompFD;
+	nsNamespaceOptsT opts;
+	confNamespaceTagsT *shares;
+	confEnvT *envs;
+	confMountT *mounts;
 } confNamespaceT;
 
 /**
 * Structure holding data related to a sandboxing context
 */
-struct sandBoxS
-{
+struct sandBoxS {
 	/** uid of the sandbox */
 	const char *uid;
 
@@ -152,8 +150,7 @@ struct sandBoxS
 /**
 * The commands
 */
-struct shellCmdS
-{
+struct shellCmdS {
 	/** identifier */
 	const char *uid;
 
@@ -173,7 +170,7 @@ struct shellCmdS
 	int verbose;
 
 	/** count of arguments */
-	int  argc;
+	int argc;
 
 	/** array of arguments */
 	const char **argv;
@@ -188,8 +185,7 @@ struct shellCmdS
 
 		/** options when generating the encoder */
 		json_object *options;
-	}
-		encoder;
+	} encoder;
 
 	/** short usage */
 
@@ -200,7 +196,7 @@ struct shellCmdS
 	pthread_rwlock_t sem;
 
 	/** for authorisations */
-        afb_auth_t authent;
+	afb_auth_t authent;
 
 	/** Name of the verb for the command */
 	const char *apiverb;
@@ -213,13 +209,13 @@ struct shellCmdS
 };
 
 // spawn-sandbox.c
-confEnvT *sandboxParseEnvs (sandBoxT *sandbox, json_object *envsJ);
+confEnvT *sandboxParseEnvs(sandBoxT *sandbox, json_object *envsJ);
 confAclT *sandboxParseAcls(sandBoxT *sandbox, json_object *namespaceJ);
 confCapT *sandboxParseCaps(sandBoxT *sandbox, json_object *capsJ);
-confCgroupT *sandboxParseCgroups (sandBoxT *sandbox, json_object *cgroupsJ);
+confCgroupT *sandboxParseCgroups(sandBoxT *sandbox, json_object *cgroupsJ);
 confSeccompT *sandboxParseSecRules(sandBoxT *sandbox, json_object *seccompJ);
 confNamespaceT *sandboxParseNamespace(sandBoxT *sandbox, json_object *namespaceJ);
-const char **sandboxBwrapArg (sandBoxT *sandbox, confNamespaceT *namespace);
+const char **sandboxBwrapArg(sandBoxT *sandbox, confNamespaceT *namespace);
 
 int sandboxApplyAcls(confAclT *acls, int isPrivileged);
 

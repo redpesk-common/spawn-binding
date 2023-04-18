@@ -21,37 +21,36 @@
  * $RP_END_LICENSE$
 */
 
-
 #ifndef _SPAWN_EXPAND_DEFS_INCLUDE_
 #define _SPAWN_EXPAND_DEFS_INCLUDE_
 
 #include "spawn-sandbox.h"
 
 typedef enum {
-    SPAWN_MEM_STATIC = 0,
-    SPAWN_MEM_DYNAMIC,
+	SPAWN_MEM_STATIC = 0,
+	SPAWN_MEM_DYNAMIC,
 } spawnMemDefaultsE;
 
 typedef struct {
-    enum {
-        expand_sandbox,
-        expand_cmd,
-        expand_task,
-    } type;
-    union {
-	sandBoxT *sandbox;
-	shellCmdT *cmd;
-	taskIdT *task;
-    } value;
+	enum {
+		expand_sandbox,
+		expand_cmd,
+		expand_task,
+	} type;
+	union {
+		sandBoxT *sandbox;
+		shellCmdT *cmd;
+		taskIdT *task;
+	} value;
 } spawnExpandSpecificT;
 
-typedef char*(*spawnGetDefaultCbT)(const char *label, void *ctx, spawnExpandSpecificT *specific);
+typedef char *(*spawnGetDefaultCbT)(const char *label, void *ctx, spawnExpandSpecificT *specific);
 
 typedef struct {
-    const char *label;
-    spawnGetDefaultCbT callback;
-    spawnMemDefaultsE  allocation;
-    void *ctx;
+	const char *label;
+	spawnGetDefaultCbT callback;
+	spawnMemDefaultsE allocation;
+	void *ctx;
 } spawnDefaultsT;
 
 extern spawnDefaultsT spawnVarDefaults[];

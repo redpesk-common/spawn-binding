@@ -30,8 +30,7 @@
 /**
 * Structure holding data of a command execution
 */
-struct taskIdS
-{
+struct taskIdS {
 	/** pid of the task */
 	pid_t pid;
 

@@ -28,7 +28,6 @@
 
 #include "stream-buf.h"
 
-
 // free the memory used by the stream buffer
 void stream_buf_clear(stream_buf_t *sbuf)
 {
@@ -63,7 +62,7 @@ stream_buf_t *stream_buf_resize(stream_buf_t *sbuf, size_t capacity)
 // ensure at least the size of available data in the stream buffer
 stream_buf_t *stream_buf_ensure(stream_buf_t *sbuf, size_t size)
 {
-        size_t avail = sbuf->capacity - sbuf->length;
+	size_t avail = sbuf->capacity - sbuf->length;
 	return avail >= size ? sbuf : stream_buf_resize(sbuf, sbuf->capacity + size);
 }
 
@@ -98,8 +97,7 @@ int stream_buf_read_fd(stream_buf_t *sbuf, int fd)
 		if (sts < 0) {
 			if (errno != EINTR)
 				return -1;
-		}
-		else {
+		} else {
 			sbuf->length += (size_t)sts;
 			if (sts == 0 || avail == (size_t)sts)
 				return rc;
@@ -117,4 +115,3 @@ void stream_buf_consume(stream_buf_t *sbuf, size_t size)
 		memmove(sbuf->data, &sbuf->data[size], sbuf->length);
 	}
 }
-

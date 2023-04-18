@@ -47,57 +47,50 @@
 
 //#include "spawn-encoders-plugins.h"
 
-struct encoder
-{
+struct encoder {
 	const encoder_generator_t *generator;
 	void *data;
 };
 
 /***************************************************************************************/
 
-static
-void drop_fd(int fd)
+static void drop_fd(int fd)
 {
 	char block[4096];
-	while(read(fd, block, sizeof block) == (ssize_t)(sizeof block));
+	while (read(fd, block, sizeof block) == (ssize_t)(sizeof block))
+		;
 }
 
 /***************************************************************************************/
 
 // hold per taskId encoder context
-typedef
-	struct {
-		const char *sout;
-		const char *serr;
-		FILE *fout;
-		FILE *ferr;
-	}
-		LogCtxT;
+typedef struct {
+	const char *sout;
+	const char *serr;
+	FILE *fout;
+	FILE *ferr;
+} LogCtxT;
 
 /** check options */
-static
-encoder_error_t log_check(json_object *options)
+static encoder_error_t log_check(json_object *options)
 {
 	const char *fileout, *fileerr;
-	int err = options == NULL ? 0 : rp_jsonc_unpack(options, "{s?s s?s}" ,"stdout", &fileout, "stderr", &fileerr);
+	int err = options == NULL ? 0 : rp_jsonc_unpack(options, "{s?s s?s}", "stdout", &fileout, "stderr", &fileerr);
 	return err ? ENCODER_ERROR_INVALID_OPTIONS : ENCODER_NO_ERROR;
 }
 
 /** instanciate data */
-static
-encoder_error_t
-log_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
+static encoder_error_t log_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
 {
 	LogCtxT *ctx;
-	
+
 	/* allocate */
 	ctx = calloc(1, sizeof *ctx);
 	if (ctx == NULL)
 		return ENCODER_ERROR_OUT_OF_MEMORY;
 
 	/* init */
-	if (options == NULL 
-	 || 0 == rp_jsonc_unpack(options, "{s?s s?s}", "stdout", &ctx->sout, "stderr", &ctx->serr)) {
+	if (options == NULL || 0 == rp_jsonc_unpack(options, "{s?s s?s}", "stdout", &ctx->sout, "stderr", &ctx->serr)) {
 		*data = ctx;
 		return ENCODER_NO_ERROR;
 	}
@@ -111,15 +104,14 @@ static FILE *openexp(const char *filename, const char *mode, taskIdT *task)
 	char *path = utilsExpandKeyTask(filename, task);
 	FILE *file = fopen(path, mode);
 	if (file == NULL)
-		vfmtcl((void*)spawnTaskLog, task, AFB_SYSLOG_LEVEL_ERROR, "opening file %s with mode %s failed: %s",
-			path, mode, strerror(errno));
+		vfmtcl((void *)spawnTaskLog, task, AFB_SYSLOG_LEVEL_ERROR, "opening file %s with mode %s failed: %s",
+		       path, mode, strerror(errno));
 	free(path);
 	return file;
 }
 
 /** terminate processing */
-encoder_error_t
-log_begin(void *data, taskIdT *task)
+encoder_error_t log_begin(void *data, taskIdT *task)
 {
 	LogCtxT *ctx = data;
 	ctx->fout = ctx->sout == NULL ? stdout : openexp(ctx->sout, "a", task);
@@ -134,8 +126,7 @@ log_begin(void *data, taskIdT *task)
 }
 
 /** process input */
-encoder_error_t
-log_read(void *data, taskIdT *taskId, int fd, bool error)
+encoder_error_t log_read(void *data, taskIdT *taskId, int fd, bool error)
 {
 	char buffer[4096];
 	LogCtxT *ctx = data;
@@ -153,8 +144,7 @@ log_read(void *data, taskIdT *taskId, int fd, bool error)
 }
 
 /** terminate processing */
-encoder_error_t
-log_end(void *data, taskIdT *taskId)
+encoder_error_t log_end(void *data, taskIdT *taskId)
 {
 	LogCtxT *ctx = data;
 	if (ctx->ferr != stderr)
@@ -165,9 +155,7 @@ log_end(void *data, taskIdT *taskId)
 }
 
 /** drop resources */
-static
-void
-log_destroy(void *data)
+static void log_destroy(void *data)
 {
 	LogCtxT *ctx = data;
 	free(ctx);
@@ -176,61 +164,51 @@ log_destroy(void *data)
 /***************************************************************************************/
 
 /** definition of the modes for line text */
-typedef
-	enum {
-		/** send arrays of lines as event at the end */
-		mode_text_event,
-		/** send arrays of lines as the reply at the end */
-		mode_text_sync,
-		/** send lines as events, line by line */
-		mode_text_line,
-		/** send text blob as the reply at the end */
-		mode_text_raw
-	}
-	TextModeT;
+typedef enum {
+	/** send arrays of lines as event at the end */
+	mode_text_event,
+	/** send arrays of lines as the reply at the end */
+	mode_text_sync,
+	/** send lines as events, line by line */
+	mode_text_line,
+	/** send text blob as the reply at the end */
+	mode_text_raw
+} TextModeT;
 
 /** definition of a stream for output and error */
-typedef
-	struct {
-		/** json object data */
-		json_object *data;
-		/** handler of buffer */
-		stream_buf_t buf;
-		/** if overflow is detected */
-		bool overflowed;
-	}
-	TextBufT;
+typedef struct {
+	/** json object data */
+	json_object *data;
+	/** handler of buffer */
+	stream_buf_t buf;
+	/** if overflow is detected */
+	bool overflowed;
+} TextBufT;
 
 /** context of a text encoder */
-typedef
-	struct {
-		/** the mode */
-		TextModeT mode;
-		/** the maximum count of lines to hold */
-		int maxline;
-		/** for holding output */
-		TextBufT out;
-		/** for holding errors */
-		TextBufT err;
-	}
-	TextCtxT;
+typedef struct {
+	/** the mode */
+	TextModeT mode;
+	/** the maximum count of lines to hold */
+	int maxline;
+	/** for holding output */
+	TextBufT out;
+	/** for holding errors */
+	TextBufT err;
+} TextCtxT;
 
 /** pair of encoder context and task for callbacks */
-typedef
-	struct {
-		/** the encoder context */
-		TextCtxT *ctx;
-		/** the task */
-		taskIdT *task;
-		/** the buffer */
-		TextBufT *buf;
-	}
-	TextTaskCtxT;
+typedef struct {
+	/** the encoder context */
+	TextCtxT *ctx;
+	/** the task */
+	taskIdT *task;
+	/** the buffer */
+	TextBufT *buf;
+} TextTaskCtxT;
 
 /** check options */
-static
-encoder_error_t
-text_check(json_object *options)
+static encoder_error_t text_check(json_object *options)
 {
 	int maxline, maxlen, err;
 
@@ -245,20 +223,18 @@ text_check(json_object *options)
 }
 
 /** instanciate data */
-static
-encoder_error_t
-text_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
+static encoder_error_t text_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
 {
 	TextCtxT *ctx;
 	int maxlen, err;
-	
+
 	/* allocate */
 	ctx = calloc(1, sizeof *ctx);
 	if (ctx == NULL)
 		return ENCODER_ERROR_OUT_OF_MEMORY;
 
 	/* init */
-	maxlen =  MAX_DOC_LINE_SIZE;
+	maxlen = MAX_DOC_LINE_SIZE;
 	ctx->maxline = MAX_DOC_LINE_COUNT;
 	ctx->mode = (TextModeT)(intptr_t)generator->tuning;
 	if (options != NULL) {
@@ -280,9 +256,7 @@ text_instanciate(const encoder_generator_t *generator, json_object *options, voi
 }
 
 /** encode one line */
-static
-void
-text_line_cb(void *closure, const char *line, size_t length)
+static void text_line_cb(void *closure, const char *line, size_t length)
 {
 	TextTaskCtxT *ctx = closure;
 	json_object *object = json_object_new_string_len(line, length);
@@ -300,18 +274,17 @@ text_line_cb(void *closure, const char *line, size_t length)
 		object = NULL;
 	}
 	if (object == NULL)
-		vfmtcl((void*)spawnTaskLog, ctx->task, AFB_SYSLOG_LEVEL_ERROR, "out of memory");
+		vfmtcl((void *)spawnTaskLog, ctx->task, AFB_SYSLOG_LEVEL_ERROR, "out of memory");
 	else {
 		json_object *array = ctx->buf->data;
 		if (array == NULL) {
 			ctx->buf->data = array = json_object_new_array_ext(ctx->ctx->maxline + 1);
 			if (array == NULL) {
 				json_object_put(object);
-				vfmtcl((void*)spawnTaskLog, ctx->task, AFB_SYSLOG_LEVEL_ERROR, "out of memory");
+				vfmtcl((void *)spawnTaskLog, ctx->task, AFB_SYSLOG_LEVEL_ERROR, "out of memory");
 				return;
 			}
-		}
-		else {
+		} else {
 			int len = ctx->ctx->maxline - (int)json_object_array_length(array);
 			if (len <= 0) {
 				ctx->buf->overflowed = true;
@@ -326,10 +299,9 @@ text_line_cb(void *closure, const char *line, size_t length)
 }
 
 /** process text input */
-encoder_error_t
-text_read(void *data, taskIdT *task, int fd, bool error)
+encoder_error_t text_read(void *data, taskIdT *task, int fd, bool error)
 {
-	TextTaskCtxT ctx = { .ctx = data, .task = task  };
+	TextTaskCtxT ctx = { .ctx = data, .task = task };
 	ctx.buf = error ? &ctx.ctx->err : &ctx.ctx->out;
 	if (ctx.buf->overflowed)
 		drop_fd(fd);
@@ -339,8 +311,7 @@ text_read(void *data, taskIdT *task, int fd, bool error)
 }
 
 /** process raw input */
-encoder_error_t
-text_read_raw(void *data, taskIdT *task, int fd, bool error)
+encoder_error_t text_read_raw(void *data, taskIdT *task, int fd, bool error)
 {
 	TextCtxT *ctx = data;
 	TextBufT *tbuf = error ? &ctx->err : &ctx->out;
@@ -354,19 +325,17 @@ text_read_raw(void *data, taskIdT *task, int fd, bool error)
 }
 
 /** terminate processing */
-encoder_error_t
-text_end(void *data, taskIdT *task)
+encoder_error_t text_end(void *data, taskIdT *task)
 {
 	json_object *object;
 	TextCtxT *ctx = data;
 
 	if (ctx->mode == mode_text_raw) {
-		ctx->out.data = json_object_new_string_len(
-			stream_buf_data(&ctx->out.buf), stream_buf_length(&ctx->out.buf));
-		ctx->err.data = json_object_new_string_len(
-			stream_buf_data(&ctx->err.buf), stream_buf_length(&ctx->err.buf));
-	}
-	else {
+		ctx->out.data =
+			json_object_new_string_len(stream_buf_data(&ctx->out.buf), stream_buf_length(&ctx->out.buf));
+		ctx->err.data =
+			json_object_new_string_len(stream_buf_data(&ctx->err.buf), stream_buf_length(&ctx->err.buf));
+	} else {
 		TextTaskCtxT tactx = { .ctx = ctx, .task = task };
 		tactx.buf = &ctx->err;
 		line_buf_end(&ctx->err.buf, text_line_cb, &tactx);
@@ -377,12 +346,9 @@ text_end(void *data, taskIdT *task)
 	case mode_text_raw:
 	case mode_text_sync:
 	case mode_text_event:
-		rp_jsonc_pack(&object, "{so* so* so* so*}",
-			"stdout", ctx->out.data,
-			"stderr", ctx->err.data,
-			"stdout-overflow", ctx->out.overflowed ? json_object_new_boolean(1) : NULL,
-			"stderr-overflow", ctx->err.overflowed ? json_object_new_boolean(1) : NULL
-			);
+		rp_jsonc_pack(&object, "{so* so* so* so*}", "stdout", ctx->out.data, "stderr", ctx->err.data,
+			      "stdout-overflow", ctx->out.overflowed ? json_object_new_boolean(1) : NULL,
+			      "stderr-overflow", ctx->err.overflowed ? json_object_new_boolean(1) : NULL);
 		ctx->out.data = ctx->err.data = NULL;
 		if (ctx->mode == mode_text_event)
 			spawnTaskPushEventJSON(task, object);
@@ -397,9 +363,7 @@ text_end(void *data, taskIdT *task)
 }
 
 /** destroy the encoder */
-static
-void
-text_destroy(void *data)
+static void text_destroy(void *data)
 {
 	TextCtxT *ctx = data;
 	json_object_put(ctx->out.data);
@@ -412,29 +376,23 @@ text_destroy(void *data)
 /***************************************************************************************/
 
 /** conjson of a json encoder */
-typedef
-	struct {
-		/** tokenizer */
-		json_tokener *tokener;
-		/** buffer for errors */
-		stream_buf_t buf;
-	}
-	JsonCtxT;
+typedef struct {
+	/** tokenizer */
+	json_tokener *tokener;
+	/** buffer for errors */
+	stream_buf_t buf;
+} JsonCtxT;
 
 /** pair of encoder conjson and task for callbacks */
-typedef
-	struct {
-		/** the encoder conjson */
-		JsonCtxT *ctx;
-		/** the task */
-		taskIdT *task;
-	}
-	JsonTaskCtxT;
+typedef struct {
+	/** the encoder conjson */
+	JsonCtxT *ctx;
+	/** the task */
+	taskIdT *task;
+} JsonTaskCtxT;
 
 /** check options */
-static
-encoder_error_t
-json_check(json_object *options)
+static encoder_error_t json_check(json_object *options)
 {
 	int maxlen, maxdepth, err;
 
@@ -449,20 +407,18 @@ json_check(json_object *options)
 }
 
 /** instanciate data */
-static
-encoder_error_t
-json_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
+static encoder_error_t json_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
 {
 	JsonCtxT *ctx;
 	int maxlen, maxdepth, err;
-	
+
 	/* allocate */
 	ctx = calloc(1, sizeof *ctx);
 	if (ctx == NULL)
 		return ENCODER_ERROR_OUT_OF_MEMORY;
 
 	/* init */
-	maxlen =  MAX_DOC_LINE_SIZE;
+	maxlen = MAX_DOC_LINE_SIZE;
 	maxdepth = JSON_TOKENER_DEFAULT_DEPTH;
 	if (options != NULL) {
 		err = rp_jsonc_unpack(options, "{s?i s?i}", "maxlen", &maxlen, "maxdepth", &maxdepth);
@@ -483,9 +439,7 @@ json_instanciate(const encoder_generator_t *generator, json_object *options, voi
 	return ENCODER_ERROR_OUT_OF_MEMORY;
 }
 
-static
-void
-json_emit(void *closure, json_object *object, const char *name)
+static void json_emit(void *closure, json_object *object, const char *name)
 {
 	JsonTaskCtxT *ctx = closure;
 	json_object *event = json_object_new_object();
@@ -497,36 +451,29 @@ json_emit(void *closure, json_object *object, const char *name)
 		json_object_put(event);
 	}
 	json_object_put(object);
-	vfmtcl((void*)spawnTaskLog, ctx->task, AFB_SYSLOG_LEVEL_ERROR, "out of memory");
+	vfmtcl((void *)spawnTaskLog, ctx->task, AFB_SYSLOG_LEVEL_ERROR, "out of memory");
 }
 
-static
-void
-json_push_cb(void *closure, json_object *object)
+static void json_push_cb(void *closure, json_object *object)
 {
 	if (object != NULL)
 		json_emit(closure, object, "stdout");
 }
 
-static
-void
-json_err_cb(void *closure, const char *message)
+static void json_err_cb(void *closure, const char *message)
 {
 	json_emit(closure, json_object_new_string(message), "json-error");
 }
 
-static
-void
-json_line_cb(void *closure, const char *line, size_t length)
+static void json_line_cb(void *closure, const char *line, size_t length)
 {
 	json_emit(closure, json_object_new_string_len(line, length), "stderr");
 }
 
 /** process json input */
-encoder_error_t
-json_read(void *data, taskIdT *task, int fd, bool error)
+encoder_error_t json_read(void *data, taskIdT *task, int fd, bool error)
 {
-	JsonTaskCtxT ctx = { .ctx = data, .task = task  };
+	JsonTaskCtxT ctx = { .ctx = data, .task = task };
 	if (error)
 		line_buf_read(&ctx.ctx->buf, fd, json_line_cb, &ctx);
 	else
@@ -535,19 +482,16 @@ json_read(void *data, taskIdT *task, int fd, bool error)
 }
 
 /** terminate processing */
-encoder_error_t
-json_end(void *data, taskIdT *task)
+encoder_error_t json_end(void *data, taskIdT *task)
 {
-	JsonTaskCtxT ctx = { .ctx = data, .task = task  };
+	JsonTaskCtxT ctx = { .ctx = data, .task = task };
 	line_buf_end(&ctx.ctx->buf, json_line_cb, &ctx);
 	jsonc_buf_end(ctx.ctx->tokener, json_push_cb, &ctx, json_err_cb);
 	return ENCODER_NO_ERROR;
 }
 
 /** destroy the encoder */
-static
-void
-json_destroy(void *data)
+static void json_destroy(void *data)
 {
 	JsonCtxT *ctx = data;
 	json_tokener_free(ctx->tokener);
@@ -561,86 +505,71 @@ json_destroy(void *data)
 #define BUILTIN_FACTORY_NAME "builtins"
 #endif
 
-typedef
-struct encoder_factory
-{
+typedef struct encoder_factory {
 	struct encoder_factory *next;
 	const encoder_generator_t *generators;
 	const char *uid;
-}
-	encoder_factory_t;
-
+} encoder_factory_t;
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
-static /*const*/ encoder_generator_t encoderBuiltin[] = { /*1st default == TEXT*/
-  {
-	.uid = "TEXT" ,
-	.info = "unique event at closure with all outputs",
-	.check   = text_check,
-	.create  = text_instanciate,
-	.begin   = NULL,
-	.read    = text_read,
-	.end     = text_end,
-	.destroy = text_destroy,
-	.synchronous = 0,
-	.tuning  = (void*)(intptr_t)mode_text_event
-  },
-  {
-	.uid = "SYNC" ,
-	.info = "return json data at cmd end",
-	.check   = text_check,
-	.create  = text_instanciate,
-	.begin   = NULL,
-	.read    = text_read,
-	.end     = text_end,
-	.destroy = text_destroy,
-	.synchronous = 1,
-	.tuning  = (void*)(intptr_t)mode_text_sync
-  },
-  {
-	.uid = "LINE" ,
-	.info = "one event per line", 
-	.check   = text_check,
-	.create  = text_instanciate,
-	.begin   = NULL,
-	.read    = text_read,
-	.end     = text_end,
-	.destroy = text_destroy,
-	.tuning  = (void*)(intptr_t)mode_text_line
-  },
-  {
-	.uid = "RAW" ,
-	.info = "return raw data at cmd end",
-	.check   = text_check,
-	.create  = text_instanciate,
-	.begin   = NULL,
-	.read    = text_read_raw,
-	.end     = text_end,
-	.destroy = text_destroy,
-	.synchronous = 1,
-	.tuning  = (void*)(intptr_t)mode_text_raw
-  },
-  {
-	.uid = "JSON",
-	.info = "one event per json blob", 
-	.check   = json_check,
-	.create  = json_instanciate,
-	.begin   = NULL,
-	.read    = json_read,
-	.end     = json_end,
-	.destroy = json_destroy
-  },
-  {
-	.uid = "LOG" ,
-	.info = "keep stdout/stderr on server", 
-	.check   = log_check,
-	.create  = log_instanciate,
-	.begin   = log_begin,
-	.read    = log_read,
-	.end     = log_end,
-	.destroy = log_destroy
-  },
-  {.uid =  NULL} // must be null terminated
+static /*const */ encoder_generator_t encoderBuiltin[] = {
+	/*1st default == TEXT */
+	{ .uid = "TEXT",
+	  .info = "unique event at closure with all outputs",
+	  .check = text_check,
+	  .create = text_instanciate,
+	  .begin = NULL,
+	  .read = text_read,
+	  .end = text_end,
+	  .destroy = text_destroy,
+	  .synchronous = 0,
+	  .tuning = (void *)(intptr_t)mode_text_event },
+	{ .uid = "SYNC",
+	  .info = "return json data at cmd end",
+	  .check = text_check,
+	  .create = text_instanciate,
+	  .begin = NULL,
+	  .read = text_read,
+	  .end = text_end,
+	  .destroy = text_destroy,
+	  .synchronous = 1,
+	  .tuning = (void *)(intptr_t)mode_text_sync },
+	{ .uid = "LINE",
+	  .info = "one event per line",
+	  .check = text_check,
+	  .create = text_instanciate,
+	  .begin = NULL,
+	  .read = text_read,
+	  .end = text_end,
+	  .destroy = text_destroy,
+	  .tuning = (void *)(intptr_t)mode_text_line },
+	{ .uid = "RAW",
+	  .info = "return raw data at cmd end",
+	  .check = text_check,
+	  .create = text_instanciate,
+	  .begin = NULL,
+	  .read = text_read_raw,
+	  .end = text_end,
+	  .destroy = text_destroy,
+	  .synchronous = 1,
+	  .tuning = (void *)(intptr_t)mode_text_raw },
+	{ .uid = "JSON",
+	  .info = "one event per json blob",
+	  .check = json_check,
+	  .create = json_instanciate,
+	  .begin = NULL,
+	  .read = json_read,
+	  .end = json_end,
+	  .destroy = json_destroy },
+	{ .uid = "LOG",
+	  .info = "keep stdout/stderr on server",
+	  .check = log_check,
+	  .create = log_instanciate,
+	  .begin = log_begin,
+	  .read = log_read,
+	  .end = log_end,
+	  .destroy = log_destroy },
+	{ .uid = NULL } // must be null terminated
 };
 
 /***************************************************************************************/
@@ -651,25 +580,38 @@ static encoder_factory_t *first_factory = NULL;
 // text of the error
 const char *encoder_error_text(encoder_error_t code)
 {
-	switch(code) {
-	case ENCODER_ERROR_PLUGIN_NOT_FOUND:	return "PLUGIN_NOT_FOUND"; break;
-	case ENCODER_ERROR_ENCODER_NOT_FOUND:	return "ENCODER_NOT_FOUND"; break;
-	case ENCODER_ERROR_INVALID_ENCODER:	return "INVALID_ENCODER"; break;
-	case ENCODER_ERROR_INVALID_OPTIONS:	return "INVALID_OPTIONS"; break;
-	case ENCODER_ERROR_INVALID_SPECIFIER:	return "INVALID_SPECIFIER"; break;
-	case ENCODER_ERROR_OUT_OF_MEMORY:	return "OUT_OF_MEMORY"; break;
-	default: return ""; break;
+	switch (code) {
+	case ENCODER_ERROR_PLUGIN_NOT_FOUND:
+		return "PLUGIN_NOT_FOUND";
+		break;
+	case ENCODER_ERROR_ENCODER_NOT_FOUND:
+		return "ENCODER_NOT_FOUND";
+		break;
+	case ENCODER_ERROR_INVALID_ENCODER:
+		return "INVALID_ENCODER";
+		break;
+	case ENCODER_ERROR_INVALID_OPTIONS:
+		return "INVALID_OPTIONS";
+		break;
+	case ENCODER_ERROR_INVALID_SPECIFIER:
+		return "INVALID_SPECIFIER";
+		break;
+	case ENCODER_ERROR_OUT_OF_MEMORY:
+		return "OUT_OF_MEMORY";
+		break;
+	default:
+		return "";
+		break;
 	}
 }
 
 // add a new plugin encoder to the registry
-encoder_error_t
-encoder_generator_factory_add(const char *uid, const encoder_generator_t *generators)
+encoder_error_t encoder_generator_factory_add(const char *uid, const encoder_generator_t *generators)
 {
 	encoder_factory_t *factory, **ptrfac;
 
 	// create holding hat for encoder/decoder CB
-	factory = calloc (1, sizeof *factory);
+	factory = calloc(1, sizeof *factory);
 	if (factory == NULL)
 		return ENCODER_ERROR_OUT_OF_MEMORY;
 
@@ -689,15 +631,14 @@ encoder_generator_factory_add(const char *uid, const encoder_generator_t *genera
 }
 
 // register callback and use it to register core encoders
-encoder_error_t
-encoder_generator_factory_init (void)
+encoder_error_t encoder_generator_factory_init(void)
 {
-  return encoder_generator_factory_add (BUILTIN_FACTORY_NAME, encoderBuiltin);
+	return encoder_generator_factory_add(BUILTIN_FACTORY_NAME, encoderBuiltin);
 }
 
 // search the encoder in the registry
-encoder_error_t
-encoder_generator_search(const char *pluginuid, const char *encoderuid, const encoder_generator_t **generator)
+encoder_error_t encoder_generator_search(const char *pluginuid, const char *encoderuid,
+					 const encoder_generator_t **generator)
 {
 	const encoder_factory_t *factory;
 	const encoder_generator_t *itgen;
@@ -714,7 +655,7 @@ encoder_generator_search(const char *pluginuid, const char *encoderuid, const en
 	// search the encoder
 	itgen = factory->generators;
 	if (encoderuid != NULL) {
-		while (itgen->uid != NULL && strcasecmp (itgen->uid, encoderuid))
+		while (itgen->uid != NULL && strcasecmp(itgen->uid, encoderuid))
 			itgen++;
 		if (itgen->uid == NULL)
 			return ENCODER_ERROR_ENCODER_NOT_FOUND;
@@ -723,8 +664,8 @@ encoder_generator_search(const char *pluginuid, const char *encoderuid, const en
 	return ENCODER_NO_ERROR;
 }
 
-encoder_error_t
-encoder_generator_get(const char *pluginuid, const char *encoderuid, const encoder_generator_t **generator)
+encoder_error_t encoder_generator_get(const char *pluginuid, const char *encoderuid,
+				      const encoder_generator_t **generator)
 {
 	encoder_error_t ege;
 	const encoder_generator_t *gener;
@@ -742,8 +683,8 @@ encoder_generator_get(const char *pluginuid, const char *encoderuid, const encod
 	return ENCODER_NO_ERROR;
 }
 
-encoder_error_t
-encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **generator, json_object **options)
+encoder_error_t encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **generator,
+					   json_object **options)
 {
 	int err;
 	const char *pluginuid = NULL, *encoderuid = NULL;
@@ -751,16 +692,13 @@ encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **g
 	// extract encoder specification
 	*options = NULL;
 	if (specifier != NULL) {
-		if (json_object_is_type (specifier, json_type_string)) {
+		if (json_object_is_type(specifier, json_type_string)) {
 			// encoder is a string
 			encoderuid = json_object_get_string(specifier);
 		} else {
 			// encoder is a complex object with options
-			err = rp_jsonc_unpack(specifier, "{s?s,ss,s?o !}"
-					,"plugin", &pluginuid
-					,"output", &encoderuid
-					,"opts", options
-			);
+			err = rp_jsonc_unpack(specifier, "{s?s,ss,s?o !}", "plugin", &pluginuid, "output", &encoderuid,
+					      "opts", options);
 			if (err)
 				return ENCODER_ERROR_INVALID_SPECIFIER;
 		}
@@ -769,14 +707,13 @@ encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **g
 	return encoder_generator_get(pluginuid, encoderuid, generator);
 }
 
-encoder_error_t
-encoder_generator_check_options(const encoder_generator_t *generator, json_object *options)
+encoder_error_t encoder_generator_check_options(const encoder_generator_t *generator, json_object *options)
 {
 	return generator->check != NULL ? generator->check(options) : ENCODER_NO_ERROR;
 }
 
-encoder_error_t
-encoder_generator_create_encoder(const encoder_generator_t *generator, json_object *options, encoder_t **p_encoder)
+encoder_error_t encoder_generator_create_encoder(const encoder_generator_t *generator, json_object *options,
+						 encoder_t **p_encoder)
 {
 	encoder_error_t rc;
 	encoder_t *encoder = malloc(sizeof *encoder);
@@ -784,7 +721,8 @@ encoder_generator_create_encoder(const encoder_generator_t *generator, json_obje
 		rc = ENCODER_ERROR_OUT_OF_MEMORY;
 	else {
 		encoder->generator = generator;
-		rc = generator->create == NULL ? ENCODER_NO_ERROR : generator->create(generator, options, &encoder->data);
+		rc = generator->create == NULL ? ENCODER_NO_ERROR :
+						 generator->create(generator, options, &encoder->data);
 		if (rc != ENCODER_NO_ERROR)
 			free(encoder);
 		else
@@ -795,8 +733,7 @@ encoder_generator_create_encoder(const encoder_generator_t *generator, json_obje
 
 /***************************************************************************************/
 
-void
-encoder_destroy(encoder_t *encoder)
+void encoder_destroy(encoder_t *encoder)
 {
 	if (encoder->generator->destroy)
 		encoder->generator->destroy(encoder->data);
@@ -813,11 +750,9 @@ int encoderStart(encoder_t *encoder, taskIdT *taskId)
 		ec = encoder->generator->begin(encoder->data, taskId);
 	if (ec != ENCODER_NO_ERROR) {
 		spawnTaskReplyJSON(taskId, AFB_ERRNO_INTERNAL_ERROR, NULL);
-	}
-	else if (encoder->generator->synchronous) {
+	} else if (encoder->generator->synchronous) {
 		spawnTaskPushInitialStatus(taskId, NULL);
-	}
-	else {
+	} else {
 		spawnTaskReplyJSON(taskId, 0, NULL);
 	}
 	return 0;

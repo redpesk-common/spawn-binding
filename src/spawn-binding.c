@@ -37,18 +37,12 @@
 #include "spawn-subtask.h"
 
 /* plugins */
-static plugin_store_t  plugins = PLUGIN_STORE_INITIAL;
+static plugin_store_t plugins = PLUGIN_STORE_INITIAL;
 
 /*
 * predeclaration of the function that initialize the spawn binding
 */
-static int initialiaze_spawn_binding(
-	afb_api_t rootapi,
-	const char *path,
-	const char *uid,
-	json_object *config
-	);
-
+static int initialiaze_spawn_binding(afb_api_t rootapi, const char *path, const char *uid, json_object *config);
 
 /**
 * This is the main entry of the spawn binding
@@ -56,12 +50,11 @@ static int initialiaze_spawn_binding(
 */
 int afbBindingEntry(afb_api_t rootapi, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *userdata)
 {
-	switch (ctlid)
-	{
+	switch (ctlid) {
 	/** called on root entries, the entries not linked to an API */
 	case afb_ctlid_Root_Entry:
-		return initialiaze_spawn_binding(rootapi, ctlarg->root_entry.path,
-				ctlarg->root_entry.uid, ctlarg->root_entry.config);
+		return initialiaze_spawn_binding(rootapi, ctlarg->root_entry.path, ctlarg->root_entry.uid,
+						 ctlarg->root_entry.config);
 
 	/** called for the preinit of an API, has a companion argument */
 	case afb_ctlid_Pre_Init:
@@ -86,21 +79,16 @@ int afbBindingEntry(afb_api_t rootapi, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, v
 	return 0;
 }
 
-
-
-
-
-
 /* basic implementation of ping */
-static void PingTest (afb_req_t request, unsigned naparam, afb_data_t const params[])
+static void PingTest(afb_req_t request, unsigned naparam, afb_data_t const params[])
 {
 	static int count = 0;
 	char response[32];
 	afb_data_t arg, repl;
 	int curcount = ++count;
 	afb_req_param_convert(request, 0, AFB_PREDEFINED_TYPE_STRINGZ, &arg);
-	AFB_REQ_NOTICE(request, "ping count=%d query=%s", curcount, (const char*)afb_data_ro_pointer(arg));
-	snprintf (response, sizeof(response), "\"pong=%d\"", curcount);
+	AFB_REQ_NOTICE(request, "ping count=%d query=%s", curcount, (const char *)afb_data_ro_pointer(arg));
+	snprintf(response, sizeof(response), "\"pong=%d\"", curcount);
 	repl = afb_data_json_copy(response, 0);
 	afb_req_reply(request, 0, 1, &repl);
 }
@@ -108,53 +96,39 @@ static void PingTest (afb_req_t request, unsigned naparam, afb_data_t const para
 /* returns the array of info description for verbs of the sandbox */
 static json_object *InfoCmds(sandBoxT *sandbox)
 {
-        json_object *cmdJ, *commandsJ = json_object_new_array();
-        shellCmdT *cmd = sandbox->cmds;
-        for (; cmd->uid; cmd++) {
-                rp_jsonc_pack (&cmdJ, "{ss ss ss* sO* s{s[ss] sO*}}"
-                        , "uid",  cmd->uid
-                        , "verb", cmd->apiverb
-                        , "info", cmd->info
-                        , "sample", cmd->sampleJ
-                        , "usage"
-                                , "action"
-                                        , "start", "stop"
-                                , "args", cmd->usageJ
-                        );
-                json_object_array_add (commandsJ, cmdJ);
-        }
-        return commandsJ;
+	json_object *cmdJ, *commandsJ = json_object_new_array();
+	shellCmdT *cmd = sandbox->cmds;
+	for (; cmd->uid; cmd++) {
+		rp_jsonc_pack(&cmdJ, "{ss ss ss* sO* s{s[ss] sO*}}", "uid", cmd->uid, "verb", cmd->apiverb, "info",
+			      cmd->info, "sample", cmd->sampleJ, "usage", "action", "start", "stop", "args",
+			      cmd->usageJ);
+		json_object_array_add(commandsJ, cmdJ);
+	}
+	return commandsJ;
 }
 
 // build global info page for developper dynamic HTML5 page
-static void Infosandbox (afb_req_t request, unsigned naparam, afb_data_t const params[])
+static void Infosandbox(afb_req_t request, unsigned naparam, afb_data_t const params[])
 {
-        afb_data_t repldata;
-        json_object *responseJ, *sandboxJ, *sandboxesJ;
-        spawnApiT *spawn = (spawnApiT*)afb_req_get_vcbdata(request);
-        sandBoxT *sandbox = spawn->sandboxes;
+	afb_data_t repldata;
+	json_object *responseJ, *sandboxJ, *sandboxesJ;
+	spawnApiT *spawn = (spawnApiT *)afb_req_get_vcbdata(request);
+	sandBoxT *sandbox = spawn->sandboxes;
 
-        // loop on shell command sandboxes
-        sandboxesJ = json_object_new_array();
-        for (; sandbox->uid; sandbox++){
-                // create sandbox object with sandbox_info and sandbox-cmds
-                rp_jsonc_pack (&sandboxJ, "{ss ss* so*}",
-                        "uid", sandbox->uid,
-                        "info", sandbox->info,
-                        "verbs", InfoCmds(sandbox));
-                json_object_array_add(sandboxesJ, sandboxJ);
-        }
+	// loop on shell command sandboxes
+	sandboxesJ = json_object_new_array();
+	for (; sandbox->uid; sandbox++) {
+		// create sandbox object with sandbox_info and sandbox-cmds
+		rp_jsonc_pack(&sandboxJ, "{ss ss* so*}", "uid", sandbox->uid, "info", sandbox->info, "verbs",
+			      InfoCmds(sandbox));
+		json_object_array_add(sandboxesJ, sandboxJ);
+	}
 
-        rp_jsonc_pack (&responseJ, "{so s{ss ss* ss* ss*}}"
-                , "groups", sandboxesJ
-                , "metadata"
-                        , "uid", spawn->metadata.uid
-                        , "info", spawn->metadata.info
-                        , "version", spawn->metadata.version
-                        , "author", spawn->metadata.author
-                );
-        repldata = afb_data_json_c_hold(responseJ);
-        afb_req_reply(request, 0, 1, &repldata);
+	rp_jsonc_pack(&responseJ, "{so s{ss ss* ss* ss*}}", "groups", sandboxesJ, "metadata", "uid",
+		      spawn->metadata.uid, "info", spawn->metadata.info, "version", spawn->metadata.version, "author",
+		      spawn->metadata.author);
+	repldata = afb_data_json_c_hold(responseJ);
+	afb_req_reply(request, 0, 1, &repldata);
 }
 
 /**
@@ -168,9 +142,9 @@ static void cmdApiRequest(afb_req_t request, unsigned naparam, afb_data_t const 
 	if (rc < 0)
 		afb_req_reply(request, AFB_ERRNO_INVALID_REQUEST, 0, NULL);
 	else {
-		json_object *query = (json_object*)afb_data_ro_pointer(arg);
-		shellCmdT *cmd = (shellCmdT*)afb_req_get_vcbdata(request);
-		spawnTaskVerb (request, cmd, query);
+		json_object *query = (json_object *)afb_data_ro_pointer(arg);
+		shellCmdT *cmd = (shellCmdT *)afb_req_get_vcbdata(request);
+		spawnTaskVerb(request, cmd, query);
 	}
 }
 
@@ -178,8 +152,7 @@ static void cmdApiRequest(afb_req_t request, unsigned naparam, afb_data_t const 
 * structure holding dynamic commands during their
 * life.
 */
-struct dynexec
-{
+struct dynexec {
 	/** the parameters */
 	json_object *params;
 
@@ -194,10 +167,10 @@ static void free_cmd_content(shellCmdT *cmd)
 {
 	int idx = cmd->argc;
 	if (cmd->apiverb != cmd->uid)
-		free((void*)cmd->apiverb);
+		free((void *)cmd->apiverb);
 	if (idx) /* don't free the first */
 		while (--idx)
-			free((void*)cmd->argv[idx]);
+			free((void *)cmd->argv[idx]);
 	free(cmd->argv);
 }
 
@@ -216,7 +189,7 @@ static void free_dynexec(struct dynexec *dynex)
 */
 static void dynexec_process(struct dynexec *dynex, afb_req_t request)
 {
-	spawnTaskVerb (request, &dynex->cmd, NULL);
+	spawnTaskVerb(request, &dynex->cmd, NULL);
 }
 
 #if defined(SPAWN_EXEC_PERMISSION)
@@ -234,9 +207,8 @@ static void dynexec_check_exec_permission_cb(void *closure, int status, afb_req_
 /**
 * enforce to check exec permission by substituting dynexec_process function
 */
-#define dynexec_process(dynex,request) \
-	afb_req_check_permission(request, SPAWN_EXEC_PERMISSION, \
-				dynexec_check_exec_permission_cb, dynex);
+#define dynexec_process(dynex, request) \
+	afb_req_check_permission(request, SPAWN_EXEC_PERMISSION, dynexec_check_exec_permission_cb, dynex);
 
 #endif
 
@@ -282,23 +254,18 @@ static void on_request_execute(afb_req_t request, unsigned naparam, afb_data_t c
 		afb_req_reply(request, AFB_ERRNO_INVALID_REQUEST, 0, NULL);
 		return;
 	}
-	query = (json_object*)afb_data_ro_pointer(arg);
+	query = (json_object *)afb_data_ro_pointer(arg);
 
 	/* extract arguments */
-	rc = rp_jsonc_unpack(query, "{ss so s?o s?o s?o s?o}",
-		"sandbox", &sandbox_uid,
-		"exec",    &exec,
-		"uid",     &uid,
-		"timeout", &timeout,
-		"verbose", &verbose,
-		"encoder", &encoder);
+	rc = rp_jsonc_unpack(query, "{ss so s?o s?o s?o s?o}", "sandbox", &sandbox_uid, "exec", &exec, "uid", &uid,
+			     "timeout", &timeout, "verbose", &verbose, "encoder", &encoder);
 	if (rc < 0) {
 		afb_req_reply(request, AFB_ERRNO_INVALID_REQUEST, 0, NULL);
 		return;
 	}
 
 	/* extract the sandbox */
-	spawner = (spawnApiT*)afb_req_get_vcbdata(request);
+	spawner = (spawnApiT *)afb_req_get_vcbdata(request);
 	sandbox = spawner_search_sandbox(spawner, sandbox_uid);
 	if (sandbox == NULL) {
 		afb_req_reply_string(request, AFB_ERRNO_INVALID_REQUEST, "invalid sandbox uid");
@@ -312,15 +279,12 @@ static void on_request_execute(afb_req_t request, unsigned naparam, afb_data_t c
 		afb_req_reply(request, AFB_ERRNO_OUT_OF_MEMORY, 0, NULL);
 		return;
 	}
-	afb_req_set_userdata(request, dynex, (void (*)(void*))free_dynexec);
+	afb_req_set_userdata(request, dynex, (void (*)(void *))free_dynexec);
 
 	/* wrap the arguments */
-	rc = rp_jsonc_pack(&dynex->params, "{so sO* sO* sO* sO}",
-		"uid",     uid == NULL ? json_object_new_string("dynamic") : json_object_get(uid),
-		"timeout", timeout,
-		"verbose", verbose,
-		"encoder", encoder,
-		"exec",    exec);
+	rc = rp_jsonc_pack(&dynex->params, "{so sO* sO* sO* sO}", "uid",
+			   uid == NULL ? json_object_new_string("dynamic") : json_object_get(uid), "timeout", timeout,
+			   "verbose", verbose, "encoder", encoder, "exec", exec);
 	if (rc) {
 		afb_req_reply(request, AFB_ERRNO_INTERNAL_ERROR, 0, NULL);
 		return;
@@ -335,75 +299,64 @@ static void on_request_execute(afb_req_t request, unsigned naparam, afb_data_t c
 
 	/* check the privilege if any */
 	if (sandbox->privilege)
-		afb_req_check_permission(request, sandbox->privilege,
-					dynexec_check_permission_cb, dynex);
+		afb_req_check_permission(request, sandbox->privilege, dynexec_check_permission_cb, dynex);
 	else
 		dynexec_process(dynex, request);
 }
 
 #if 0
 
-
-
-static int AutostartConfig(afb_api_t api, CtlSectionT *section, json_object *onloadJ)
+static int AutostartConfig(afb_api_t api, CtlSectionT * section, json_object * onloadJ)
 {
 
-    // run autostart section after everything is loaded
-    if (!onloadJ) return 0;
+	// run autostart section after everything is loaded
+	if (!onloadJ)
+		return 0;
 
-    // save autostart to run it after sealing API
-    autostartSection = section;
+	// save autostart to run it after sealing API
+	autostartSection = section;
 
-
-    // delagate autostart parsing to controller builtin OnloadConfig
-    return (OnloadConfig (api, section, onloadJ));
+	// delagate autostart parsing to controller builtin OnloadConfig
+	return (OnloadConfig(api, section, onloadJ));
 }
 
 #endif
 
-
-static int add_verb(
-	afb_api_t api,
-	const char *verb,
-	const char *info,
-	afb_req_callback_t callback,
-	void *vcbdata,
-	const struct afb_auth *auth,
-	uint32_t session
-) {
-        int rc = afb_api_add_verb(api, verb, info, callback, vcbdata, auth, session, 0);
-        if (rc < 0)
-                AFB_API_ERROR(api, "failed to register verb %s", verb);
-        return rc;
+static int add_verb(afb_api_t api, const char *verb, const char *info, afb_req_callback_t callback, void *vcbdata,
+		    const struct afb_auth *auth, uint32_t session)
+{
+	int rc = afb_api_add_verb(api, verb, info, callback, vcbdata, auth, session, 0);
+	if (rc < 0)
+		AFB_API_ERROR(api, "failed to register verb %s", verb);
+	return rc;
 }
-
 
 static int pre_init_api_spawn(afb_api_t api, spawnApiT *spawn)
 {
-        shellCmdT *cmd;
+	shellCmdT *cmd;
 	sandBoxT *sandbox;
-       	afb_auth_t *authent;
+	afb_auth_t *authent;
 
-        // add static controls verbs
-        int rc = add_verb(api, "ping", "ping test", PingTest, NULL, NULL, 0);
-        if (rc >= 0)
-                rc = add_verb(api, "info", "info about sandboxes", Infosandbox, spawn, NULL, 0);
-        if (rc >= 0)
-                rc = add_verb(api, "exec", "execute a command", on_request_execute, spawn, NULL, 0);
+	// add static controls verbs
+	int rc = add_verb(api, "ping", "ping test", PingTest, NULL, NULL, 0);
+	if (rc >= 0)
+		rc = add_verb(api, "info", "info about sandboxes", Infosandbox, spawn, NULL, 0);
+	if (rc >= 0)
+		rc = add_verb(api, "exec", "execute a command", on_request_execute, spawn, NULL, 0);
 
-        // dynamic verbs
-        for (sandbox = spawn->sandboxes ; sandbox && rc >= 0 && sandbox->uid != NULL ; sandbox++) {
-                for (cmd = sandbox->cmds ; rc >= 0 && cmd->uid != NULL ; cmd++) {
-                        authent = cmd->authent.type == afb_auth_Yes ? NULL : &cmd->authent;
-                        rc = add_verb(api, cmd->apiverb, cmd->info, cmdApiRequest, cmd, authent, 0);
-                }
-        }
+	// dynamic verbs
+	for (sandbox = spawn->sandboxes; sandbox && rc >= 0 && sandbox->uid != NULL; sandbox++) {
+		for (cmd = sandbox->cmds; rc >= 0 && cmd->uid != NULL; cmd++) {
+			authent = cmd->authent.type == afb_auth_Yes ? NULL : &cmd->authent;
+			rc = add_verb(api, cmd->apiverb, cmd->info, cmdApiRequest, cmd, authent, 0);
+		}
+	}
 
 	if (rc >= 0)
 		rc = ctl_actionset_add_verbs(&spawn->extra, api, plugins, spawn);
 	if (rc >= 0)
 		rc = ctl_actionset_add_events(&spawn->onevent, api, plugins, spawn);
-        return rc;
+	return rc;
 }
 
 static int init_api_spawn(afb_api_t api, spawnApiT *spawn)
@@ -411,26 +364,21 @@ static int init_api_spawn(afb_api_t api, spawnApiT *spawn)
 	int rc = ctl_set_requires(&spawn->metadata, api);
 	if (rc >= 0)
 		rc = ctl_actionset_exec(&spawn->onstart, api, plugins, spawn);
-        return rc;
+	return rc;
 }
 
-static int main_api_ctl(
-		afb_api_t api,
-		afb_ctlid_t ctlid,
-		afb_ctlarg_t ctlarg,
-		void *userdata
-) {
+static int main_api_ctl(afb_api_t api, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *userdata)
+{
 	spawnApiT *spawn = userdata;
 
-	switch (ctlid)
-	{
+	switch (ctlid) {
 	/** called on root entries, the entries not linked to an API */
 	case afb_ctlid_Root_Entry:
 		break;
 
 	/** called for the preinit of an API, has a companion argument */
 	case afb_ctlid_Pre_Init:
-        	spawn->api = api;
+		spawn->api = api;
 		return pre_init_api_spawn(api, spawn);
 
 	/** called for init */
@@ -460,36 +408,35 @@ static int process_one_config(void *closure, json_object *rootdesc, afb_api_t ro
 	afb_api_t api;
 
 	/* allocates */
-        spawn = calloc(1, sizeof *spawn);
+	spawn = calloc(1, sizeof *spawn);
 	if (spawn == NULL) {
 		AFB_ERROR("out of memory");
 		rc = -1;
-        }
-	else {
-        	spawn->api = rootapi;
+	} else {
+		spawn->api = rootapi;
 		spawn->onstart = CTL_ACTIONSET_INITIALIZER;
 		spawn->onevent = CTL_ACTIONSET_INITIALIZER;
 		spawn->extra = CTL_ACTIONSET_INITIALIZER;
 		spawn->config = rootdesc;
-        	/* read metadata */
+		/* read metadata */
 		rc = ctl_subread_metadata(&spawn->metadata, rootdesc, true);
 		if (rc >= 0)
 			rc = ctl_subread_plugins(&plugins, rootdesc, NULL, "plugins");
-                if (rc >= 0)
-                        /* read onload actions */
+		if (rc >= 0)
+			/* read onload actions */
 			rc = ctl_subread_actionset(&spawn->onstart, rootdesc, "onload");
-                if (rc >= 0)
-                        /* read onload actions */
+		if (rc >= 0)
+			/* read onload actions */
 			rc = ctl_subread_actionset(&spawn->onstart, rootdesc, "onstart");
-                if (rc >= 0)
-                        /* read event actions */
+		if (rc >= 0)
+			/* read event actions */
 			rc = ctl_subread_actionset(&spawn->onevent, rootdesc, "events");
-                if (rc >= 0)
-                        /* read event actions */
+		if (rc >= 0)
+			/* read event actions */
 			rc = ctl_subread_actionset(&spawn->extra, rootdesc, "extra");
-                if (rc >= 0)
-                        /* read sandboxes */
-                        rc = spawn_config_read(spawn, rootdesc);
+		if (rc >= 0)
+			/* read sandboxes */
+			rc = spawn_config_read(spawn, rootdesc);
 		if (rc >= 0) {
 			rc = afb_create_api(&api, spawn->metadata.api, spawn->metadata.info, 1, main_api_ctl, spawn);
 			if (rc < 0)
@@ -505,28 +452,23 @@ static int process_one_config(void *closure, json_object *rootdesc, afb_api_t ro
 			ctl_actionset_free(&spawn->onstart);
 			ctl_actionset_free(&spawn->onevent);
 		}
-                free(spawn);
-        }
+		free(spawn);
+	}
 	return rc;
 }
 
-
 /* Reads the JSON file of 'path' as a JSON-C object
  * and call the callback with it. */
-static int call_for_json_path(
-	void *closure,
-	int (*callback)(void*,json_object*,afb_api_t),
-	const char *path,
-	afb_api_t rootapi
-) {
+static int call_for_json_path(void *closure, int (*callback)(void *, json_object *, afb_api_t), const char *path,
+			      afb_api_t rootapi)
+{
 	int rc;
 	char *expath = rp_expand_vars_env_only(path, 0);
 	json_object *json = json_object_from_file(expath ?: path);
 	if (json) {
 		rc = callback(closure, json, rootapi);
 		json_object_put(json);
-	}
-	else {
+	} else {
 		AFB_ERROR("reading JSON file %s returned NULL", expath ?: path);
 		rc = -1;
 	}
@@ -536,14 +478,9 @@ static int call_for_json_path(
 
 /* Using the given binding's path
 */
-static int iter_root_configs(
-	afb_api_t rootapi,
-	const char *path,
-	const char *uid,
-	json_object *config,
-	int (*callback)(void*,json_object*,afb_api_t),
-	void *closure
-) {
+static int iter_root_configs(afb_api_t rootapi, const char *path, const char *uid, json_object *config,
+			     int (*callback)(void *, json_object *, afb_api_t), void *closure)
+{
 	char *configpath;
 	int rc;
 
@@ -566,15 +503,12 @@ static int iter_root_configs(
 *
 * @return 0 on success or a negative number on failure
 */
-static int initialiaze_spawn_binding(
-	afb_api_t rootapi,
-	const char *path,
-	const char *uid,
-	json_object *config
-) {
+static int initialiaze_spawn_binding(afb_api_t rootapi, const char *path, const char *uid, json_object *config)
+{
 	int rc;
 
-	AFB_API_INFO(rootapi, "Initialisation of Spawn Binding uid=%s path=%s config=%s",uid?:"",path,json_object_to_json_string(config));
+	AFB_API_INFO(rootapi, "Initialisation of Spawn Binding uid=%s path=%s config=%s", uid ?: "", path,
+		     json_object_to_json_string(config));
 
 	// register builtin encoders before plugin get load
 	rc = encoder_generator_factory_init();

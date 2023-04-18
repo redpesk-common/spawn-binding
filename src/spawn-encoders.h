@@ -31,8 +31,7 @@
 /**
 * encoder system errors
 */
-typedef
-enum encoder_error {
+typedef enum encoder_error {
 	ENCODER_NO_ERROR = 0,
 	ENCODER_ERROR_PLUGIN_NOT_FOUND = -1,
 	ENCODER_ERROR_ENCODER_NOT_FOUND = -2,
@@ -41,15 +40,12 @@ enum encoder_error {
 	ENCODER_ERROR_INVALID_SPECIFIER = -5,
 	ENCODER_ERROR_OUT_OF_MEMORY = -6,
 	ENCODER_ERROR_SYSTEM = -7,
-}
-	encoder_error_t;
+} encoder_error_t;
 
 /**
 * Get the text for the given error code
 */
-extern
-const char *
-encoder_error_text(encoder_error_t code);
+extern const char *encoder_error_text(encoder_error_t code);
 
 /***************************************************************************/
 
@@ -58,8 +54,7 @@ typedef struct encoder_generator encoder_generator_t;
 
 /***************************************************************************/
 
-struct encoder_generator
-{
+struct encoder_generator {
 	/** identifier of the generator */
 	const char *uid;
 
@@ -101,9 +96,7 @@ struct encoder_generator
 * Initialization of the factory of encoder generators
 * @return the error code, ENCODER_NO_ERROR if there is no error
 */
-extern
-encoder_error_t
-encoder_generator_factory_init(void);
+extern encoder_error_t encoder_generator_factory_init(void);
 
 /**
 * Adds an array of generators under the given uid
@@ -111,9 +104,7 @@ encoder_generator_factory_init(void);
 * @param generators an array of generators terminated with an item of NULL uid
 * @return the error code, ENCODER_NO_ERROR if there is no error
 */
-extern
-encoder_error_t
-encoder_generator_factory_add(const char *uid, const encoder_generator_t *generators);
+extern encoder_error_t encoder_generator_factory_add(const char *uid, const encoder_generator_t *generators);
 
 /***************************************************************************/
 
@@ -126,12 +117,8 @@ encoder_generator_factory_add(const char *uid, const encoder_generator_t *genera
 * @param generator  pointer for storing the found encoder generator
 * @return the error code, ENCODER_NO_ERROR if there is no error
 */
-extern
-encoder_error_t
-encoder_generator_search(
-	const char *pluginuid,
-	const char *encoderuid,
-	const encoder_generator_t **generator);
+extern encoder_error_t encoder_generator_search(const char *pluginuid, const char *encoderuid,
+						const encoder_generator_t **generator);
 
 /**
 * Get the encoder generator of given pluginuid and encoderuid.
@@ -141,12 +128,8 @@ encoder_generator_search(
 * @param generator  pointer for storing the found encoder generator
 * @return the error code, ENCODER_NO_ERROR if there is no error
 */
-extern
-encoder_error_t
-encoder_generator_get(
-	const char *pluginuid,
-	const char *encoderuid,
-	const encoder_generator_t **generator);
+extern encoder_error_t encoder_generator_get(const char *pluginuid, const char *encoderuid,
+					     const encoder_generator_t **generator);
 
 /**
 * Get the encoder generator of given JSON specifier and check it for the given options.
@@ -157,12 +140,8 @@ encoder_generator_get(
 * @param options    pointer for storing JSON object of options
 * @return the error code, ENCODER_NO_ERROR if there is no error
 */
-extern
-encoder_error_t
-encoder_generator_get_JSON(
-	json_object *specifier,
-	const encoder_generator_t **generator,
-	json_object **options);
+extern encoder_error_t encoder_generator_get_JSON(json_object *specifier, const encoder_generator_t **generator,
+						  json_object **options);
 
 /**
 * check the options for the given encoder generator
@@ -171,9 +150,7 @@ encoder_generator_get_JSON(
 * @param options    JSON object of options
 * @return the error code, ENCODER_NO_ERROR if there is no error
 */
-extern
-encoder_error_t
-encoder_generator_check_options(const encoder_generator_t *generator, json_object *options);
+extern encoder_error_t encoder_generator_check_options(const encoder_generator_t *generator, json_object *options);
 
 /**
 * Instanciate an encoder according to the options
@@ -183,9 +160,8 @@ encoder_generator_check_options(const encoder_generator_t *generator, json_objec
 * @param encoder    pointer for storing the create encoder
 * @return the error code, ENCODER_NO_ERROR if there is no error
 */
-extern
-encoder_error_t
-encoder_generator_create_encoder(const encoder_generator_t *generator, json_object *options, encoder_t **encoder);
+extern encoder_error_t encoder_generator_create_encoder(const encoder_generator_t *generator, json_object *options,
+							encoder_t **encoder);
 
 /***************************************************************************/
 
@@ -193,13 +169,10 @@ encoder_generator_create_encoder(const encoder_generator_t *generator, json_obje
 * Destroy the encoder instance
 * @param encoder the encoder to be destroyed
 */
-extern
-void
-encoder_destroy(encoder_t *encoder);
+extern void encoder_destroy(encoder_t *encoder);
 
 int encoderStart(encoder_t *encoder, taskIdT *taskId);
 void encoderClose(encoder_t *encoder, taskIdT *taskId);
 int encoderRead(encoder_t *encoder, taskIdT *taskId, int fd, bool error);
-
 
 #endif /* _SPAWN_ENCODER_S_INCLUDE_ */

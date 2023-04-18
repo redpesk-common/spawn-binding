@@ -28,12 +28,9 @@
 typedef void (*jsonc_buf_cb)(void *closure, json_object *object);
 typedef void (*jsonc_buf_error_cb)(void *closure, const char *message);
 
-extern
-void jsonc_buf_process(json_tokener *tokener, const char *buffer, size_t offset, jsonc_buf_cb push, void *closure, jsonc_buf_error_cb onerror);
+extern void jsonc_buf_process(json_tokener *tokener, const char *buffer, size_t offset, jsonc_buf_cb push,
+			      void *closure, jsonc_buf_error_cb onerror);
 
-extern
-void jsonc_buf_read(json_tokener *tokener, int fd, jsonc_buf_cb push, void *closure, jsonc_buf_error_cb onerror);
+extern void jsonc_buf_read(json_tokener *tokener, int fd, jsonc_buf_cb push, void *closure, jsonc_buf_error_cb onerror);
 
-extern
-void jsonc_buf_end(json_tokener *tokener, jsonc_buf_cb push, void *closure, jsonc_buf_error_cb onerror);
-
+extern void jsonc_buf_end(json_tokener *tokener, jsonc_buf_cb push, void *closure, jsonc_buf_error_cb onerror);

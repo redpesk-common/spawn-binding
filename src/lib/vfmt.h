@@ -25,14 +25,11 @@
 
 #include <stdarg.h>
 
-extern
-void vfmt(void (*fun)(const char *fmt, va_list args), const char *fmt, ...)
-	__attribute__ ((format (printf, 2, 3)));
+extern void vfmt(void (*fun)(const char *fmt, va_list args), const char *fmt, ...)
+	__attribute__((format(printf, 2, 3)));
 
-extern
-void vfmtc(void (*fun)(void *closure, const char *fmt, va_list args), void *closure, const char *fmt, ...)
-	__attribute__ ((format (printf, 3, 4)));
+extern void vfmtc(void (*fun)(void *closure, const char *fmt, va_list args), void *closure, const char *fmt, ...)
+	__attribute__((format(printf, 3, 4)));
 
-extern
-void vfmtcl(void (*fun)(void *closure, int lvl, const char *fmt, va_list args), void *closure, int lvl, const char *fmt, ...)
-	__attribute__ ((format (printf, 4, 5)));
+extern void vfmtcl(void (*fun)(void *closure, int lvl, const char *fmt, va_list args), void *closure, int lvl,
+		   const char *fmt, ...) __attribute__((format(printf, 4, 5)));

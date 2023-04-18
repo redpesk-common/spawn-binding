@@ -25,54 +25,54 @@
 #define _SPAWN_ENUMS_INCLUDE_
 
 typedef enum {
-    NS_MOUNT_UNKNOWN=0,
-    NS_MOUNT_DIR,
-    NS_MOUNT_RO,
-    NS_MOUNT_RW,
-    NS_MOUNT_SYMLINK,
-    NS_MOUNT_EXECFD,
-    NS_MOUNT_DEFLT,
-    NS_MOUNT_DEVFS,
-    NS_MOUNT_TMPFS,
-    NS_MOUNT_MQUEFS,
-    NS_MOUNT_PROCFS,
-    NS_MOUNT_LOCK,
+	NS_MOUNT_UNKNOWN = 0,
+	NS_MOUNT_DIR,
+	NS_MOUNT_RO,
+	NS_MOUNT_RW,
+	NS_MOUNT_SYMLINK,
+	NS_MOUNT_EXECFD,
+	NS_MOUNT_DEFLT,
+	NS_MOUNT_DEVFS,
+	NS_MOUNT_TMPFS,
+	NS_MOUNT_MQUEFS,
+	NS_MOUNT_PROCFS,
+	NS_MOUNT_LOCK,
 } nsMountFlagE;
 
 typedef enum {
-    NS_CAP_UNKNOWN=0,
-    NS_CAP_SET,
-    NS_CAP_UNSET,
+	NS_CAP_UNKNOWN = 0,
+	NS_CAP_SET,
+	NS_CAP_UNSET,
 } nsCapFlagE;
 
 typedef enum {
-    NS_ENV_UNKNOWN=0,
-    NS_ENV_SET,
-    NS_ENV_UNSET,
+	NS_ENV_UNKNOWN = 0,
+	NS_ENV_SET,
+	NS_ENV_UNSET,
 } nsEnvFlagE;
 
 typedef enum {
-    RUNM_DEFAULT=0,
-    RUNM_USER,
-    RUNM_ADMIN,
+	RUNM_DEFAULT = 0,
+	RUNM_USER,
+	RUNM_ADMIN,
 } nsRunmodFlagE;
 
 typedef enum {
-    NS_SHARE_DEFAULT=0,
-    NS_SHARE_ENABLE,
-    NS_SHARE_DISABLE,
+	NS_SHARE_DEFAULT = 0,
+	NS_SHARE_ENABLE,
+	NS_SHARE_DISABLE,
 } nsShareFlagE;
 
 typedef enum {
-    LSM_LABEL_NONE=0,
-    LSM_LABEL_SBOX,
-    LSM_LABEL_API,
-    LSM_LABEL_CMD,
+	LSM_LABEL_NONE = 0,
+	LSM_LABEL_SBOX,
+	LSM_LABEL_API,
+	LSM_LABEL_CMD,
 } nsLSMFlagE;
 
 typedef struct {
-    const char *label;
-    const int  value;
+	const char *label;
+	const int value;
 } nsKeyEnumT;
 
 extern const nsKeyEnumT mountMode[];
@@ -84,6 +84,6 @@ extern const nsKeyEnumT nsScmpAction[];
 extern const nsKeyEnumT nsShareMode[];
 extern const nsKeyEnumT nsRunmodMode[];
 
-int enumMapValue (const nsKeyEnumT *keyvals, const char *label);
+int enumMapValue(const nsKeyEnumT *keyvals, const char *label);
 
 #endif

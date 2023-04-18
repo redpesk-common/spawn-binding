@@ -43,7 +43,8 @@ void vfmtc(void (*fun)(void *closure, const char *fmt, va_list args), void *clos
 	}
 }
 
-void vfmtcl(void (*fun)(void *closure, int lvl, const char *fmt, va_list args), void *closure, int lvl, const char *fmt, ...)
+void vfmtcl(void (*fun)(void *closure, int lvl, const char *fmt, va_list args), void *closure, int lvl, const char *fmt,
+	    ...)
 {
 	if (fun) {
 		va_list args;

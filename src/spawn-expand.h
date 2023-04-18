@@ -21,7 +21,6 @@
  * $RP_END_LICENSE$
 */
 
-
 #ifndef _SPAWN_EXPAND_INCLUDE_
 #define _SPAWN_EXPAND_INCLUDE_
 
@@ -29,10 +28,10 @@
 
 #include "spawn-sandbox.h"
 
-char *utilsExpandKeySandbox (const char* src, sandBoxT *sandbox);
-char *utilsExpandKeyCmd (const char* src, shellCmdT *cmd);
-char *utilsExpandKeyTask (const char* src, taskIdT *task);
-char* utilsExpandKey (const char* inputString);
-char* utilsExpandJson (const char* src, json_object *keysJ);
+char *utilsExpandKeySandbox(const char *src, sandBoxT *sandbox);
+char *utilsExpandKeyCmd(const char *src, shellCmdT *cmd);
+char *utilsExpandKeyTask(const char *src, taskIdT *task);
+char *utilsExpandKey(const char *inputString);
+char *utilsExpandJson(const char *src, json_object *keysJ);
 
 #endif /* _SPAWN_EXPAND_INCLUDE_ */

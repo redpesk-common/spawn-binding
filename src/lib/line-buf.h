@@ -27,11 +27,8 @@
 
 typedef void (*line_buf_cb)(void *closure, const char *line, size_t length);
 
-extern
-void line_buf_process(stream_buf_t *sbuf, size_t offset, line_buf_cb push, void *closure);
+extern void line_buf_process(stream_buf_t *sbuf, size_t offset, line_buf_cb push, void *closure);
 
-extern
-void line_buf_read(stream_buf_t *sbuf, int fd, line_buf_cb push, void *closure);
+extern void line_buf_read(stream_buf_t *sbuf, int fd, line_buf_cb push, void *closure);
 
-extern
-void line_buf_end(stream_buf_t *sbuf, line_buf_cb push, void *closure);
+extern void line_buf_end(stream_buf_t *sbuf, line_buf_cb push, void *closure);

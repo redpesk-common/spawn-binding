@@ -43,30 +43,24 @@
 
 DECLARE_SPAWN_ENCODER_PLUGIN("encoder_sample", encoder_entry)
 
-
-#define MY_DEFAULT_blkcount 10   // send one event every 10 lines
-#define MY_DEFAULT_maxlen 512  // any line longer than this will be split
+#define MY_DEFAULT_blkcount 10 // send one event every 10 lines
+#define MY_DEFAULT_maxlen 512 // any line longer than this will be split
 
 // hold per taskId encoder context
-typedef
-	struct {
-		json_object *array;
-		stream_buf_t sout;
-		stream_buf_t serr;
-		int linecount;
-		int errcount;
-		int blkcount;
-		int maxlen;
-	}
-		MyCtxT;
+typedef struct {
+	json_object *array;
+	stream_buf_t sout;
+	stream_buf_t serr;
+	int linecount;
+	int errcount;
+	int blkcount;
+	int maxlen;
+} MyCtxT;
 
-typedef
-	struct {
-		MyCtxT *ctx;
-		taskIdT *task;
-	}
-		MyTaskCtxT;
-
+typedef struct {
+	MyCtxT *ctx;
+	taskIdT *task;
+} MyTaskCtxT;
 
 static void on_out_line(void *closure, const char *line, size_t length)
 {
@@ -92,36 +86,31 @@ static void on_err_line(void *closure, const char *line, size_t length)
 	MyCtxT *ctx = tc->ctx;
 	json_object *object;
 
-	rp_jsonc_pack (&object, "{si so}",
-		"err", ++ctx->errcount,
-		"data", json_object_new_string_len(line, length));
+	rp_jsonc_pack(&object, "{si so}", "err", ++ctx->errcount, "data", json_object_new_string_len(line, length));
 	spawnTaskPushEventJSON(task, object);
 }
 
 /** check options */
-static
-encoder_error_t my_check(json_object *options)
+static encoder_error_t my_check(json_object *options)
 {
-	int blkcount, maxlen, err = rp_jsonc_unpack(options, "{s?i s?i}" ,"blkcount", &blkcount, "maxlen", &maxlen);
-	return err  || blkcount < 1 || maxlen < 1 ? ENCODER_ERROR_INVALID_OPTIONS : ENCODER_NO_ERROR;
+	int blkcount, maxlen, err = rp_jsonc_unpack(options, "{s?i s?i}", "blkcount", &blkcount, "maxlen", &maxlen);
+	return err || blkcount < 1 || maxlen < 1 ? ENCODER_ERROR_INVALID_OPTIONS : ENCODER_NO_ERROR;
 }
 
 /** instanciate data */
-static
-encoder_error_t
-my_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
+static encoder_error_t my_instanciate(const encoder_generator_t *generator, json_object *options, void **data)
 {
 	encoder_error_t rc = ENCODER_ERROR_OUT_OF_MEMORY;
 	int err;
 	MyCtxT *ctx;
-	
+
 	/* allocate */
 	ctx = calloc(1, sizeof *ctx);
 	if (ctx != NULL) {
 		/* init */
 		ctx->blkcount = MY_DEFAULT_blkcount;
 		ctx->maxlen = MY_DEFAULT_maxlen;
-		err = rp_jsonc_unpack(options, "{s?i s?i}" ,"blkcount", &ctx->blkcount, "maxlen", &ctx->maxlen);
+		err = rp_jsonc_unpack(options, "{s?i s?i}", "blkcount", &ctx->blkcount, "maxlen", &ctx->maxlen);
 		if (err || ctx->blkcount < 1 || ctx->maxlen < 1)
 			rc = ENCODER_ERROR_INVALID_OPTIONS;
 		else {
@@ -140,8 +129,7 @@ my_instanciate(const encoder_generator_t *generator, json_object *options, void 
 }
 
 /** process input */
-encoder_error_t
-my_read(void *data, taskIdT *taskId, int fd, bool error)
+encoder_error_t my_read(void *data, taskIdT *taskId, int fd, bool error)
 {
 	MyTaskCtxT tc = { .ctx = data, .task = taskId };
 	if (error)
@@ -152,8 +140,7 @@ my_read(void *data, taskIdT *taskId, int fd, bool error)
 }
 
 /** terminate processing */
-encoder_error_t
-my_end(void *data, taskIdT *taskId)
+encoder_error_t my_end(void *data, taskIdT *taskId)
 {
 	json_object *object;
 	MyTaskCtxT tc = { .ctx = data, .task = taskId };
@@ -163,16 +150,12 @@ my_end(void *data, taskIdT *taskId)
 		spawnTaskPushEventJSON(tc.task, tc.ctx->array);
 		tc.ctx->array = NULL;
 	}
-	rp_jsonc_pack (&object, "{si si}",
-		"errcount", tc.ctx->errcount,
-		"linecount", tc.ctx->linecount);
+	rp_jsonc_pack(&object, "{si si}", "errcount", tc.ctx->errcount, "linecount", tc.ctx->linecount);
 	spawnTaskPushEventJSON(tc.task, object);
 	return ENCODER_NO_ERROR;
 }
 
-static
-void
-my_destroy(void *data)
+static void my_destroy(void *data)
 {
 	MyCtxT *ctx = data;
 	stream_buf_clear(&ctx->sout);
@@ -182,24 +165,18 @@ my_destroy(void *data)
 
 // list custom encoders for registration
 encoder_generator_t MyEncoders[] = {
-  {
-	.uid     = "my-custom-encoder",
-	.info    = "One event per blkcount=xxx lines",
-	.check   = my_check,
-	.create  = my_instanciate,
-	.begin   = NULL,
-	.read    = my_read,
-	.end     = my_end,
-	.destroy = my_destroy
-  },
-  {.uid= NULL} // terminator
+	{ .uid = "my-custom-encoder",
+	  .info = "One event per blkcount=xxx lines",
+	  .check = my_check,
+	  .create = my_instanciate,
+	  .begin = NULL,
+	  .read = my_read,
+	  .end = my_end,
+	  .destroy = my_destroy },
+	{ .uid = NULL } // terminator
 };
 
-
-static
-encoder_error_t
-encoder_entry(json_object *config)
+static encoder_error_t encoder_entry(json_object *config)
 {
 	return encoder_generator_factory_add(SpawnEncoderManifest.name, MyEncoders);
-
 }

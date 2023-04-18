@@ -21,9 +21,7 @@
  * $RP_END_LICENSE$
  */
 
-
 #include "line-buf.h"
-
 
 void line_buf_process(stream_buf_t *sbuf, size_t offset, line_buf_cb push, void *closure)
 {
@@ -42,13 +40,12 @@ void line_buf_process(stream_buf_t *sbuf, size_t offset, line_buf_cb push, void 
 
 		// check if found
 		if (pos < last) {
-			// yes, drop 
+			// yes, drop
 			pz = pos - (pos && data[pos - 1] == '\r');
 			data[pz] = 0;
 			push(closure, &data[base], pz - base);
 			base = ++pos;
-		}
-		else if (base == 0 && pos == stream_buf_capacity(sbuf)) {
+		} else if (base == 0 && pos == stream_buf_capacity(sbuf)) {
 			pz = --pos;
 			base = --pos;
 			char a = data[pz];

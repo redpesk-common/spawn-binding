@@ -26,15 +26,15 @@
 
 #include "jsonc-buf.h"
 
-
-void jsonc_buf_process(json_tokener *tokener, const char *buffer, size_t count, jsonc_buf_cb push, void *closure, jsonc_buf_error_cb onerror)
+void jsonc_buf_process(json_tokener *tokener, const char *buffer, size_t count, jsonc_buf_cb push, void *closure,
+		       jsonc_buf_error_cb onerror)
 {
 	size_t used, pos;
 	enum json_tokener_error jerr;
 	json_object *obj;
 
 	// scan
-	for (pos = 0 ; pos < count ; pos += used) {
+	for (pos = 0; pos < count; pos += used) {
 		obj = json_tokener_parse_ex(tokener, &buffer[pos], count - pos);
 		jerr = json_tokener_get_error(tokener);
 		used = json_tokener_get_parse_end(tokener);
@@ -71,4 +71,3 @@ void jsonc_buf_end(json_tokener *tokener, jsonc_buf_cb push, void *closure, json
 {
 	jsonc_buf_process(tokener, "", 1, push, closure, onerror);
 }
-

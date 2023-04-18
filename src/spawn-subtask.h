@@ -28,12 +28,12 @@
 #include "spawn-binding.h"
 
 // spawn-subtask.c
-void spawnTaskVerb (afb_req_t request, shellCmdT *cmd, json_object *queryJ);
-void spawnChildUpdateStatus (taskIdT *taskId);
-void spawnFreeTaskId  (taskIdT *taskId);
+void spawnTaskVerb(afb_req_t request, shellCmdT *cmd, json_object *queryJ);
+void spawnChildUpdateStatus(taskIdT *taskId);
+void spawnFreeTaskId(taskIdT *taskId);
 
 // spawn-childexec.c
-int spawnTaskStart (afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose);
+int spawnTaskStart(afb_req_t request, shellCmdT *cmd, json_object *argsJ, int verbose);
 
 //
 void spawnTaskPushInitialStatus(taskIdT *taskId, json_object *object);
