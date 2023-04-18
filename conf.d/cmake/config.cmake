@@ -16,21 +16,10 @@
 # limitations under the License.
 ###########################################################################
 
-set(CMAKE_INSTALL_SO_NO_EXE 0)
-
-# Project Info
-# ------------------
-set(PROJECT_NAME spawn-binding)
-set(PROJECT_VERSION "1.0")
-set(PROJECT_PRETTY_NAME "Spawn Binding")
-set(PROJECT_DESCRIPTION "Spawn Binding")
-set(PROJECT_URL "https://github.com/redpesk-common/spawn-binding")
-set(PROJECT_ICON "icon.jpg")
 set(PROJECT_AUTHOR "Iot-Team")
 set(PROJECT_AUTHOR_MAIL "support@redpesk.bzh")
-set(PROJECT_LICENSE "APL2.0")
-set(PROJECT_LANGUAGES,"C")
-set(API_NAME "shell")
+set(PROJECT_LICENSE "GPL3.0")
+set(PROJECT_ICON "icon.jpg")
 
 # Where are stored default templates files from submodule or subtree app-templates in your project tree
 # relative to the root project directory
