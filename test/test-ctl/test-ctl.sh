@@ -35,6 +35,9 @@ ctl sync {"action":"start"}
 ctl exit true
 EOC
 
+kill $BPID
+trap "" EXIT
+
 sed -i '/"pid"/s/: *[0-9]*/:/' $COUT
 
 if cmp --silent $BOUT $BREF && cmp --silent $COUT $CREF

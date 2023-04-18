@@ -34,6 +34,9 @@ encoders log {"action":"start"}
 encoders wait {"action":"start"}
 EOC
 
+kill $BPID
+trap "" EXIT
+
 sed -i '/"pid"/s/: *[0-9]*/:/' $COUT
 
 if cmp --silent $BOUT $BREF && cmp --silent $COUT $CREF
@@ -42,8 +45,10 @@ then
 else
 	echo "not ok - test encoders"
 	echo "  ---"
-	{ diff $BOUT $BREF ; diff $COUT $CREF ; } |
-	sed 's/^/  /'
+	echo "  diff $BOUT $BREF"
+	diff $BOUT $BREF | sed 's/^/  /'
+	echo "  diff $COUT $CREF"
+	diff $COUT $CREF | sed 's/^/  /'
 	echo "  ..."
 fi
 

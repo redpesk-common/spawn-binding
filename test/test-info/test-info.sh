@@ -21,6 +21,9 @@ basic ping true
 basic info true
 EOC
 
+kill $BPID
+trap "" EXIT
+
 if cmp --silent $BOUT $BREF && cmp --silent $COUT $CREF
 then
 	echo "ok - test info"
