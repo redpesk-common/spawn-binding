@@ -1,0 +1,25 @@
+rp-manifest: 1
+id: @PROJECT_NAME@
+version: @PROJECT_VERSION@
+name: @PROJECT_NAME@
+description: @PROJECT_DESCRIPTION@
+author: @PROJECT_AUTHOR@ <@PROJECT_AUTHOR_MAIL@>
+license: @PROJECT_LICENSE@
+required-permission:
+  urn:AGL:permission::public:hidden:
+    name: urn:AGL:permission::public:hidden
+    value: required
+  urn:AGL:permission::system:run-by-default:
+    name: urn:AGL:permission::system:run-by-default
+    value: required
+targets:
+  - target: main
+    content:
+      src: @WIDGET_ENTRY_POINT@
+      type: @WIDGET_TYPE@
+    provided-api:
+      - name: shell
+        value: ws
+    required-binding:
+      - name: @WIDGET_ENTRY_POINT@
+        value: local
