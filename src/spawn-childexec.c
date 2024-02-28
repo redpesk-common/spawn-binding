@@ -35,6 +35,7 @@
 
 #include <cap-ng.h>
 
+#define AFB_BINDING_VERSION 4
 #include <afb/afb-binding.h>
 #include <rp-utils/rp-jsonc.h>
 #include <afb-helpers4/afb-data-utils.h>

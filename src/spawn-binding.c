@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <strings.h>
 
+#define AFB_BINDING_VERSION 4
 #include <afb/afb-binding.h>
 #include <rp-utils/rp-jsonc.h>
 #include <rp-utils/rp-expand-vars.h>

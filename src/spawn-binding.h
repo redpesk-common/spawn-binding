@@ -24,6 +24,7 @@
 #ifndef _SPAWN_BINDING_INCLUDE_
 #define _SPAWN_BINDING_INCLUDE_
 
+#define AFB_BINDING_VERSION 4
 #include <afb/afb-binding.h>
 #include <afb-helpers4/ctl-lib.h>
 

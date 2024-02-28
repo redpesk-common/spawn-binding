@@ -15,11 +15,11 @@ required-permission:
 targets:
   - target: main
     content:
-      src: @WIDGET_ENTRY_POINT@
-      type: @WIDGET_TYPE@
+      src: lib/spawn-binding.so
+      type: application/vnd.agl.service
     provided-api:
       - name: shell
         value: ws
     required-binding:
-      - name: @WIDGET_ENTRY_POINT@
+      - name: lib/spawn-binding.so
         value: local
