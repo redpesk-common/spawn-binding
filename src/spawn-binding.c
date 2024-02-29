@@ -25,14 +25,14 @@
 #include <stdio.h>
 #include <strings.h>
 
-#define AFB_BINDING_VERSION 4
+#include "spawn-binding.h"
+
 #include <afb/afb-binding.h>
 #include <rp-utils/rp-jsonc.h>
 #include <rp-utils/rp-expand-vars.h>
 #include <afb-helpers4/afb-data-utils.h>
 #include <afb-helpers4/afb-req-utils.h>
 
-#include "spawn-binding.h"
 #include "spawn-sandbox.h"
 #include "spawn-config.h"
 #include "spawn-subtask.h"

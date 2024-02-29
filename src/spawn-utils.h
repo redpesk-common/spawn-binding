@@ -24,7 +24,6 @@
 #ifndef _SPAWN_UTILS_INCLUDE_
 #define _SPAWN_UTILS_INCLUDE_
 
-#define AFB_BINDING_VERSION 4
 #include <afb/afb-binding.h>
 #include <json-c/json.h>
 #include "spawn-defaults.h"

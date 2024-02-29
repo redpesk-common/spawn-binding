@@ -31,8 +31,9 @@
 #include <time.h>
 #include <sys/stat.h>
 
+#include "spawn-binding.h"
+
 // we need AFB definition to access binder config API
-#define AFB_BINDING_VERSION 4
 #include <afb/afb-binding.h>
 #include <rp-utils/rp-uuid.h>
 

@@ -7,9 +7,10 @@
 
 #define _GNU_SOURCE
 
+#include "spawn-binding.h"
+
 #include <assert.h>
 
-#define AFB_BINDING_VERSION 4
 #include <afb/afb-binding.h>
 
 #include <afb-helpers4/afb-data-utils.h>
@@ -18,7 +19,6 @@
 #include "lib/stream-buf.h"
 #include "lib/line-buf.h"
 
-#include "spawn-binding.h"
 #include "spawn-sandbox.h"
 #include "spawn-encoders.h"
 

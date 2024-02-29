@@ -29,13 +29,13 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-#define AFB_BINDING_VERSION 4
+#include "spawn-binding.h"
+
 #include <afb/afb-binding.h>
 #include <rp-utils/rp-jsonc.h>
 #include <afb-helpers4/afb-data-utils.h>
 #include <afb-helpers4/afb-req-utils.h>
 
-#include "spawn-binding.h"
 #include "spawn-utils.h"
 #include "spawn-sandbox.h"
 #include "spawn-subtask.h"

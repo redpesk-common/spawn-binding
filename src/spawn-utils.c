@@ -23,6 +23,8 @@
 
 #define _GNU_SOURCE
 
+#include "spawn-binding.h"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
