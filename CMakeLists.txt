@@ -65,6 +65,7 @@ install(TARGETS spawn-binding DESTINATION ${APP_DIR}/lib)
 install(FILES ${CMAKE_BINARY_DIR}/manifest.yml DESTINATION ${APP_DIR}/.rpconfig)
 install(FILES ${CMAKE_BINARY_DIR}/spawn.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 install(DIRECTORY etc/ DESTINATION ${APP_DIR}/etc)
+install(DIRECTORY src/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/spawn-binding FILES_MATCHING PATTERN "*.h" PATTERN "plugins" EXCLUDE)
 
 # Build encoder-sample
 add_library(encoder-sample SHARED src/plugins/encoder-sample.c)

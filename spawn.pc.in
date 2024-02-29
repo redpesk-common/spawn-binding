@@ -10,4 +10,3 @@ Version: @PROJECT_VERSION@
 Requires:
 Libs: -L${libdir} -lafb-@TARGET_NAME@
 Cflags: -I${includedir}%
-
