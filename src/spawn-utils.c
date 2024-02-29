@@ -35,19 +35,7 @@
 #include <string.h>
 #include <sys/signalfd.h>
 #include <assert.h>
-
-#ifndef MEMFD_CREATE_MISSING
-//long memfd_create (const char *__name, unsigned int __flags);
 #include <sys/mman.h>
-#else
-// missing from Fedora, OpenSuse, ... !!!
-long memfd_create(const char *name, unsigned int flags)
-{
-#include <sys/syscall.h>
-#include <linux/memfd.h>
-	return (syscall(SYS_memfd_create, name, flags));
-}
-#endif
 
 #include <json-c/json.h>
 

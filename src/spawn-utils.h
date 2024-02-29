@@ -28,11 +28,6 @@
 #include <json-c/json.h>
 #include "spawn-defaults.h"
 
-#ifdef MEMFD_CREATE_MISSING
-// missing from Fedora, OpenSuse, ... !!!
-long memfd_create(const char *name, unsigned int __flags);
-#endif
-
 // spawn-utils.c
 mode_t utilsUmaskSetGet(const char *mask);
 int utilsTaskPrivileged(void);
