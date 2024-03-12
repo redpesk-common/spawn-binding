@@ -394,7 +394,9 @@ typedef struct {
 /** check options */
 static encoder_error_t json_check(json_object *options)
 {
-	int maxlen, maxdepth, err;
+	int err;
+	int maxlen = MAX_DOC_LINE_SIZE;
+	int maxdepth = JSON_TOKENER_DEFAULT_DEPTH;
 
 	if (options == NULL)
 		return ENCODER_NO_ERROR;
