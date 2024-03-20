@@ -278,7 +278,12 @@ static void text_line_cb(void *closure, const char *line, size_t length)
 	else {
 		json_object *array = ctx->buf->data;
 		if (array == NULL) {
+// json-c version >= 0.15
+#if JSON_C_VERSION_NUM >= 0x000f00
 			ctx->buf->data = array = json_object_new_array_ext(ctx->ctx->maxline + 1);
+#else
+			ctx->buf->data = array = json_object_new_array();
+#endif
 			if (array == NULL) {
 				json_object_put(object);
 				vfmtcl((void *)spawnTaskLog, ctx->task, AFB_SYSLOG_LEVEL_ERROR, "out of memory");
