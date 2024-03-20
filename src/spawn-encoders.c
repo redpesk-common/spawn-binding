@@ -45,8 +45,6 @@
 
 /***************************************************************************************/
 
-//#include "spawn-encoders-plugins.h"
-
 struct encoder {
 	const encoder_generator_t *generator;
 	void *data;

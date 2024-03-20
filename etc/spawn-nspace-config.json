@@ -7,10 +7,10 @@
   },
   "plugins": [
     {
-      "uid": "encoder-sample",
+      "uid": "encoder_sample",
       "info": "Full demo with advanced acls+namespace+encoders",
       "spath": "package/lib/:./lib/plugins:./var",
-      "libs": "encoder-sample.ctlso"
+      "libs": "encoder-sample.so"
     }
   ],
   "sandboxes": [
@@ -156,7 +156,7 @@
           "uid": "custom",
           "info" : "custom encoder sample outputs json_array of 'blkcount' lines",
           "usage": {"dirname": "xxxxx"},
-          "encoder":{"plugin": "format-demo", "output":"my-custom-encoder", "opts":{"blkcount":10, "maxlen":256}},
+          "encoder":{"plugin": "encoder_sample", "output":"my-custom-encoder", "opts":{"blkcount":10, "maxlen":256}},
           "exec": {"cmdpath": "/bin/ls", "args": ["-l", "%dirname%"]},
           "sample": [
             {"args": {"dirname": "/"}}

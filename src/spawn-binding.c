@@ -39,6 +39,7 @@
 
 /* plugins */
 static plugin_store_t plugins = PLUGIN_STORE_INITIAL;
+static const char plugin_encoders_symbol_name[] = "spawnEncoders";
 
 /*
 * predeclaration of the function that initialize the spawn binding
@@ -401,6 +402,26 @@ static int main_api_ctl(afb_api_t api, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, v
 	return 0;
 }
 
+static int initialize_encoders_of_plugins(void *closure, const plugin_t *plugin)
+{
+	encoder_error_t err;
+	const char *uid = plugin_name(plugin);
+
+	encoder_generator_t *encoders = plugin_get_object(plugin, plugin_encoders_symbol_name);
+	if (encoders == NULL) {
+		AFB_ERROR("initialize_encoders_of_plugins: object %s not found in plugin %s", plugin_encoders_symbol_name, uid);
+		return -1;
+	}
+
+	err = encoder_generator_factory_add(uid, encoders);
+	if (err != ENCODER_NO_ERROR) {
+		AFB_ERROR("initialize_encoders_of_plugins: failed to add plugin %s to factory", uid);
+		return -1;
+	}
+
+	return 0;
+}
+
 /* create one API per config file object */
 static int process_one_config(void *closure, json_object *rootdesc, afb_api_t rootapi)
 {
@@ -423,6 +444,9 @@ static int process_one_config(void *closure, json_object *rootdesc, afb_api_t ro
 		rc = ctl_subread_metadata(&spawn->metadata, rootdesc, true);
 		if (rc >= 0)
 			rc = ctl_subread_plugins(&plugins, rootdesc, NULL, "plugins");
+		if (rc >= 0)
+			/* register encoders in factory */
+			rc = plugin_store_iter(plugins, initialize_encoders_of_plugins, NULL);
 		if (rc >= 0)
 			/* read onload actions */
 			rc = ctl_subread_actionset(&spawn->onstart, rootdesc, "onload");

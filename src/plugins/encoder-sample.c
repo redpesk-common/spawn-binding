@@ -9,11 +9,7 @@
 
 #include "spawn-binding.h"
 
-#include <assert.h>
-
-#include <afb/afb-binding.h>
-
-#include <afb-helpers4/afb-data-utils.h>
+#include <afb-helpers4/ctl-lib-plugin.h>
 #include <rp-utils/rp-jsonc.h>
 
 #include "lib/stream-buf.h"
@@ -21,8 +17,6 @@
 
 #include "spawn-sandbox.h"
 #include "spawn-encoders.h"
-
-#include "spawn-encoders-plugins.h"
 
 #include "spawn-subtask.h"
 
@@ -36,13 +30,12 @@
  *  - to activate MyEncoder add to your command definition
  *    'encoder':{"plugin": "MyEncoders", output:'Sample1', 'blkcount':  xxxx}
  *
- *  - a plugin may contains one or multiple encoder. Plugins use a private namespace for encoder 'uid'
+ *  - a plugin may contains one or multiple encoders. Plugins use a private namespace for encoder 'uid'
  *
  *  Note: this demo encoder is provided as template for developpers to create there own code.
  *  to keep sample simple it leverage generic read pipe and line parsing from builtin encoder.
  */
-
-DECLARE_SPAWN_ENCODER_PLUGIN("encoder_sample", encoder_entry)
+CTL_PLUGIN_DECLARE("encoder_sample", "Full demo with advanced acls+namespace+encoders");
 
 #define MY_DEFAULT_blkcount 10 // send one event every 10 lines
 #define MY_DEFAULT_maxlen 512 // any line longer than this will be split
@@ -165,7 +158,7 @@ static void my_destroy(void *data)
 }
 
 // list custom encoders for registration
-encoder_generator_t MyEncoders[] = {
+encoder_generator_t spawnEncoders[] = {
 	{ .uid = "my-custom-encoder",
 	  .info = "One event per blkcount=xxx lines",
 	  .check = my_check,
@@ -176,8 +169,3 @@ encoder_generator_t MyEncoders[] = {
 	  .destroy = my_destroy },
 	{ .uid = NULL } // terminator
 };
-
-static encoder_error_t encoder_entry(json_object *config)
-{
-	return encoder_generator_factory_add(SpawnEncoderManifest.name, MyEncoders);
-}
