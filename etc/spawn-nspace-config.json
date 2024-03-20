@@ -91,7 +91,7 @@
           "uid": "mycap",
           "info" : "return sandbox capabilities",
           "privilege": "special privilege",
-          "exec": {"cmdpath": "$SBINDIR/capsh", "args": ["--print"]}
+          "exec": {"cmdpath": "/sbin/capsh", "args": ["--print"]}
         },
         {
           "uid": "sleep",
