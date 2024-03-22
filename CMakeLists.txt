@@ -41,6 +41,7 @@ target_sources(spawn-binding-libs PRIVATE
 )
 # Install included libraries
 install(TARGETS spawn-binding-libs DESTINATION ${APP_DIR}/lib)
+install(DIRECTORY src/lib/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/spawn-binding/lib FILES_MATCHING PATTERN "*.h")
 
 # Build spawn-binding
 add_library(spawn-binding SHARED)
@@ -65,7 +66,9 @@ install(TARGETS spawn-binding DESTINATION ${APP_DIR}/lib)
 install(FILES ${CMAKE_BINARY_DIR}/manifest.yml DESTINATION ${APP_DIR}/.rpconfig)
 install(FILES ${CMAKE_BINARY_DIR}/spawn.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 install(DIRECTORY etc/ DESTINATION ${APP_DIR}/etc)
-install(DIRECTORY src/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/spawn-binding FILES_MATCHING PATTERN "*.h" PATTERN "plugins" EXCLUDE)
+install(FILES src/spawn-binding.h src/spawn-defaults.h src/spawn-encoders.h src/spawn-enums.h src/spawn-sandbox.h src/spawn-subtask.h src/spawn-utils.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/spawn-binding
+)
 
 # Build encoder-sample
 add_library(encoder-sample SHARED src/plugins/encoder-sample.c)
