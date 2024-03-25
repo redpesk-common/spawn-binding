@@ -45,7 +45,7 @@ install(DIRECTORY src/lib/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/spawn-binding
 
 # Build spawn-binding
 add_library(spawn-binding SHARED)
-set_target_properties(spawn-binding PROPERTIES PREFIX "")
+set_target_properties(spawn-binding PROPERTIES PREFIX "" INSTALL_RPATH "$ORIGIN")
 target_sources(spawn-binding PRIVATE
     src/spawn-binding.c
     src/spawn-childexec.c
