@@ -26,7 +26,7 @@ pkg_check_modules(deps REQUIRED
     libseccomp
     afb-binding>=4.1.2
     librp-utils-static
-    afb-helpers4-static>=10.0.3
+    afb-helpers4-static>=10.0.7
 )
 check_include_file(uthash.h check_uthash)
 
@@ -39,6 +39,8 @@ target_sources(spawn-binding-libs PRIVATE
     src/lib/stream-buf.c
     src/lib/vfmt.c
 )
+target_include_directories(spawn-binding-libs PRIVATE ${deps_INCLUDE_DIRS})
+target_link_libraries(spawn-binding-libs PRIVATE ${deps_LIBRARIES})
 # Install included libraries
 install(TARGETS spawn-binding-libs DESTINATION ${APP_DIR}/lib)
 install(DIRECTORY src/lib/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/spawn-binding/lib FILES_MATCHING PATTERN "*.h")
@@ -58,7 +60,8 @@ target_sources(spawn-binding PRIVATE
     src/spawn-subtask.c
     src/spawn-utils.c
 )
-target_link_libraries(spawn-binding PRIVATE ${deps_LIBRARIES} spawn-binding-libs)
+target_include_directories(spawn-binding PRIVATE ${deps_INCLUDE_DIRS})
+target_link_libraries(spawn-binding PRIVATE ${deps_LIBRARIES} spawn-binding-libs pthread)
 configure_file(spawn.pc.in ${CMAKE_BINARY_DIR}/spawn.pc @ONLY)
 configure_file(manifest.yml.in ${CMAKE_BINARY_DIR}/manifest.yml @ONLY)
 # Install spawn-binding
@@ -74,6 +77,6 @@ install(FILES src/spawn-binding.h src/spawn-defaults.h src/spawn-encoders.h src/
 add_library(encoder-sample SHARED src/plugins/encoder-sample.c)
 set_target_properties(encoder-sample PROPERTIES PREFIX "")
 target_include_directories(encoder-sample PRIVATE src)
-target_link_libraries(encoder-sample spawn-binding spawn-binding-libs)
+target_link_libraries(encoder-sample spawn-binding spawn-binding-libs json-c)
 # Install encoder-sample
 install(TARGETS encoder-sample DESTINATION ${APP_DIR}/lib/plugins)
