@@ -37,7 +37,13 @@ void jsonc_buf_process(json_tokener *tokener, const char *buffer, size_t count, 
 	for (pos = 0; pos < count; pos += used) {
 		obj = json_tokener_parse_ex(tokener, &buffer[pos], count - pos);
 		jerr = json_tokener_get_error(tokener);
+// json-c version >= 0.14
+#if JSON_C_VERSION_NUM >= 0x000e00
 		used = json_tokener_get_parse_end(tokener);
+#else
+		//assert(tokener->char_offset >= 0);
+		used = (size_t)tokener->char_offset;
+#endif
 		switch (jerr) {
 		case json_tokener_continue:
 			break;
