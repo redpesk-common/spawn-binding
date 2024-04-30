@@ -2,24 +2,24 @@
 
 ## spawn-binding AFB hierarchy config
 
-spawn-binding config depends on afb-controller and people used to redpesk or agl AFB controllers should feel home. For the other one config.json as described below remains pretty simple.
+spawn-binding config consists of a JSON file as described below.
 
-*It is nevertheless highly recommended to check your config.json with a json linter after any modification.*
+*It is highly recommended to check your config.json with a json linter after any modification.*
 
 ```bash
 # check config.json validity with JQ
 jq < config.json
 ```
 
-Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-binder. Config can either be a simple filename, a suite of filename separated by ':' or a directory, in which case spawn-binding will take every spawn-*.json file from concerned directory.
+> Note: jq's package should be available within your standard Linux repository
 
-### top hierarchy
+### Top hierarchy
 
 * metadata: API name
 * plugins: optional encoder plugin path and names
 * sandbox: access control and command list
 
-**Minimal configuration sample**
+#### Minimal configuration sample
 
 ```json
 {
@@ -41,7 +41,7 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
 }
 
 // resulting API
-// ws://localhost:1234/api/minimal/distro?query={"action":"start"}
+// ws://localhost:1234/api/mini/distro?query={"action":"start"}
 ```
 
 ### sandbox definition
@@ -52,6 +52,7 @@ Config.json filename should be place into AFB_SPAWN_CONFIG before starting afb-b
 Default when prefix is not defined. If config.json declare more than one 'sandbox' by default *prefix==sandbox->uid*, on the other hand if config.json declare only one sandbox (no json-array) then no-prefix is added and api/ver==api-name/cmd-uid.
 * **verbose**: [0-9] value. Turn on/off some debug/log capabilities
 * **privilege**: required corresponding sample privileges [here]({% chapter_link afb_binder.overview %}). For further explanation on AFB privileges check: [Cynagora]({% chapter_link afb_binder.overview %}). AFB/AGL privileges are based on Tizen privileges definitions [here](https://www.tizen.org/privilege)
+
 ```json
   "sandboxes": {
       "uid": "sandbox-demo",
@@ -63,6 +64,7 @@ Default when prefix is not defined. If config.json declare more than one 'sandbo
 ```
 
 * **envs**: environment variable inherited or not by child at fork/execv time
+
 ```json
   "envs" : [
       {"name": "SESSION_MANAGER", "mode":"unset"},
@@ -72,7 +74,7 @@ Default when prefix is not defined. If config.json declare more than one 'sandbo
 ```
 
 * **acl**: basic Linux [DAC](https://en.wikipedia.org/wiki/Discretionary_access_control)
-* **caps**: Linux [capabilities](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html). Note:  to gain privileges binder should run in privileged mode.
+* **caps**: Linux [capabilities](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html). Note: to gain privileges binder should run in privileged mode.
 * **cgroups**: create a cgroup-v2 in */sys/fs/cgroup/sandbox-uid* and attach every children spawn to the corresponding cgroup (binder need to be privileged to activate cgroups)
 * **seccomp**: restrict kernel syscall with [SECure COMPuting with filters](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html)
 * **namespace**: create an unprivileged rootless container based on [unshare](https://www.kernel.org/doc/html/v4.16/userspace-api/unshare.html?highlight=unshare#benefits) kernel call.
@@ -137,13 +139,13 @@ Linux [capabilities](https://www.openshift.com/blog/linux-capabilities-in-opensh
   }
 ```
 
-[Seccomp](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html) allows to restrict the syscall a given may access. Seccomp rules may either be provided within a json_array or in a file of compiled BPF rules [BPF/XDP-doc](https://docs.cilium.io/en/v1.9/). While *seccomp* is a very powerful tool to secure a container writing a complex set of security rules is not a simple task. Redhat has nevertheless a good introduction paper that may help people to start writing there own rules [here](https://www.openshift.com/blog/seccomp-for-fun-and-profit and Yadutaf some nice basic sample on his blob [here](https://blog.yadutaf.fr/2014/05/29/introduction-to-seccomp-bpf-linux-syscall-filter/).
+[Seccomp](https://www.kernel.org/doc/html/v4.16/userspace-api/seccomp_filter.html) allows to restrict the syscall a given may access. Seccomp rules may either be provided within a json_array or in a file of compiled BPF rules [BPF/XDP-doc](https://docs.cilium.io/en/v1.9/). While *seccomp* is a very powerful tool to secure a container writing a complex set of security rules is not a simple task. Redhat has nevertheless a good introduction paper that may help people to start writing there own rules [here](https://www.openshift.com/blog/seccomp-for-fun-and-profit) and Yadutaf some nice basic sample on his blob [here](https://blog.yadutaf.fr/2014/05/29/introduction-to-seccomp-bpf-linux-syscall-filter/).
 
-* **default**: defines default seccomp action for any non defined rules. Options are: SCMP_ACT_ALLOW, SCMP_ACT_KILL_PROCESS, SMP_ACT_KILL_THREAD, SCMP_ACT_KILL, SCMP_ACT_TRAP, SCMP_ACT_LOG, SCMP_ACT_ALLOW, SCMP_ACT_NOTIFY depending on your system some option as SCMP_ACT_NOTIFY might not be available. ***Warning**: setting default to SCMP_ACT_KILL will impose you to declare every 'syscall' you authorize.*
+* **default**: defines default seccomp action for any non defined rules. Options are: SCMP_ACT_ALLOW, SCMP_ACT_KILL_PROCESS, SMP_ACT_KILL_THREAD, SCMP_ACT_KILL, SCMP_ACT_TRAP, SCMP_ACT_LOG, SCMP_ACT_ALLOW, SCMP_ACT_NOTIFY depending on your system some option as SCMP_ACT_NOTIFY might not be available. ***Warning***: setting default to SCMP_ACT_KILL will impose you to declare every 'syscall' you authorize.
 * **locked**: when true this flash will set two extra options:
   * PR_SET_NO_NEW_PRIVS prevent children to request or inherit from from file sticky bit or capabilities extra permissions
   * PR_SET_DUMPABLE prevent children from activating ptrace escape
-* **rules**: a json array defining basic *seccomp* rules with the form   {"syscall": "syscall_name", "action": "SCMP_ACT_XXX"}
+* **rules**: a json array defining basic *seccomp* rules with the form `{"syscall": "syscall_name", "action": "SCMP_ACT_XXX"}`
 * **rulespath**: path top your BPF compiled rules. Note than when using a sandbox this file is apply only after unshare namespace are established, when previous rules applies before.
 
 #### Namespace (unprivileged rootless container)
@@ -189,7 +191,7 @@ Namespace allows to restrict children visibility to the filesystem by executing 
 
   * **mode**: specify the type of mount to use:
     * **rw/ro** or 'read'/'write' is used to mount directory in either read-only or read-write.
-    * **symlink** does not really mount a resource, but create a symbolic link within container after its creation. For example {"target": "/sbin", source "/usr/sbin", "mode": "symlink"} will create a legacy link for applications that require and access to /sbin.
+    * **symlink** does not really mount a resource, but create a symbolic link within container after its creation. For example `{"target": "/sbin", source "/usr/sbin", "mode": "symlink"}` will create a legacy link for applications that require and access to /sbin.
     * **dir** create a directory on children namespace. Depending on where this directory is created, it may remain after children terminate, or be shared in between children.
     * **tmpfs** create a temporally filesystem visible only from within this children container. Note that 'tmpfs' entry point are not share in between children of a given sandbox.
     * **dev**: mount a empty '/dev' file system. When children have corresponding rights they may later mount specific devices.
@@ -225,7 +227,7 @@ This section exposes for a given sandbox children commands. Command only require
   * **cmdpath**: full command file path to execute (no search path allowed). Spawn-binding check at startup time that exec file is executable by the hosting environnement. Nevertheless it cannot assert that it will still be executable after applying sandbox restrictions.
   * **args** : a unique or array of arguments. Arguments can be expandable either at config time with '$NAME' or at query time with '%pattern%'. ***Warning**: argument expansion at query time is case sensitive.*
     * **$NAME** : config time expansion. On top of traditional environment variables spawn-binding support few extra builtin expansion: $LOGNAME, $HOSTNAME, $HOME, $AFB_ROOTDIR, $AFB_CONFIG, $AFB_NAME, $SANDBOX_UID, $COMMAND_UID, $API_NAME, $SBINDIR, $SBOXUSER, $PID, $UID, $GID, $TODAY, $UUID.
-    * **%name%***  those patterns are expanded at command launching time. By searching within query args json_object corresponding key. For example if your command line used '"exec": {"cmdpath": "/bin/sleep", "args": ["%timeout%"]}' then a query with '{"action":"start", "args": {"timeout": "180"}}' will fork/exec 'sleep 180'.
+    * **%name%***  those patterns are expanded at command launching time. By searching within query args json_object corresponding key. For example if your command line used `"exec": {"cmdpath": "/bin/sleep", "args": ["%timeout%"]}` then a query with `{"action":"start", "args": {"timeout": "180"}}` will fork/exec `sleep 180`.
 
 * **verbose**: overload sandbox verbosity level. ***Warning** verbosity [5-9] are reserve to internal code debugging. With verbosity=5, query arguments expansion happen in main process and not in child to help 'gdb' debugging, nevertheless in this case any expansion error may kill the server.*
 * **timeout**: overload sandbox timeout. (note zero == no-timeout)
@@ -242,6 +244,7 @@ This section exposes for a given sandbox children commands. Command only require
   * **xxxx**: where 'xxxx' is the 'uid' you gave to your plugin custom encoder options.
 
   * Example of encoders accepting*
+
 ```json
         "encoder": {"output": "json", "opts": {"maxlen":1024}},
         "encoder": {"output": "log", "opts":{"stdout":"/tmp/afb-$AFB_NAME-$SANDBOX_UID-$COMMAND_UID.out", "stderr":"/tmp/afb-$AFB_NAME-$SANDBOX_UID-$COMMAND_UID.err", "maxlen":1024}}.
@@ -261,13 +264,13 @@ This section exposes for a given sandbox children commands. Command only require
 
 each command create a standard api/verb that can be requested by all AFB transport by default: REST/WebSocket/UnixDomain
 
-**Websocket Query**
+### Websocket Query
 
 ```bash
 ws://localhost:1234/api/simple/sandbox-simple/distro?query={"action":"start"}
 ```
 
-**Event Response**
+### Event Response
 
 ```json
 {
@@ -301,17 +304,19 @@ ws://localhost:1234/api/simple/sandbox-simple/distro?query={"action":"start"}
 
 Each command may define its own required privileges (Linux SeLinux/Smack & Cynara privileges). Optional arguments depend on chosen action.
 
-* **action**:
-```json
-    query={"action":"start"}
-```
-  default (action: 'start')
+* **action**: default (action: 'start')
+
+  ```json
+      query={"action":"start"}
+  ```
+
   * **start**: create a new container for targeted command with arguments and security model.
   * **stop**: stop all or specified task previously started
   * **subscribe**: request subscription to the output of a given command. *Note: by default any client starting an action automatically subscribe the its output.*
   * **unsubscribe**: force unsubscribe to output events of a given command.
 
 * **args**:
+
 ```json
     query={"args":{"filename":"/etc/passwd"}}
 ```
@@ -364,34 +369,4 @@ Children spawn task output always come back as events. The model depend on chose
   }
 }
 }
-```
-
-## Activating cgroup-v2
-
-While recent OpenSuse, Ubuntu or Debian support cgroups-v2 by default they only activate compatibility mode. In this mode cgroup controller use in V1 cannot be use in V2 and vice versa. As spawn-binding request all controller in V2, compatibility mode is not really useful and you should move all control to V2. The good news is that when rebooting systemd, lxc, docker,... notice the change and commute automatically to full V2 mode. Except is you have custom applications that support only V1 mode the shift to V2 should be fully transparent.
-
-### Fedora & redpesk
-
-Cgroup-v2 activated by default for all controllers.
-
-### OpenSuse
-
-* add to /etc/default/grub the two following parameters
-```bash
-  sudo vi /etc/default/grub
-    - change => GRUB_CMDLINE_LINUX_DEFAULT="resume=/dev/disk/by-label/swap splash=silent quiet showopts"
-    - to => GRUB_CMDLINE_LINUX_DEFAULT="resume=/dev/disk/by-label/swap splash=silent quiet showopts systemd.unified_cgroup_hierarchy=1 cgroup=no_v1=all"
-
-  sudo grub2-mkconfig -o /boot/grub2/grub.cfg
-```
-
-### Ubuntu
-
-* update grub & reboot
-```bash
-  sudo vi /etc/default/grub
-    - change => GRUB_CMDLINE_LINUX_DEFAULT=""
-    - to => GRUB_CMDLINE_LINUX_DEFAULT="systemd.unified_cgroup_hierarchy=1 cgroup=no_v1=all"
-
-  sudo update-grub
 ```

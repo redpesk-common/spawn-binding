@@ -1,11 +1,13 @@
 # Installation
 
+The AFB HTML client is provided by the `afb-ui-devtools` package, but it is not a requirement to run the spawn-binding.
+
 ## redpesk
 
 spawn-binding is part of redpesk-common and is available on any redpesk installation.
 
 ```bash
-sudo dnf install spawn-binding afb-ui-devtools
+sudo dnf install spawn-binding
 ```
 
 ## Other Linux Distributions
@@ -14,35 +16,50 @@ sudo dnf install spawn-binding afb-ui-devtools
 
 ```bash
 # Fedora
-sudo dnf install spawn-binding afb-ui-devtools bubblewrap libcap
+sudo dnf install spawn-binding
 
 # OpenSuse
-sudo zypper install spawn-binding bubblewrap libcap-progs afb-ui-devtools
+sudo zypper install spawn-binding
 
 # Ubuntu
-sudo apt-get install spawn-binding-bin afb-ui-devtools bubblewrap libcap2-bin
+sudo apt-get install spawn-binding-bin
 ```
 
-# Quick test
+## Activating cgroup-v2
 
-## start spawn-binding samples
+While recent OpenSuse, Ubuntu or Debian support cgroups-v2 by default they only activate compatibility mode. In this mode a cgroup controller used in V1 cannot be used in V2 and vice versa. As spawn-binding requests all controllers in V2, compatibility mode is not really useful and you should move all control to V2. The good news is that when rebooting systemd, lxc, docker,... notice the change and switch automatically to full V2 mode. Except if you have custom applications that support only V1 mode, the shift to V2 should be fully transparent.
 
+### Fedora & redpesk
+
+Cgroup-v2 activated by default for all controllers.
+
+### OpenSuse
+
+* add to /etc/default/grub the two following parameters
+
+```bash
+  sudo vi /etc/default/grub
+    - change => GRUB_CMDLINE_LINUX_DEFAULT="resume=/dev/disk/by-label/swap splash=silent quiet showopts"
+    - to => GRUB_CMDLINE_LINUX_DEFAULT="resume=/dev/disk/by-label/swap splash=silent quiet showopts systemd.unified_cgroup_hierarchy=1 cgroup=no_v1=all"
+
+  sudo grub2-mkconfig -o /boot/grub2/grub.cfg
 ```
-AFB_SPAWN_CONFIG=/var/local/lib/afm/applications/spawn-binding/etc \
-afb-binder --name=afb-spawn --binding=/var/local/lib/afm/applications/spawn-binding/lib/afb-spawn.so --verbose
+
+### Ubuntu
+
+* update grub & reboot
+
+```bash
+  sudo vi /etc/default/grub
+    - change => GRUB_CMDLINE_LINUX_DEFAULT=""
+    - to => GRUB_CMDLINE_LINUX_DEFAULT="systemd.unified_cgroup_hierarchy=1 cgroup=no_v1=all"
+
+  sudo update-grub
 ```
 
-## Connect to HTML5 test page
+## Build 'spawn-binding' from sources
 
-[http://localhost:1234/devtools/](http://localhost:1234/devtools/index.html)
-
-*Optionally:*
-
-* if you rather CLI interface to HTML5, feel free to replace 'afb-ui-devtools' with 'afb-client'.
-
-## Rebuild 'spawn-binding' from sources
-
-**Notice**: recompiling spawn-binding is not requirer to implement your own set of commands and/or sandbox containers. You should recompile 'spawn-binding' only when:
+**Notice**: recompiling spawn-binding is not required to implement your own set of commands and/or sandbox containers. You should recompile 'spawn-binding' only when:
 
 * targeting a not supported environment/distribution.
 * changing code to fix bug or propose improvement *(contributions are more than welcome)*
@@ -55,26 +72,25 @@ afb-binder --name=afb-spawn --binding=/var/local/lib/afm/applications/spawn-bind
 * declare redpesk repositories (see previous step).
 * install typical Linux C/C++ development tool chain gcc+cmake+....
 
-#### Install AFB controller dependencies
+#### Install AFB dependencies
 
 * application framework 'afb-binder' & 'afb-binding-devel'
-* binding controller 'afb-libcontroller-devel'
-* binding helpers 'afb-libhelpers-devel'
-* cmake template 'afb-cmake-modules'
-* ui-devel html5 'afb-ui-devtools'
+* binding helpers 'afb-helpers4-static'
+* redpesk utils `librp-utils-static`
 
->Note: For Ubuntu/OpenSuse/Fedora specific instructions check [redpesk-developer-guide]({% chapter_link host-configuration-doc.setup-your-build-host#install-the-application-framework-1 %})
+> Note: For Ubuntu/OpenSuse/Fedora specific instructions check [redpesk-developer-guide]({% chapter_link host-configuration-doc.setup-your-build-host#install-the-application-framework-1 %})
 
 #### Install spawn-binding specific dependencies
 
-* libuuid-devel
+* json-c-devel
 * libcap-ng-devel
 * libseccomp-devel
-* liblua5.3-devel
+* systemd-devel
 * uthash-devel
-* bwrap
 
->Note: all previous dependencies should be available out-of-the-box within any good Linux distribution. Note that Debian as Ubuntu base distro use '.dev' in place of '.devel' for package name.
+> Note: all previous dependencies should be available out-of-the-box within any good Linux distribution. Note that Debian and Ubuntu use '-dev' in place of '-devel' for package names.
+
+* bubblewrap (which is a runtime dependency, but not required at compile time)
 
 ### Download source from git
 
@@ -94,6 +110,5 @@ make
 ### Run a test from building tree
 
 ```bash
-export AFB_SPAWN_CONFIG=../conf.d/project/etc/spawn-simple-config.json
-afb-binder --name=afb-spawn --binding=./package/lib/afb-spawn.so -vvv
+afb-binder --binding=./build/spawn-binding.so:./etc/spawn-simple-config.json -vvv
 ```
