@@ -29,6 +29,10 @@ pkg_check_modules(deps REQUIRED
     afb-helpers4-static>=10.0.7
 )
 check_include_file(uthash.h check_uthash)
+find_program(bubblewrap bwrap)
+if(bubblewrap STREQUAL "bubblewrap-NOTFOUND")
+    message(WARNING "Executable bwrap not found, may lead to runtime errors")
+endif()
 
 # Build included libraries
 add_library(spawn-binding-libs SHARED)
