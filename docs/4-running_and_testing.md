@@ -1,7 +1,12 @@
 # Running/Testing
 
-Spawn-binding implements *afb-libcontroller* and requires a valid afb-controller-config.json to operate. For testing purpose the simplest way
-is to define `AFB_SPAWN_CONFIG` environment variable with a full or relative path to binder *rootdir*.
+When in the need of a quick feedback loop, the config file should be
+used as shown below. For production, the resource binding system should
+be used: the spawn-binding is installed as a resource binding which
+cannot be launched on its own; another binding, which is launch-able by
+the framework facilities, provides a configuration to the spawn-binding.
+See [more details about resource bindings here]({% chapter_link
+application-framework-dev.resource-bindings %}).
 
 ## Requirements
 
