@@ -96,8 +96,10 @@ int stream_buf_read_fd(stream_buf_t *sbuf, int fd)
 		ssize_t sts = avail ? read(fd, &sbuf->data[sbuf->length], avail) : 0;
 		if (sts < 0) {
 			if (errno != EINTR)
-				return -1;
+				return errno == EAGAIN ? rc : -1;
 		} else {
+			if (sts > 0)
+				rc = 1;
 			sbuf->length += (size_t)sts;
 			if (sts == 0 || avail == (size_t)sts)
 				return rc;

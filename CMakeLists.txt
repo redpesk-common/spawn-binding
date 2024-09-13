@@ -80,7 +80,7 @@ install(FILES src/spawn-binding.h src/spawn-defaults.h src/spawn-encoders.h src/
 # Build encoder-sample
 add_library(encoder-sample SHARED src/plugins/encoder-sample.c)
 set_target_properties(encoder-sample PROPERTIES PREFIX "")
-target_include_directories(encoder-sample PRIVATE src)
+target_include_directories(encoder-sample PRIVATE src ${deps_INCLUDE_DIRS})
 target_link_libraries(encoder-sample spawn-binding spawn-binding-libs json-c)
 # Install encoder-sample
 install(TARGETS encoder-sample DESTINATION ${APP_DIR}/lib/plugins)
