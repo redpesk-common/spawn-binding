@@ -2,7 +2,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.12)
 
 # Project info
 project(spawn-binding
-    VERSION 2.0.0
+    VERSION 2.0.1
     DESCRIPTION "Sandboxed execution of predefined commands"
     HOMEPAGE_URL "https://github.com/redpesk-common/spawn-binding"
     LANGUAGES C
