@@ -20,3 +20,5 @@ targets:
 file-properties:
   - name: lib/spawn-binding.so
     value: public
+  - name: lib/libspawn-binding.so
+    value: public
