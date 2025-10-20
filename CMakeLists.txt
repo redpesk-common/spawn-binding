@@ -30,7 +30,7 @@ pkg_check_modules(deps REQUIRED
 )
 check_include_file(uthash.h check_uthash)
 find_program(bubblewrap bwrap)
-if(bubblewrap STREQUAL "bubblewrap-NOTFOUND")
+if(NOT bubblewrap)
     message(WARNING "Executable bwrap not found, may lead to runtime errors")
 endif()
 
