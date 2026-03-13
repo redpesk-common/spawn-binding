@@ -5,8 +5,7 @@ used as shown below. For production, the resource binding system should
 be used: the spawn-binding is installed as a resource binding which
 cannot be launched on its own; another binding, which is launch-able by
 the framework facilities, provides a configuration to the spawn-binding.
-See [more details about resource bindings here]({% chapter_link
-application-framework-dev.resource-bindings %}).
+See [more details about resource bindings here]({% chapter_link application-framework-dev.resource-bindings %}).
 
 ## Requirements
 
@@ -168,7 +167,7 @@ sudo AFB_SPAWN_CONFIG=../conf.d/project/etc/wireguard-autostart.json afb-binder 
 
 ## caching events
 
-spawn-binding is an [afb-controller](/docs/en/master/developer-guides/controllerConfig.html) and may on event reception execute internal/external API. For external action you should use *--ws-client=xxx* to import the api within spawn-binding context. Note that to execute an external API you also need corresponding privileges.
+spawn-binding is an [afb-controller]({% chapter_link libappcontroller-guides.controller-configuration %}) and may on event reception execute internal/external API. For external action you should use *--ws-client=xxx* to import the api within spawn-binding context. Note that to execute an external API you also need corresponding privileges.
 
 ```json
   "events": [
