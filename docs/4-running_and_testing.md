@@ -167,7 +167,11 @@ sudo AFB_SPAWN_CONFIG=../conf.d/project/etc/wireguard-autostart.json afb-binder 
 
 ## caching events
 
-spawn-binding is an [afb-controller]({% chapter_link libappcontroller-guides.controller-configuration %}) and may on event reception execute internal/external API. For external action you should use *--ws-client=xxx* to import the api within spawn-binding context. Note that to execute an external API you also need corresponding privileges.
+On event reception, spawn-binding may execute internal/external API using `action`.
+
+For external action you should use *--ws-client=xxx* to import the api within spawn-binding context.
+
+Note that to execute an external API you also need corresponding privileges.
 
 ```json
   "events": [
